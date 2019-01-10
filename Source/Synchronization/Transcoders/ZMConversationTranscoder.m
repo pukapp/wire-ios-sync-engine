@@ -41,6 +41,7 @@ static NSString *const UserInfoUserKey = @"user";
 static NSString *const UserInfoAddedValueKey = @"added";
 static NSString *const UserInfoRemovedValueKey = @"removed";
 
+
 static NSString *const ConversationTeamKey = @"team";
 static NSString *const ConversationAccessKey = @"access";
 static NSString *const ConversationAccessRoleKey = @"access_role";
