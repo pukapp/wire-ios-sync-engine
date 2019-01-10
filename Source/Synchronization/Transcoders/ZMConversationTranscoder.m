@@ -125,6 +125,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
          | ZMStrategyConfigurationOptionAllowsRequestsDuringNotificationStreamFetch;
 }
 
+// 只有加入key才能发送请求
 - (NSArray<NSString *> *)keysToSync
 {
     NSArray *keysWithRef = @[
@@ -133,15 +134,15 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     NSArray *allKeys = [keysWithRef arrayByAddingObjectsFromArray:self.keysToSyncWithoutRef];
     return allKeys;
 }
-
+// 只有加入key才能发送请求
 - (NSArray<NSString *>*)keysToSyncWithoutRef
 {
     // Some keys don't have or are a time reference
     // These keys will always be over written when updating from the backend
     // They might be overwritten in a way that they don't create requests anymore whereas they previously did
     // To avoid crashes or unneccessary syncs, we should reset those when refetching the conversation from the backend
-    
-    return @[ZMConversationUserDefinedNameKey];
+    // 新增了自动回复
+    return @[ZMConversationUserDefinedNameKey, ZMConversationAutoReplyKey];
     
 }
 
@@ -315,7 +316,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     return conversation;
 }
 
-
+/// 需要处理的更新事件
 - (BOOL)shouldProcessUpdateEvent:(ZMUpdateEvent *)event
 {
     switch (event.type) {
@@ -333,6 +334,12 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationConnectRequest:
         case ZMUpdateEventTypeConversationAccessModeUpdate:
         case ZMUpdateEventTypeConversationMessageTimerUpdate:
+        case ZMUpdateEventTypeConversationUpdateAutoreply:
+        case ZMUpdateEventTypeConversationChangeType:
+        case ZMUpdateEventTypeConversationChangeCreater:
+        case ZMUpdateEventTypeConversationUpdateAliasname:
+        case ZMUpdateEventTypeConversationWalletNotify:
+        case ZMUpdateEventTypeConversationBgpMessageAdd:
             return YES;
         default:
             return NO;
@@ -420,7 +427,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
 
 - (void)markConversationForDownloadIfNeeded:(ZMConversation *)conversation afterEvent:(ZMUpdateEvent *)event {
-    
+    // 可能需要添加，暂时不知道干嘛用，后续再看
     switch(event.type) {
         case ZMUpdateEventTypeConversationOtrAssetAdd:
         case ZMUpdateEventTypeConversationOtrMessageAdd:
@@ -470,10 +477,73 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationMessageTimerUpdate:
             [self processDestructionTimerUpdateEvent:event inConversation:conversation];
             break;
+        case ZMUpdateEventTypeConversationUpdateAutoreply:
+            [self processConversationAutoReplyEvent:event forConversation:conversation];
+            break;
+//        case ZMUpdateEventTypeConversationChangeType:
+//            [self processConversationChangeTypeEvent:event forConversation:conversation];
+//            break;
+        case ZMUpdateEventTypeConversationChangeCreater:
+            [self processConversationChangecreatorEvent:event forConversation:conversation];
+            break;
+//        case ZMUpdateEventTypeConversationUpdateAliasname:
+//            [self processConversationUpdateAliasnameEvent:event forConversation:conversation];
+//            break;
         default:
             break;
     }
 }
+
+// 将群升级为万人群
+//- (void)processConversationChangeTypeEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
+//{
+//    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
+//    NSNumber *type = data[@"type"];
+//    if ([type isEqualToNumber: [NSNumber numberWithInt:5]]) {
+//        conversation.conversationType = ZMConversationTypeHugeGroup;
+//    }
+//}
+
+// 将群主更改
+- (void)processConversationChangecreatorEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
+{
+    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
+    //    NSString *type = data[@"creator"];
+    NSUUID *creatorId = [data uuidForKey:@"creator"];
+    if(creatorId != nil) {
+        conversation.creator = [ZMUser userWithRemoteID:creatorId createIfNeeded:YES inContext:self.managedObjectContext];
+    }
+}
+
+// 修改自动回复状态（机器人类型）
+- (void)processConversationAutoReplyEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
+{
+    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
+    short newAutoReply = [[data numberForKey:@"auto_reply"] shortValue];
+//    NSDate *date = [data dateForKey:@"auto_reply_ref"];
+    // 后续添加系统消息
+    //    if (conversation.autoReply != newAutoReply || [conversation.modifiedKeys containsObject:ZMConversationAutoReplyKey]) {
+    //        [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
+    //    }
+    // 判断推送来源,自己/别人
+    BOOL senderIsSelfUser = ([event.senderUUID isEqual:[ZMUser selfUserInContext:self.managedObjectContext].remoteIdentifier]);
+    if (senderIsSelfUser) {
+        conversation.autoReply = newAutoReply;
+//        conversation.autoReplyChangedTimestamp = date;
+    }else{
+        conversation.autoReplyFromOther = newAutoReply;
+//        conversation.autoReplyFromOtherChangedTimestamp = date;
+    }
+    
+}
+
+//- (void)processConversationUpdateAliasnameEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
+//{
+//    NSString *fromId = [event.payload optionalStringForKey:@"from"];
+//    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
+//    NSString *aliname = [data optionalStringForKey:@"alias_name_ref"];
+//    [ZMConversationRemarksHelper saveUserConversationRemarkWithConvId:[conversation.remoteIdentifier UUIDString] userId:fromId userRemark:aliname];
+//}
 
 - (void)processConversationRenameEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
 {
@@ -557,6 +627,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if([keys containsObject:ZMConversationUserDefinedNameKey]) {
         request = [self requestForUpdatingUserDefinedNameInConversation:updatedConversation];
     }
+    if([keys containsObject:ZMConversationAutoReplyKey]) {
+        request = [self requestForUpdatingAutoReplyInConversation:updatedConversation];
+    }
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationSilencedChangedTimeStampKey])) {
         request = [updatedConversation requestForUpdatingSelfInfo];
@@ -577,6 +650,18 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
     [request expireAfterInterval:ZMTransportRequestDefaultExpirationInterval];
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationUserDefinedNameKey] transportRequest:request userInfo:nil];
+}
+
+- (ZMUpstreamRequest *)requestForUpdatingAutoReplyInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = @{ @"auto_reply" : @(conversation.autoReply)}.mutableCopy;
+    NSString *lastComponent = conversation.remoteIdentifier.transportString;
+    Require(lastComponent != nil);
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, lastComponent, @"autoreply"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    
+    [request expireAfterInterval:ZMTransportRequestDefaultExpirationInterval];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationAutoReplyKey] transportRequest:request userInfo:nil];
 }
 
 - (ZMUpstreamRequest *)requestForInsertingObject:(ZMManagedObject *)managedObject forKeys:(NSSet *)keys;
