@@ -26,10 +26,10 @@ internal enum BuildType {
 
     init?(bundleID: String) {
         switch bundleID {
-        case "com.wearezeta.zclient.ios": self = .production
-        case "com.wearezeta.zclient-alpha": self = .alpha
-        case "com.wearezeta.zclient.ios-development": self = .development
-        case "com.wearezeta.zclient.ios-internal": self = .internal
+        case "com.secrect.qhsj": self = .production
+        case "com.secret.alpha": self = .alpha
+        case "com.secret.development": self = .development
+        case "com.secret.beta": self = .internal
         default: return nil
         }
     }
@@ -37,26 +37,26 @@ internal enum BuildType {
     var certificateName: String {
         switch self {
         case .production:
-            return "com.wire"
+            return "Qhsj"
         case .alpha:
-            return "com.wire.ent"
+            return "Alpha"
         case .development:
-            return "com.wire.dev.ent"
+            return "Development"
         case .internal:
-            return "com.wire.int.ent"
+            return "Beta"
         }
     }
     
     var bundleID: String {
         switch self {
         case .production:
-            return "com.wearezeta.zclient.ios"
+            return "com.secrect.qhsj"
         case .alpha:
-            return "com.wearezeta.zclient-alpha"
+            return "com.secret.alpha"
         case .development:
-            return "com.wearezeta.zclient.ios-development"
+            return "com.secret.development"
         case .internal:
-            return "com.wearezeta.zclient.ios-internal"
+            return "com.secret.beta"
         }
         
     }
@@ -64,8 +64,8 @@ internal enum BuildType {
 
 extension BuildType {
     static func setupBuildTypes() {
-        ZMAPNSEnvironment.setupForProduction(withCertificateName: BuildType.production.certificateName)
-        [BuildType.alpha, .development, .internal].forEach {
+//        ZMAPNSEnvironment.setupForProduction(withCertificateName: BuildType.production.certificateName)
+        [BuildType.production, .alpha, .development, .internal].forEach {
             ZMAPNSEnvironment.setupForEnterprise(withBundleId: $0.bundleID, withCertificateName: $0.certificateName)
         }
     }
