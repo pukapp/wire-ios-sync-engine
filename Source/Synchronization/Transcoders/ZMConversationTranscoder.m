@@ -383,11 +383,45 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     [self createConversationFromTransportData:payloadData serverTimeStamp:serverTimestamp];
 }
 
+- (ZMConversation *)createConversationAndJoinMemberFromEvent:(ZMUpdateEvent *)event {
+    NSDictionary *payloadData = event.payload;
+    if(payloadData == nil) {
+        ZMLogError(@"Missing conversation payload in ZMUpdateEventTypeConversationWalletNotify");
+        return nil;
+    }
+    NSDate *serverTimestamp = [event.payload dateForKey:@"time"];
+    NSUUID * const convRemoteID = [payloadData uuidForKey:@"conversation"];
+    if(convRemoteID == nil) {
+        ZMLogError(@"Missing ID in conversation payload");
+        return nil;
+    }
+    BOOL conversationCreated = NO;
+    ZMConversation *conversation = [ZMConversation conversationWithRemoteID:convRemoteID createIfNeeded:YES inContext:self.managedObjectContext created:&conversationCreated];
+    conversation.conversationType = ZMConversationTypeOneOnOne;
+    if (conversationCreated) {
+        [conversation updateLastModified:serverTimestamp];
+        [conversation updateServerModified:serverTimestamp];
+        NSUUID * const userId = [payloadData uuidForKey:@"from"];
+        ZMUser *user = [ZMUser userWithRemoteID:userId createIfNeeded:YES inContext:self.managedObjectContext];
+        [conversation internalAddParticipants:[NSSet setWithObject:user]];
+        [self.managedObjectContext enqueueDelayedSave];
+        user.connection.conversation = conversation;
+    }
+    return conversation;
+    
+}
+
+
 - (void)processEvents:(NSArray<ZMUpdateEvent *> *)events
            liveEvents:(BOOL)liveEvents
        prefetchResult:(ZMFetchRequestBatchResult *)prefetchResult;
 {
     for(ZMUpdateEvent *event in events) {
+        
+        if (event.type == ZMUpdateEventTypeConversationWalletNotify) {
+            [self createConversationAndJoinMemberFromEvent:event];
+            continue;
+        }
         
         if (event.type == ZMUpdateEventTypeConversationCreate) {
             [self createConversationFromEvent:event];
