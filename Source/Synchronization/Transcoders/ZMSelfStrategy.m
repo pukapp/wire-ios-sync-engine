@@ -30,7 +30,7 @@ static NSString *SelfPath = @"/self";
 
 static NSString * const AccentColorValueKey = @"accentColorValue";
 static NSString * const NameKey = @"name";
-
+static NSString * const RemarkKey = @"reMark";
 static NSString * const PreviewProfileAssetIdentifierKey = @"previewProfileAssetIdentifier";
 static NSString * const CompleteProfileAssetIdentifierKey = @"completeProfileAssetIdentifier";
 
@@ -61,7 +61,7 @@ NSTimeInterval ZMSelfStrategyPendingValidationRequestInterval = 5;
                     clientRegistrationStatus:(ZMClientRegistrationStatus *)clientRegistrationStatus
                                   syncStatus:(SyncStatus *)syncStatus
 {
-    NSArray<NSString *> *keysToSync = @[NameKey, AccentColorValueKey, PreviewProfileAssetIdentifierKey, CompleteProfileAssetIdentifierKey];
+    NSArray<NSString *> *keysToSync = @[NameKey, RemarkKey, AccentColorValueKey, PreviewProfileAssetIdentifierKey, CompleteProfileAssetIdentifierKey];
     
     ZMUpstreamModifiedObjectSync *upstreamObjectSync = [[ZMUpstreamModifiedObjectSync alloc]
                                                         initWithTranscoder:self
@@ -184,6 +184,9 @@ NSTimeInterval ZMSelfStrategyPendingValidationRequestInterval = 5;
 - (ZMUpstreamRequest *)requestForUpdatingObject:(ZMManagedObject *)managedObject forKeys:(NSSet *)keys;
 {
     ZMUser *user = (ZMUser *)managedObject;
+    if ([keys containsObject:RemarkKey]) {
+        return [self requestForSettingRemarkOfUser:user changedKeys:keys];
+    }
     Require(user.isSelfUser);
 
     if ([keys containsObject:AccentColorValueKey] ||
@@ -193,6 +196,16 @@ NSTimeInterval ZMSelfStrategyPendingValidationRequestInterval = 5;
     }
     ZMTrapUnableToGenerateRequest(keys, self);
     return nil;
+}
+
+- (ZMUpstreamRequest *)requestForSettingRemarkOfUser:(ZMUser *)user changedKeys:(NSSet *)keys
+{
+    NSMutableDictionary *payload = [NSMutableDictionary dictionary];
+    payload[@"right"] = user.remoteIdentifier.transportString;
+    payload[@"remark"] = user.reMark;
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:@"/users/setRemark" method:ZMMethodPOST payload:payload];
+    
+    return [[ZMUpstreamRequest alloc] initWithKeys:keys transportRequest:request];
 }
 
 - (ZMUpstreamRequest *)requestForSettingBasicProfileDataOfUser:(ZMUser *)user changedKeys:(NSSet *)keys
