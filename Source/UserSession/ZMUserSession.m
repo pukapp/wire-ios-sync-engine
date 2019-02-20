@@ -663,3 +663,12 @@ static NSString * const IsOfflineKey = @"IsOfflineKey";
 
 @end
 
+@implementation ZMUserSession (PictureUpdate)
+
+- (id<ImageUpdateProtocol>)imageUpdate
+{
+    return self.operationLoop.syncStrategy.applicationStatusDirectory.imageUpdateStatus;
+}
+
+@end
+

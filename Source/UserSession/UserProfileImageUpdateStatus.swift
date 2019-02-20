@@ -38,9 +38,23 @@ internal protocol UserProfileImageUploadStatusProtocol: class {
     func uploadingFailed(imageSize: ProfileImageSize, error: Error)
 }
 
+internal protocol ImageUploadStatusProtocol: class {
+    var requestedPreview:Bool {get set}
+    var requestedComplete:Bool {get set}
+    func previewImageData() -> Data?
+    func completeImageData() -> Data?
+    func hasImageToUpload() -> Bool
+    func uploadingDone(size:ProfileImageSize,assetId: String)
+    func uploadingFailed(size:ProfileImageSize,error: Error)
+}
+
 @objc public protocol UserProfileImageUpdateProtocol: class {
     @objc(updateImageWithImageData:)
     func updateImage(imageData: Data)
+}
+
+@objc public protocol ImageUpdateProtocol: class {
+    func updateImage(imageData: Data,assetIdCallback: ((_ preview:String,_ complete:String)->Void)?, errorCallback: ((Error)->Void)?)
 }
 
 internal protocol UserProfileImageUploadStateChangeDelegate: class {

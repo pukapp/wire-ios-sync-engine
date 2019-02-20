@@ -523,6 +523,10 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 //        case ZMUpdateEventTypeConversationUpdateAliasname:
 //            [self processConversationUpdateAliasnameEvent:event forConversation:conversation];
 //            break;
+        case ZMUpdateEventTypeConversationUpdate:
+        {
+            [self processUpdateEvent:event forConversation:conversation];
+        }
         default:
             break;
     }
@@ -622,6 +626,45 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         [conversation internalRemoveParticipants:[NSSet setWithObject:user] sender:sender];
     }
 }
+
+- (void)processUpdateEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
+{
+    NSDictionary *dataPayload = [event.payload.asDictionary dictionaryForKey:@"data"];
+    if(dataPayload == NULL) {
+        return;
+    }
+    ///开启url链接加入
+    if ([dataPayload.allKeys containsObject:@"url_invite"] && dataPayload[@"url_invite"] != nil) {
+        conversation.isOpenUrlJoin = [dataPayload[@"url_invite"] boolValue];
+    }
+//    /// 群聊邀请确认
+//    if ([dataPayload.allKeys containsObject:@"confirm"] && dataPayload[@"confirm"] != nil) {
+//        conversation.isOpenCreatorInviteVerify = [dataPayload[@"confirm"] boolValue];
+//    }
+//    /// 仅限群主拉人
+//    if ([dataPayload.allKeys containsObject:@"addright"] && dataPayload[@"addright"] != nil) {
+//        conversation.isOnlyCreatorInvite = [dataPayload[@"addright"] boolValue];
+//    }
+    /// 群主更换
+    if ([dataPayload.allKeys containsObject:@"new_creator"] && dataPayload[@"new_creator"] != nil) {
+        
+        ZMUser *user = [ZMUser userWithRemoteID:[NSUUID uuidWithTransportString:dataPayload[@"new_creator"]] createIfNeeded:false inContext:self.managedObjectContext];
+        conversation.creator = user;
+    }
+    /// 群头像更新
+    if ([dataPayload.allKeys containsObject:@"assets"] && dataPayload[@"assets"] != nil) {
+        NSArray *asstes = dataPayload[@"assets"];
+        for (NSDictionary *imgDic in asstes) {
+            if ([imgDic[@"size"] isEqualToString:@"complete"]) {
+                conversation.groupImageMediumKey = imgDic[@"key"];
+            }
+            if ([imgDic[@"size"] isEqualToString:@"preview"]) {
+                conversation.groupImageSmallKey = imgDic[@"key"];
+            }
+        }
+    }
+}
+
 
 - (void)processMemberUpdateEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation previousLastServerTimeStamp:(NSDate *)previousLastServerTimestamp
 {

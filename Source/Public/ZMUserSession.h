@@ -170,3 +170,11 @@ typedef NS_ENUM (NSInteger, ProxiedRequestType) {
 
 @end
 
+
+@protocol ImageUpdateProtocol;
+
+@interface ZMUserSession (PictureUpdate)
+
+@property (nonatomic, readonly) id<ImageUpdateProtocol> imageUpdate;
+
+@end
