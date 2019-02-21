@@ -130,7 +130,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 {
     NSArray *keysWithRef = @[
              ZMConversationArchivedChangedTimeStampKey,
-             ZMConversationSilencedChangedTimeStampKey];
+             ZMConversationSilencedChangedTimeStampKey,
+             ];
     NSArray *allKeys = [keysWithRef arrayByAddingObjectsFromArray:self.keysToSyncWithoutRef];
     return allKeys;
 }
@@ -142,7 +143,13 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     // They might be overwritten in a way that they don't create requests anymore whereas they previously did
     // To avoid crashes or unneccessary syncs, we should reset those when refetching the conversation from the backend
     // 新增了自动回复
-    return @[ZMConversationUserDefinedNameKey, ZMConversationAutoReplyKey];
+    return @[ZMConversationUserDefinedNameKey,
+             ZMConversationAutoReplyKey,
+             ZMConversationSelfRemarkKey,
+             ZMConversationIsOpenCreatorInviteVerifyKey,
+             ZMConversationOnlyCreatorInviteKey,
+             ZMConversationOpenUrlJoinKey,
+             CreatorKey];
     
 }
 
@@ -520,9 +527,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationChangeCreater:
             [self processConversationChangecreatorEvent:event forConversation:conversation];
             break;
-//        case ZMUpdateEventTypeConversationUpdateAliasname:
-//            [self processConversationUpdateAliasnameEvent:event forConversation:conversation];
-//            break;
+        case ZMUpdateEventTypeConversationUpdateAliasname:
+            [self processConversationUpdateAliasnameEvent:event forConversation:conversation];
+            break;
         case ZMUpdateEventTypeConversationUpdate:
         {
             [self processUpdateEvent:event forConversation:conversation];
@@ -575,13 +582,13 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     
 }
 
-//- (void)processConversationUpdateAliasnameEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
-//{
-//    NSString *fromId = [event.payload optionalStringForKey:@"from"];
-//    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
-//    NSString *aliname = [data optionalStringForKey:@"alias_name_ref"];
-//    [ZMConversationRemarksHelper saveUserConversationRemarkWithConvId:[conversation.remoteIdentifier UUIDString] userId:fromId userRemark:aliname];
-//}
+- (void)processConversationUpdateAliasnameEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
+{
+    NSString *fromId = [event.payload optionalStringForKey:@"from"];
+    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
+    NSString *aliname = [data optionalStringForKey:@"alias_name_ref"];
+    [UserAliasname updateFromAliasName:aliname remoteIdentifier:fromId managedObjectContext:self.managedObjectContext inConversation:conversation];
+}
 
 - (void)processConversationRenameEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
 {
@@ -707,6 +714,21 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if([keys containsObject:ZMConversationAutoReplyKey]) {
         request = [self requestForUpdatingAutoReplyInConversation:updatedConversation];
     }
+    if([keys containsObject:ZMConversationSelfRemarkKey]) {
+        request = [self requestForUpdatingSelfRemarkInConversation:updatedConversation];
+    }
+    if([keys containsObject:ZMConversationIsOpenCreatorInviteVerifyKey]) {
+        request = [self requestForUpdatingIsOpenCreatorInviteVerifyInConversation:updatedConversation];
+    }
+    if([keys containsObject:ZMConversationOnlyCreatorInviteKey]) {
+        request = [self requestForUpdatingOnlyCreatorInviteInConversation:updatedConversation];
+    }
+    if([keys containsObject:ZMConversationOpenUrlJoinKey]) {
+        request = [self requestForUpdatingOpenUrlJoinInConversation:updatedConversation];
+    }
+    if([keys containsObject:CreatorKey]) {
+        request = [self requestForUpdatingCreatorInConversation:updatedConversation];
+    }
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationSilencedChangedTimeStampKey])) {
         request = [updatedConversation requestForUpdatingSelfInfo];
@@ -740,6 +762,54 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     [request expireAfterInterval:ZMTransportRequestDefaultExpirationInterval];
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationAutoReplyKey] transportRequest:request userInfo:nil];
 }
+
+- (ZMUpstreamRequest *)requestForUpdatingSelfRemarkInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
+    payload[ZMConversationInfoOTRSelfRemarkReferenceKey] = conversation.selfRemark;
+    payload[ZMConversationInfoOTRSelfRemarkBoolKey] = @(YES);
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"selfalias"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationSelfRemarkKey] transportRequest:request userInfo:nil];
+}
+
+- (ZMUpstreamRequest *)requestForUpdatingIsOpenCreatorInviteVerifyInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
+    payload[ZMConversationInfoOTRSelfVerifyKey] = @(conversation.isOpenCreatorInviteVerify);
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationIsOpenCreatorInviteVerifyKey] transportRequest:request userInfo:nil];
+}
+
+- (ZMUpstreamRequest *)requestForUpdatingOnlyCreatorInviteInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
+    payload[ZMConversationInfoOTRCanAddKey] = @(conversation.isOnlyCreatorInvite);
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationOnlyCreatorInviteKey] transportRequest:request userInfo:nil];
+}
+
+- (ZMUpstreamRequest *)requestForUpdatingOpenUrlJoinInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
+    payload[ZMCOnversationInfoOTROpenUrlJoinKey] = @(conversation.isOpenUrlJoin);
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationOpenUrlJoinKey] transportRequest:request userInfo:nil];
+}
+
+- (ZMUpstreamRequest *)requestForUpdatingCreatorInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
+    payload[ZMConversationInfoOTRCreatorChangeKey] = conversation.creator.remoteIdentifier.transportString;
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"creator"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:CreatorKey] transportRequest:request userInfo:nil];
+}
+
+
 
 - (ZMUpstreamRequest *)requestForInsertingObject:(ZMManagedObject *)managedObject forKeys:(NSSet *)keys;
 {
