@@ -433,6 +433,10 @@ ZM_EMPTY_ASSERTING_INIT()
         [self.thirdPartyServicesDelegate userSessionIsReadyToUploadServicesData:self];
     }
 }
+//群昵称数据迁移
+- (void)migrateOldAliasname {
+    [UserAliasname migrateOldAliasnameWith:self.syncManagedObjectContext];
+}
 
 - (OperationStatus *)operationStatus
 {
@@ -522,6 +526,7 @@ ZM_EMPTY_ASSERTING_INIT()
         self.isPerformingSync = YES;
         self.didStartInitialSync = YES;
         [self changeNetworkStateAndNotify];
+        [self migrateOldAliasname];
     }];
 }
 

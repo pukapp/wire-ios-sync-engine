@@ -587,7 +587,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     NSString *fromId = [event.payload optionalStringForKey:@"from"];
     NSDictionary *data = [event.payload dictionaryForKey:@"data"];
     NSString *aliname = [data optionalStringForKey:@"alias_name_ref"];
-    [UserAliasname updateFromAliasName:aliname remoteIdentifier:fromId managedObjectContext:self.managedObjectContext inConversation:conversation];
+    [UserAliasname updateFromAliasName:aliname remoteIdentifier:[fromId lowercaseString] managedObjectContext:self.managedObjectContext inConversation:conversation];
 }
 
 - (void)processConversationRenameEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
