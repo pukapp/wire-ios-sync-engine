@@ -31,6 +31,11 @@
 static NSString* ZMLogTag ZM_UNUSED = @"Conversations";
 
 NSString *const ConversationsPath = @"/conversations";
+
+NSString *const ConversationWalletNotify = @"ConversationWalletNotify";
+NSString *const ConversationOtrMessageAdd = @"ConversationOtrMessageAdd";
+NSString *const ConversationUserConnection = @"ConversationUserConnection";
+
 static NSString *const ConversationIDsPath = @"/conversations/ids";
 
 NSUInteger ZMConversationTranscoderListPageSize = 100;
@@ -426,6 +431,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     for(ZMUpdateEvent *event in events) {
         
         if (event.type == ZMUpdateEventTypeConversationWalletNotify) {
+            [[NSNotificationCenter defaultCenter]postNotificationName:ConversationWalletNotify object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
             [self createConversationAndJoinMemberFromEvent:event];
             continue;
         }
@@ -437,6 +443,10 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         
         if ([self isSelfConversationEvent:event]) {
             continue;
+        }
+        
+        if (event.type == ZMUpdateEventTypeUserConnection) {
+            [[NSNotificationCenter defaultCenter]postNotificationName:ConversationUserConnection object:nil userInfo:nil];
         }
         
         ZMConversation *conversation = [self conversationFromEventPayload:event
@@ -452,6 +462,14 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         
         NSDate * const currentLastTimestamp = conversation.lastServerTimeStamp;
         [conversation updateWithUpdateEvent:event];
+        
+        if (event.type == ZMUpdateEventTypeConversationOtrMessageAdd ||
+            event.type == ZMUpdateEventTypeConversationOtrAssetAdd ||
+            event.type == ZMUpdateEventTypeConversationBgpMessageAdd) {
+            [[NSNotificationCenter defaultCenter] postNotificationName:ConversationOtrMessageAdd object:nil userInfo:nil];
+        }
+        
+        
         
         if (liveEvents) {
             [self processUpdateEvent:event forConversation:conversation previousLastServerTimestamp:currentLastTimestamp];

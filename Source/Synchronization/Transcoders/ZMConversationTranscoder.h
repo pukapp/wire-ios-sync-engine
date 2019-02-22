@@ -21,7 +21,11 @@
 @import CoreData;
 @import WireRequestStrategy;
 
-extern NSString * const ConversationsPath;
+extern NSString * _Nullable const ConversationsPath;
+
+extern NSString * _Nullable const ConversationWalletNotify;
+extern NSString * _Nullable const ConversationOtrMessageAdd;
+extern NSString * _Nullable const ConversationUserConnection;
 
 @protocol ZMObjectStrategyDirectory;
 
