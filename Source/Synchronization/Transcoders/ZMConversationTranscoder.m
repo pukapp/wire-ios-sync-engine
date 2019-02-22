@@ -827,6 +827,11 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         payload[@"name"] = insertedConversation.userDefinedName;
     }
 
+    // 万人群type=5, 其他群不传type
+    if (insertedConversation.conversationType == ZMConversationTypeHugeGroup) {
+        payload[@"type"] = [NSNumber numberWithInteger: 5];
+    }
+
     if (insertedConversation.team.remoteIdentifier != nil) {
         payload[ConversationTeamKey] = @{
                              ConversationTeamIdKey: insertedConversation.team.remoteIdentifier.transportString,
