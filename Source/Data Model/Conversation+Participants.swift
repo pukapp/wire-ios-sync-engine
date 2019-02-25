@@ -53,7 +53,7 @@ extension ZMConversation {
     
     public func addParticipants(_ participants: Set<ZMUser>, userSession: ZMUserSession, completion: @escaping (VoidResult) -> Void) {
         
-        guard conversationType == .group,
+        guard [.group, .hugeGroup].contains(conversationType),
               !participants.isEmpty,
               !participants.contains(ZMUser.selfUser(inUserSession: userSession))
         else { return completion(.failure(ConversationAddParticipantsError.invalidOperation)) }
@@ -85,7 +85,7 @@ extension ZMConversation {
     
     public func removeParticipant(_ participant: ZMUser, userSession: ZMUserSession, completion: @escaping (VoidResult) -> Void) {
         
-        guard conversationType == .group, let conversationId = remoteIdentifier  else { return completion(.failure(ConversationRemoveParticipantError.invalidOperation)) }
+        guard [.group, .hugeGroup].contains(conversationType), let conversationId = remoteIdentifier  else { return completion(.failure(ConversationRemoveParticipantError.invalidOperation)) }
         
         let isRemovingSelfUser = participant.isSelfUser
         let request = ConversationParticipantRequestFactory.requestForRemovingParticipant(participant, conversation: self)
