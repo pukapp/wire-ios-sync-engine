@@ -54,7 +54,7 @@ extension ZMConversationType {
         switch self {
         case .oneOnOne:
             return "one_to_one"
-        case .group:
+        case .group, .hugeGroup:
             return "group"
         default:
             return ""

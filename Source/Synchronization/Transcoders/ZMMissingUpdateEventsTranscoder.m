@@ -367,4 +367,22 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
     return NO;
 }
 
+- (NSArray<NSURLQueryItem *> *)hugeConversationQueryItems {
+    NSArray <ZMConversation *> *conversations = [self.syncStrategy.syncMOC executeFetchRequestOrAssert:[ZMConversation sortedFetchRequest]];
+    if (conversations.count <= 0) {
+        return @[];
+    }
+    NSMutableArray<NSString *> *ids = [NSMutableArray array];
+    for (ZMConversation *conversation in conversations) {
+        if (conversation.conversationType == ZMConversationTypeHugeGroup &&
+            conversation.remoteIdentifier.transportString != nil) {
+            [ids addObject: conversation.remoteIdentifier.transportString];
+        }
+    }
+    if (ids.count > 0) {
+        return @[[NSURLQueryItem queryItemWithName: @"ids" value: [ids componentsJoinedByString: @","]]];
+    }
+    return @[];
+}
+
 @end
