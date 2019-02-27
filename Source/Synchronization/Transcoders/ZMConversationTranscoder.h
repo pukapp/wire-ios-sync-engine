@@ -34,14 +34,14 @@ extern NSString * _Nullable const ConversationUserConnection;
 
 @interface ZMConversationTranscoder : ZMAbstractRequestStrategy <ZMObjectStrategy>
 
-- (instancetype)initWithManagedObjectContext:(NSManagedObjectContext *)moc applicationStatus:(id<ZMApplicationStatus>)applicationStatus NS_UNAVAILABLE;
+- (instancetype _Nonnull)initWithManagedObjectContext:(NSManagedObjectContext * _Nullable)moc applicationStatus:(id<ZMApplicationStatus> _Nullable)applicationStatus NS_UNAVAILABLE;
 
-- (instancetype)initWithManagedObjectContext:(NSManagedObjectContext *)managedObjectContext
-                           applicationStatus:(id<ZMApplicationStatus>)applicationStatus
-                 localNotificationDispatcher:(id<PushMessageHandler>)localNotificationDispatcher
-                                  syncStatus:(SyncStatus *)syncStatus;
+- (instancetype _Nullable)initWithManagedObjectContext:(NSManagedObjectContext * _Nullable)managedObjectContext
+                           applicationStatus:(id<ZMApplicationStatus> _Nullable)applicationStatus
+                 localNotificationDispatcher:(id<PushMessageHandler> _Nullable)localNotificationDispatcher
+                                  syncStatus:(SyncStatus * _Nullable)syncStatus;
 
 @property (nonatomic) NSUInteger conversationPageSize;
-@property (nonatomic, weak, readonly) id<PushMessageHandler> localNotificationDispatcher;
+@property (nonatomic, weak, readonly) id<PushMessageHandler> _Nullable localNotificationDispatcher;
 
 @end

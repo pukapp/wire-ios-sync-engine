@@ -127,7 +127,7 @@ extension Notification.Name {
         currentSyncPhase = SyncPhase.fetchingLastUpdateEventID.nextPhase!
         syncStateDelegate.didStartSync()
     }
-
+    
 }
 
 // MARK: Slow Sync

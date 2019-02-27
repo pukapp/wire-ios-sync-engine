@@ -140,7 +140,8 @@ public protocol ForegroundNotificationResponder: class {
 /// +------------------+---------------------+
 /// | Check if there is a database present   |        YES           Open the existing database, retrieve the user identifier,
 /// | in the legacy directory (not keyed by  |  +-------------->    create an account with it and select it. Migrate the existing
-/// | the users remoteIdentifier)?           |                      cookie for that account and start at the top again.
+/// | the users remoteIdentifier)?           |                      cookie for that account and
+///                                                                 start at the top again.
 /// +----------------------------------------+
 ///
 ///                    +
