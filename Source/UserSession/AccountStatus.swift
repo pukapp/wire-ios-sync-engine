@@ -64,7 +64,7 @@ public final class AccountStatus : NSObject, ZMInitialSyncCompletionObserver {
         let conversations = managedObjectContext.fetchOrAssert(request: convRequest)
         
         conversations.forEach{
-            guard $0.conversationType == .oneOnOne || $0.conversationType == .group else { return }
+            guard [.oneOnOne, .group, .hugeGroup].contains($0.conversationType) else { return }
             switch state {
             case .deactivated:
                 $0.appendContinuedUsingThisDeviceMessage()

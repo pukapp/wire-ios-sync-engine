@@ -245,7 +245,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     NSNumber *typeNumber = [transportData numberForKey:@"type"];
     VerifyReturnNil(typeNumber != nil);
     ZMConversationType const type = [ZMConversation conversationTypeFromTransportData:typeNumber];
-    if (type == ZMConversationTypeGroup || type == ZMConversationTypeSelf) {
+    if (type == ZMConversationTypeGroup  ||
+        type == ZMConversationTypeHugeGroup ||
+        type == ZMConversationTypeSelf) {
         return [self createGroupOrSelfConversationFromTransportData:transportData serverTimeStamp:serverTimeStamp];
     } else {
         return [self createOneOnOneConversationFromTransportData:transportData type:type serverTimeStamp:serverTimeStamp];
@@ -313,7 +315,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if (conversation == nil) {
         // if the conversation already exist, it will pick it up here and hook it up to the connection
         conversation = [ZMConversation conversationWithRemoteID:convRemoteID createIfNeeded:YES inContext:self.managedObjectContext created:&conversationCreated];
-        RequireString(conversation.conversationType != ZMConversationTypeGroup,
+        RequireString(conversation.conversationType != ZMConversationTypeGroup && conversation.conversationType != ZMConversationTypeHugeGroup,
                       "Conversation for connection is a group conversation: %s",
                       convRemoteID.transportString.UTF8String);
         user.connection.conversation = conversation;
@@ -843,6 +845,11 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     NSMutableDictionary *payload = [@{ @"users" : participantUUIDs } mutableCopy];
     if(insertedConversation.userDefinedName != nil) {
         payload[@"name"] = insertedConversation.userDefinedName;
+    }
+
+    // 万人群type=5, 其他群不传type
+    if (insertedConversation.conversationType == ZMConversationTypeHugeGroup) {
+        payload[@"type"] = [NSNumber numberWithInteger: 5];
     }
 
     if (insertedConversation.team.remoteIdentifier != nil) {

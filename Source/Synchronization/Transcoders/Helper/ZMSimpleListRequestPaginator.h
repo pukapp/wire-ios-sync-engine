@@ -68,4 +68,7 @@
 @optional
 - (BOOL)shouldParseErrorForResponse:(ZMTransportResponse*)response;
 
+@optional
+- (NSArray<NSURLQueryItem *> *)hugeConversationQueryItems;
+
 @end
