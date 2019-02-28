@@ -354,6 +354,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationUpdateAliasname:
         case ZMUpdateEventTypeConversationWalletNotify:
         case ZMUpdateEventTypeConversationBgpMessageAdd:
+        case ZMUpdateEventTypeConversationUpdate:
             return YES;
         default:
             return NO;
