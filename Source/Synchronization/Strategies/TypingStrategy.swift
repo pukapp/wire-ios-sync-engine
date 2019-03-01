@@ -184,10 +184,12 @@ public class TypingStrategy : AbstractRequestStrategy {
     }
     
     public override func nextRequestIfAllowed() -> ZMTransportRequest? {
-        guard let typingEvent = typingEventQueue.nextEvent(),
-              let conversation = managedObjectContext.object(with: typingEvent.objectID) as? ZMConversation,
-              let remoteIdentifier = conversation.remoteIdentifier
-        else { return nil }
+        guard
+            let typingEvent = typingEventQueue.nextEvent(),
+            let conversation = managedObjectContext.object(with: typingEvent.objectID) as? ZMConversation,
+            conversation.conversationType != .hugeGroup,
+            let remoteIdentifier = conversation.remoteIdentifier
+            else { return nil }
         
         let path = "/conversations/\(remoteIdentifier.transportString())/typing"
         let payload = [StatusKey: typingEvent.isTyping ? StartedKey : StoppedKey]
