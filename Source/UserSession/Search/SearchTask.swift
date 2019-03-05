@@ -76,6 +76,11 @@ public class SearchTask {
         performRemoteSearchForTeamUser()
         performRemoteSearchForServices()
     }
+
+    /// only search 'request.searchOptions.contains(.directory)'
+    public func startRemoteSearch() {
+        performRemoteSearch()
+    }
 }
 
 extension SearchTask {

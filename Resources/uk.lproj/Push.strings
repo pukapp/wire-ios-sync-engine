@@ -1,6 +1,6 @@
 // 
-// Wire
-// Copyright (C) 2016 Wire Swiss GmbH
+// Secret
+// Copyright (C) 2016 Secret Swiss GmbH
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -210,7 +210,7 @@
 "push.notification.reaction.oneonone.nousername" = "Комусь %@ ваше повідомлення";
 
 // NEW USER (no alert title for this)
-"push.notification.new_user" = "%@ тільки що приєднався(-лася) до Wire";
+"push.notification.new_user" = "%@ тільки що приєднався(-лася) до Secret";
 
 // OTHER
 "push.notification.action.message.open" = "Вiдкрити";
