@@ -22,6 +22,8 @@ extension URL {
     enum Host {
         static let connect = "connect"
         static let login = "login"
+        static let authlogin = "auth-login"
+        static let invite = "invite"
     }
     enum Path {
         static let success = "success"
@@ -37,6 +39,11 @@ extension URLQueryItem {
         static let userIdentifier = "userid"
         static let errorLabel = "label"
         static let validationToken = "validation_token"
+        //群邀请
+        static let inviteId = "id"
+        //授权登录
+        static let authAppid = "appid"
+        static let authKey = "key"
     }
     
     enum Template {

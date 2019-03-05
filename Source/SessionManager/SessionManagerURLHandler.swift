@@ -18,14 +18,27 @@
 
 import Foundation
 
+public enum GroupInviteError: Error, Equatable {
+    case invalidUrl(url: URL)
+}
+
+public enum AuthLoginError: Error, Equatable {
+    case invalidUrl(url: URL)
+}
+
 public enum URLAction: Equatable {
     case connectBot(serviceUser: ServiceUserData)
     case companyLoginSuccess(userInfo: UserInfo)
     case companyLoginFailure(error: CompanyLoginError)
+    case groupInvite(userIdentifier: String) //群邀请
+    case authLogin(appid: String, key: String) //授权登录
+    
+    case groupInviteError(error: GroupInviteError)
+    case authLoginError(error: AuthLoginError)
 
     var requiresAuthentication: Bool {
         switch self {
-        case .connectBot: return true
+        case .connectBot,.groupInvite,.authLogin: return true
         default: return false
         }
     }
@@ -53,6 +66,20 @@ extension URLAction {
                     return nil
             }
             self = .connectBot(serviceUser: ServiceUserData(provider: providerUUID, service: serviceUUID))
+            
+        case URL.Host.invite:
+            guard let userIdentifier = components.query(for: URLQueryItem.Key.inviteId) else {
+                self = .groupInviteError(error: .invalidUrl(url: url))
+                return
+            }
+            self = .groupInvite(userIdentifier: userIdentifier)
+            
+        case URL.Host.authlogin:
+            guard let appid = components.query(for: URLQueryItem.Key.authAppid), let appkey = components.query(for: URLQueryItem.Key.authKey) else {
+                self = .authLoginError(error: .invalidUrl(url: url))
+                return
+            }
+            self = .authLogin(appid: appid, key: appkey)
 
         case URL.Host.login:
             let pathComponents = url.pathComponents
@@ -118,7 +145,6 @@ extension URLAction {
         switch self {
         case .connectBot(let serviceUserData):
             session.startConversation(with: serviceUserData, completion: nil)
-
         default:
             fatalError("This action cannot be executed with an authenticated session.")
         }
