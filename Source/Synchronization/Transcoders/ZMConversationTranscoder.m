@@ -895,7 +895,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
 - (ZMUpdateEvent *)conversationEventWithKeys:(NSSet *)keys responsePayload:(id<ZMTransportData>)payload;
 {
-    NSSet *keysThatGenerateEvents = [NSSet setWithObjects:ZMConversationUserDefinedNameKey, nil];
+    NSSet *keysThatGenerateEvents = [NSSet setWithObjects:ZMConversationUserDefinedNameKey,ZMConversationSelfRemarkKey, nil];
     
     if (! [keys intersectsSet:keysThatGenerateEvents]) {
         return nil;
