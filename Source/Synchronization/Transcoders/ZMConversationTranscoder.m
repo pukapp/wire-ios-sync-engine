@@ -825,7 +825,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 {
     NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
     payload[ZMConversationInfoOTRCreatorChangeKey] = conversation.creator.remoteIdentifier.transportString;
-    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"creator"]];
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
     ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:CreatorKey] transportRequest:request userInfo:nil];
 }
