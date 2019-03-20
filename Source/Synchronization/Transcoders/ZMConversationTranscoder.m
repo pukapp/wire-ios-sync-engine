@@ -679,14 +679,14 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if ([dataPayload.allKeys containsObject:@"url_invite"] && dataPayload[@"url_invite"] != nil) {
         conversation.isOpenUrlJoin = [dataPayload[@"url_invite"] boolValue];
     }
-//    /// 群聊邀请确认
-//    if ([dataPayload.allKeys containsObject:@"confirm"] && dataPayload[@"confirm"] != nil) {
-//        conversation.isOpenCreatorInviteVerify = [dataPayload[@"confirm"] boolValue];
-//    }
-//    /// 仅限群主拉人
-//    if ([dataPayload.allKeys containsObject:@"addright"] && dataPayload[@"addright"] != nil) {
-//        conversation.isOnlyCreatorInvite = [dataPayload[@"addright"] boolValue];
-//    }
+    /// 群聊邀请确认
+    if ([dataPayload.allKeys containsObject:@"confirm"] && dataPayload[@"confirm"] != nil) {
+        conversation.isOpenCreatorInviteVerify = [dataPayload[@"confirm"] boolValue];
+    }
+    /// 仅限群主拉人
+    if ([dataPayload.allKeys containsObject:@"addright"] && dataPayload[@"addright"] != nil) {
+        conversation.isOnlyCreatorInvite = [dataPayload[@"addright"] boolValue];
+    }
     /// 群主更换
     if ([dataPayload.allKeys containsObject:@"new_creator"] && dataPayload[@"new_creator"] != nil) {
         
