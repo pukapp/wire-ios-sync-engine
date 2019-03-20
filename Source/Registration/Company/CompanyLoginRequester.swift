@@ -24,6 +24,7 @@ extension URL {
         static let login = "login"
         static let authlogin = "auth-login"
         static let invite = "invite"
+        static let thirdlogin = "third-login"
     }
     enum Path {
         static let success = "success"
@@ -44,6 +45,9 @@ extension URLQueryItem {
         //授权登录
         static let authAppid = "appid"
         static let authKey = "key"
+        //双向授权登录
+        static let fromid = "fromid"
+        static let email = "email"
     }
     
     enum Template {

@@ -26,15 +26,21 @@ public enum AuthLoginError: Error, Equatable {
     case invalidUrl(url: URL)
 }
 
+public enum ThirdLoginError: Error, Equatable {
+    case invalidUrl(url: URL)
+}
+
 public enum URLAction: Equatable {
     case connectBot(serviceUser: ServiceUserData)
     case companyLoginSuccess(userInfo: UserInfo)
     case companyLoginFailure(error: CompanyLoginError)
     case groupInvite(userIdentifier: String) //群邀请
     case authLogin(appid: String, key: String) //授权登录
+    case thirdLogin(fromid: String, email: String)//双向授权
     
     case groupInviteError(error: GroupInviteError)
     case authLoginError(error: AuthLoginError)
+    case thirdLoginError(errror: ThirdLoginError)
 
     var requiresAuthentication: Bool {
         switch self {
@@ -80,6 +86,13 @@ extension URLAction {
                 return
             }
             self = .authLogin(appid: appid, key: appkey)
+            
+        case URL.Host.thirdlogin:
+            guard let fromid = components.query(for: URLQueryItem.Key.fromid), let email = components.query(for: URLQueryItem.Key.email) else {
+                self = .thirdLoginError(errror: .invalidUrl(url: url))
+                return
+            }
+            self = .thirdLogin(fromid: fromid, email: email)
 
         case URL.Host.login:
             let pathComponents = url.pathComponents
@@ -196,7 +209,14 @@ public final class SessionManagerURLHandler: NSObject {
             handle(action: action, in: userSession)
 
         } else {
-
+            
+            if case .thirdLogin = action {
+                delegate?.sessionManagerShouldExecuteURLAction(action, callback: { (_) in
+                    
+                })
+                return true
+            }
+ 
             guard let unauthenticatedSession = userSessionSource?.unauthenticatedSession else {
                 return false
             }
