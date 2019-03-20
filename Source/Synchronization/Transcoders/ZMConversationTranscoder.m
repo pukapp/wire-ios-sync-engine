@@ -632,6 +632,13 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if (![users isSubsetOfSet:conversation.activeParticipants.set] || (selfUser && [users intersectsSet:[NSSet setWithObject:selfUser]])) {
         [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
     }
+    // 群成员数量
+    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
+    NSNumber *membersCountNumber = [data optionalNumberForKey:@"memsum"];
+    if (membersCountNumber != nil) {
+        // Backend is sending the miliseconds, we need to convert to seconds.
+        conversation.membersCount = membersCountNumber.integerValue;
+    }
     
     for (ZMUser *user in users) {
         [conversation internalAddParticipants:[NSSet setWithObject:user]];
@@ -649,6 +656,13 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if ([users intersectsSet:conversation.activeParticipants.set]) {
         [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
     }
+    // 群成员数量
+    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
+    NSNumber *membersCountNumber = [data optionalNumberForKey:@"memsum"];
+    if (membersCountNumber != nil) {
+        // Backend is sending the miliseconds, we need to convert to seconds.
+        conversation.membersCount = membersCountNumber.integerValue;
+    }
 
     for (ZMUser *user in users) {
         [conversation internalRemoveParticipants:[NSSet setWithObject:user] sender:sender];
@@ -665,14 +679,14 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if ([dataPayload.allKeys containsObject:@"url_invite"] && dataPayload[@"url_invite"] != nil) {
         conversation.isOpenUrlJoin = [dataPayload[@"url_invite"] boolValue];
     }
-//    /// 群聊邀请确认
-//    if ([dataPayload.allKeys containsObject:@"confirm"] && dataPayload[@"confirm"] != nil) {
-//        conversation.isOpenCreatorInviteVerify = [dataPayload[@"confirm"] boolValue];
-//    }
-//    /// 仅限群主拉人
-//    if ([dataPayload.allKeys containsObject:@"addright"] && dataPayload[@"addright"] != nil) {
-//        conversation.isOnlyCreatorInvite = [dataPayload[@"addright"] boolValue];
-//    }
+    /// 群聊邀请确认
+    if ([dataPayload.allKeys containsObject:@"confirm"] && dataPayload[@"confirm"] != nil) {
+        conversation.isOpenCreatorInviteVerify = [dataPayload[@"confirm"] boolValue];
+    }
+    /// 仅限群主拉人
+    if ([dataPayload.allKeys containsObject:@"addright"] && dataPayload[@"addright"] != nil) {
+        conversation.isOnlyCreatorInvite = [dataPayload[@"addright"] boolValue];
+    }
     /// 群主更换
     if ([dataPayload.allKeys containsObject:@"new_creator"] && dataPayload[@"new_creator"] != nil) {
         
@@ -825,7 +839,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 {
     NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
     payload[ZMConversationInfoOTRCreatorChangeKey] = conversation.creator.remoteIdentifier.transportString;
-    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"creator"]];
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
     ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:CreatorKey] transportRequest:request userInfo:nil];
 }

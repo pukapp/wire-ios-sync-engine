@@ -497,7 +497,7 @@ extension ZMConversation {
                 result = String.localizedStringWithFormat("callkit.call.started.group.noconversationname".pushFormatString, callerName)
             }
         case .oneOnOne:
-            result = connectedUser?.displayName
+            result = connectedUser?.newName()
         default:
             break
         }
