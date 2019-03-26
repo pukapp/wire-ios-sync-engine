@@ -32,6 +32,8 @@ static NSString* ZMLogTag ZM_UNUSED = @"Conversations";
 
 NSString *const ConversationsPath = @"/conversations";
 
+NSString *const V3Assetspath = @"/assets/v3";
+
 NSString *const ConversationWalletNotify = @"ConversationWalletNotify";
 NSString *const ConversationOtrMessageAdd = @"ConversationOtrMessageAdd";
 NSString *const ConversationUserConnection = @"ConversationUserConnection";
@@ -698,15 +700,34 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         NSArray *asstes = dataPayload[@"assets"];
         for (NSDictionary *imgDic in asstes) {
             if ([imgDic[@"size"] isEqualToString:@"complete"]) {
-                conversation.groupImageMediumKey = imgDic[@"key"];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self fetchImageData:imgDic[@"key"] complete:^(NSData *data) {
+                        conversation.imageMediumData = data;
+                        [conversation.managedObjectContext saveOrRollback];
+                    }];
+                });
             }
             if ([imgDic[@"size"] isEqualToString:@"preview"]) {
                 conversation.groupImageSmallKey = imgDic[@"key"];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self fetchImageData:imgDic[@"key"] complete:^(NSData *data) {
+                        conversation.imageSmallProfileData = data;
+                         [conversation.managedObjectContext saveOrRollback];
+                    }];
+                });
             }
         }
     }
 }
 
+- (void)fetchImageData:(NSString *)key complete:(void(^)(NSData *)) complete {
+    NSString *path = [NSString pathWithComponents:@[V3Assetspath, key]];
+    ZMTransportRequest *request = [[ZMTransportRequest alloc]initWithPath:path method:ZMMethodGET payload:nil authentication:ZMTransportRequestAuthNeedsAccess];
+    [request addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:self.managedObjectContext block:^(ZMTransportResponse * response) {
+        complete(response.rawData);
+    }]];
+    [((SessionManager *)[(NSObject *)UIApplication.sharedApplication.delegate valueForKey:@"sessionManager"]).activeUserSession.transportSession enqueueOneTimeRequest:request];
+}
 
 - (void)processMemberUpdateEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation previousLastServerTimeStamp:(NSDate *)previousLastServerTimestamp
 {

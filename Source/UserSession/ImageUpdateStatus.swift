@@ -34,7 +34,7 @@ public final class ImageUpdateStatus: NSObject {
     public var completeId:String?
     public var requestedPreview:Bool = false
     public var requestedComplete:Bool = false
-    public var currentCallBack:((String,String) -> Void)?
+    public var currentCallBack:((Data,Data,String,String) -> Void)?
     public var errorCallBack:((Error) -> Void)?
     fileprivate let syncMOC: NSManagedObjectContext
     fileprivate let uiMOC: NSManagedObjectContext
@@ -68,7 +68,9 @@ public final class ImageUpdateStatus: NSObject {
     
     func callback() {
         guard let previewid = self.previewId,let completeid = self.completeId else {return}
-        self.currentCallBack?(previewid,completeid)
+        guard let previewData = self.previewData, let completeData = self.completeData else {return}
+        self.currentCallBack?(previewData,completeData,previewid,completeid)
+        
     }
     
     deinit {
@@ -85,7 +87,7 @@ extension ImageUpdateStatus: ImageUpdateProtocol {
     ///
     /// - Parameter imageData: image data of the new profile picture
     
-    public func updateImage(imageData: Data,assetIdCallback:((String,String) -> Void)?,errorCallback:((Error) -> Void)?) {
+    public func updateImage(imageData: Data,assetIdCallback:((Data,Data,String,String) -> Void)?,errorCallback:((Error) -> Void)?) {
         self.currentCallBack = assetIdCallback
         self.errorCallBack = errorCallback
         self.previewId = nil
@@ -184,8 +186,10 @@ extension ImageUpdateStatus: ImageUploadStatusProtocol {
         if size == .complete {
             self.completeId = assetId
         }
-        self.callback()
-        self.resetImageState(size:size)
+        if self.previewId != nil && self.completeId != nil  {
+            self.callback()
+            self.resetImageState(size:size)
+        }
     }
     
     /// Marks the image as failed to upload

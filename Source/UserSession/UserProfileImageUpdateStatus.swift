@@ -54,7 +54,7 @@ internal protocol ImageUploadStatusProtocol: class {
 }
 
 @objc public protocol ImageUpdateProtocol: class {
-    func updateImage(imageData: Data,assetIdCallback: ((_ preview:String,_ complete:String)->Void)?, errorCallback: ((Error)->Void)?)
+    func updateImage(imageData: Data,assetIdCallback: ((_ previewData:Data, _ completeData:Data,_ preview:String,_ complete:String)->Void)?, errorCallback: ((Error)->Void)?)
 }
 
 internal protocol UserProfileImageUploadStateChangeDelegate: class {
