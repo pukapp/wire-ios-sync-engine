@@ -718,6 +718,15 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             }
         }
     }
+    //群应用更新
+    if ([dataPayload.allKeys containsObject:@"apps"]) {
+        NSArray *apps = [dataPayload optionalArrayForKey:@"apps"];
+        conversation.apps = [apps componentsJoinedByString:@","];
+    }
+    if ([dataPayload.allKeys containsObject:@"top_apps"]) {
+        NSArray *topapps = [dataPayload optionalArrayForKey:@"top_apps"];
+        conversation.topapps = [topapps componentsJoinedByString:@","];
+    }
 }
 
 - (void)fetchImageData:(NSString *)key complete:(void(^)(NSData *)) complete {
