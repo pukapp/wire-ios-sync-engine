@@ -903,6 +903,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if(insertedConversation.userDefinedName != nil) {
         payload[@"name"] = insertedConversation.userDefinedName;
     }
+    
+    ///新增应用参数
+    payload[@"top_apps"] = [insertedConversation.topapps componentsSeparatedByString: @","];
 
     // 万人群type=5, 其他群不传type
     if (insertedConversation.conversationType == ZMConversationTypeHugeGroup) {
