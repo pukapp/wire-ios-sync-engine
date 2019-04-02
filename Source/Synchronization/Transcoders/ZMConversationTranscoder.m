@@ -156,7 +156,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationIsOpenCreatorInviteVerifyKey,
              ZMConversationOnlyCreatorInviteKey,
              ZMConversationOpenUrlJoinKey,
-             CreatorKey];
+             CreatorKey,
+             ZMConversationTopAppsKey];
     
 }
 
@@ -794,6 +795,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if([keys containsObject:CreatorKey]) {
         request = [self requestForUpdatingCreatorInConversation:updatedConversation];
     }
+    if([keys containsObject:ZMConversationTopAppsKey]) {
+        request = [self requestForUpdatingTopAppsInConversation:updatedConversation];
+    }
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationSilencedChangedTimeStampKey])) {
         request = [updatedConversation requestForUpdatingSelfInfo];
@@ -874,6 +878,14 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:CreatorKey] transportRequest:request userInfo:nil];
 }
 
+- (ZMUpstreamRequest *)requestForUpdatingTopAppsInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
+    payload[@"top_apps"] = [conversation.topapps componentsSeparatedByString:@","];
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationTopAppsKey] transportRequest:request userInfo:nil];
+}
 
 
 - (ZMUpstreamRequest *)requestForInsertingObject:(ZMManagedObject *)managedObject forKeys:(NSSet *)keys;
