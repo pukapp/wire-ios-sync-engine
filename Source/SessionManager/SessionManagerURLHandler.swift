@@ -36,7 +36,7 @@ public enum URLAction: Equatable {
     case companyLoginFailure(error: CompanyLoginError)
     case groupInvite(userIdentifier: String) //群邀请
     case authLogin(appid: String, key: String) //授权登录
-    case thirdLogin(fromid: String, email: String)//双向授权
+    case thirdLogin(fromid: String, email: String, userid: String)//双向授权
     
     case groupInviteError(error: GroupInviteError)
     case authLoginError(error: AuthLoginError)
@@ -88,11 +88,11 @@ extension URLAction {
             self = .authLogin(appid: appid, key: appkey)
             
         case URL.Host.thirdlogin:
-            guard let fromid = components.query(for: URLQueryItem.Key.fromid), let email = components.query(for: URLQueryItem.Key.email) else {
+            guard let fromid = components.query(for: URLQueryItem.Key.fromid), let email = components.query(for: URLQueryItem.Key.email) , let userid = components.query(for: URLQueryItem.Key.userid) else {
                 self = .thirdLoginError(errror: .invalidUrl(url: url))
                 return
             }
-            self = .thirdLogin(fromid: fromid, email: email)
+            self = .thirdLogin(fromid: fromid, email: email, userid: userid)
 
         case URL.Host.login:
             let pathComponents = url.pathComponents

@@ -48,6 +48,7 @@ extension URLQueryItem {
         //双向授权登录
         static let fromid = "fromid"
         static let email = "email"
+        static let userid = "userid"
     }
     
     enum Template {
