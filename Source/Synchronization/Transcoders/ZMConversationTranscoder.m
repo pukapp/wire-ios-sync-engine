@@ -157,9 +157,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationOnlyCreatorInviteKey,
              ZMConversationOpenUrlJoinKey,
              CreatorKey,
-             ZMConversationTopAppsKey,
-             ZMConversationAddAppsKey,
-             ZMConversationDeleteAppsKey];
+             ZMConversationTopAppsKey];
     
 }
 
@@ -800,13 +798,6 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if([keys containsObject:ZMConversationTopAppsKey]) {
         request = [self requestForUpdatingTopAppsInConversation:updatedConversation];
     }
-    if([keys containsObject:ZMConversationAddAppsKey]) {
-        request = [self requestForUpdatingTopAppsInConversation:updatedConversation];
-    }
-    if([keys containsObject:ZMConversationDeleteAppsKey]) {
-        request = [self requestForUpdatingTopAppsInConversation:updatedConversation];
-    }
-    
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationSilencedChangedTimeStampKey])) {
         request = [updatedConversation requestForUpdatingSelfInfo];
@@ -891,22 +882,6 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 {
     NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
     payload[@"top_apps"] = [conversation.topapps componentsSeparatedByString:@","];
-    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
-    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
-    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationTopAppsKey] transportRequest:request userInfo:nil];
-}
-- (ZMUpstreamRequest *)requestForAddAppsInConversation:(ZMConversation *)conversation
-{
-    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
-    payload[@"apps_add"] = [conversation.addApps componentsSeparatedByString:@","];
-    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
-    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
-    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationTopAppsKey] transportRequest:request userInfo:nil];
-}
-- (ZMUpstreamRequest *)requestFordeleteAppsInConversation:(ZMConversation *)conversation
-{
-    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
-    payload[@"apps_del"] = [conversation.deleteApps componentsSeparatedByString:@","];
     NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
     ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationTopAppsKey] transportRequest:request userInfo:nil];
