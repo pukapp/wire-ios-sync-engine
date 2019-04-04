@@ -156,6 +156,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationIsOpenCreatorInviteVerifyKey,
              ZMConversationOnlyCreatorInviteKey,
              ZMConversationOpenUrlJoinKey,
+             ZMConversationAllowViewMembersKey,
              CreatorKey,
              ZMConversationTopAppsKey];
     
@@ -678,6 +679,10 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if(dataPayload == NULL) {
         return;
     }
+    /// 允许查看群成员
+    if ([dataPayload.allKeys containsObject:@"viewmem"] && dataPayload[@"viewmem"] != nil) {
+        conversation.isAllowViewMembers = [dataPayload[@"viewmem"] boolValue];
+    }
     ///开启url链接加入
     if ([dataPayload.allKeys containsObject:@"url_invite"] && dataPayload[@"url_invite"] != nil) {
         conversation.isOpenUrlJoin = [dataPayload[@"url_invite"] boolValue];
@@ -792,6 +797,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if([keys containsObject:ZMConversationOpenUrlJoinKey]) {
         request = [self requestForUpdatingOpenUrlJoinInConversation:updatedConversation];
     }
+    if([keys containsObject:ZMConversationAllowViewMembersKey]) {
+        request = [self requestForUpdatingAllowViewMembersInConversation:updatedConversation];
+    }
     if([keys containsObject:CreatorKey]) {
         request = [self requestForUpdatingCreatorInConversation:updatedConversation];
     }
@@ -867,6 +875,15 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
     ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationOpenUrlJoinKey] transportRequest:request userInfo:nil];
+}
+
+- (ZMUpstreamRequest *)requestForUpdatingAllowViewMembersInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
+    payload[ZMCOnversationInfoOTRAllowViewMembersKey] = @(conversation.isAllowViewMembers);
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationAllowViewMembersKey] transportRequest:request userInfo:nil];
 }
 
 - (ZMUpstreamRequest *)requestForUpdatingCreatorInConversation:(ZMConversation *)conversation
