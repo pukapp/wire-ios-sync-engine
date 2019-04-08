@@ -154,7 +154,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationAutoReplyKey,
              ZMConversationSelfRemarkKey,
              ZMConversationIsOpenCreatorInviteVerifyKey,
-             ZMConversationIsOpenCreatorMemberVerifyKey,
+             ZMConversationIsOpenMemberInviteVerifyKey,
              ZMConversationOnlyCreatorInviteKey,
              ZMConversationOpenUrlJoinKey,
              ZMConversationAllowViewMembersKey,
@@ -693,8 +693,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         conversation.isOpenCreatorInviteVerify = [dataPayload[@"confirm"] boolValue];
     }
     /// 群聊邀请-被邀请人确认
-    if ([dataPayload.allKeys containsObject:ZMConversationIsOpenMemberInviteVerifyKey] && dataPayload[ZMConversationIsOpenMemberInviteVerifyKey] != nil) {
-        conversation.isOpenMemberInviteVerify = [dataPayload[ZMConversationIsOpenMemberInviteVerifyKey] boolValue];
+    if ([dataPayload.allKeys containsObject:ZMConversationInfoMemberInviteVerfyKey] && dataPayload[ZMConversationInfoMemberInviteVerfyKey] != nil) {
+        conversation.isOpenMemberInviteVerify = [dataPayload[ZMConversationInfoMemberInviteVerfyKey] boolValue];
     }
     /// 仅限群主拉人
     if ([dataPayload.allKeys containsObject:@"addright"] && dataPayload[@"addright"] != nil) {
@@ -797,7 +797,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         request = [self requestForUpdatingIsOpenCreatorInviteVerifyInConversation:updatedConversation];
     }
     if([keys containsObject:ZMConversationIsOpenMemberInviteVerifyKey]) {
-        request = [self requestForUpdatingIsOpenCreatorInviteVerifyInConversation:updatedConversation];
+        request = [self requestForUpdatingIsOpenMemberInviteVerifyInConversation:updatedConversation];
     }
     if([keys containsObject:ZMConversationOnlyCreatorInviteKey]) {
         request = [self requestForUpdatingOnlyCreatorInviteInConversation:updatedConversation];
@@ -870,7 +870,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 - (ZMUpstreamRequest *)requestForUpdatingIsOpenMemberInviteVerifyInConversation:(ZMConversation *)conversation
     {
         NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
-        payload[ZMConversationIsOpenMemberInviteVerifyKey] = @(conversation.isOpenMemberInviteVerify);
+        payload[ZMConversationInfoMemberInviteVerfyKey] = @(conversation.isOpenMemberInviteVerify);
         NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
         ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
         return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationIsOpenMemberInviteVerifyKey] transportRequest:request userInfo:nil];
