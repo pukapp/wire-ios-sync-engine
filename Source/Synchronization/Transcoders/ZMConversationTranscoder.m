@@ -756,7 +756,11 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     ///群绑定的社区id
     if ([dataPayload.allKeys containsObject:@"forumid"]) {
         /// 会话绑定的社区id
-        conversation.communityID = [NSString stringWithFormat:@"%ld",[dataPayload[@"forumid"] integerValue]];
+        NSNumber *forumIdNumber = [dataPayload optionalNumberForKey:@"forumid"];
+        if (forumIdNumber != nil) {
+            // Backend is sending the miliseconds, we need to convert to seconds.
+            conversation.communityID = [forumIdNumber stringValue];
+        }
     }
 }
 
