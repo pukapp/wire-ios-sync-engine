@@ -159,7 +159,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationOpenUrlJoinKey,
              ZMConversationAllowViewMembersKey,
              CreatorKey,
-             ZMConversationTopAppsKey];
+             ZMConversationTopWebAppsKey];
     
 }
 
@@ -735,8 +735,23 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         conversation.apps = [apps componentsJoinedByString:@","];
     }
     if ([dataPayload.allKeys containsObject:@"top_apps"]) {
-        NSArray *topapps = [dataPayload optionalArrayForKey:@"top_apps"];
-        conversation.topapps = [topapps componentsJoinedByString:@","];
+        NSArray *topApps = [dataPayload optionalArrayForKey:@"top_apps"];
+        NSMutableOrderedSet<ZMWebApp *> *topWebApps = [NSMutableOrderedSet orderedSet];
+        
+        for (NSDictionary *appDict in [topApps asDictionaries]) {
+            
+            NSString *userId = [appDict stringForKey:@"app_id"];
+            if (userId == nil) {
+                continue;
+            }
+            [topWebApps addObject:[ZMWebApp createOrUpdateWebApp:appDict context:self.managedObjectContext]];
+        }
+        conversation.topWebApps = topWebApps;
+        
+        NSArray *topAppIds = [topWebApps.array mapWithBlock:^id(ZMWebApp *webApp) {
+            return webApp.appId;
+        }];
+        conversation.topapps = [topAppIds componentsJoinedByString:@","];
     }
     ///群绑定的社区id
     if ([dataPayload.allKeys containsObject:@"forumid"]) {
@@ -816,8 +831,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if([keys containsObject:CreatorKey]) {
         request = [self requestForUpdatingCreatorInConversation:updatedConversation];
     }
-    if([keys containsObject:ZMConversationTopAppsKey]) {
-        request = [self requestForUpdatingTopAppsInConversation:updatedConversation];
+    if([keys containsObject:ZMConversationTopWebAppsKey]) {
+        request = [self requestForUpdatingTopWebAppsInConversation:updatedConversation];
     }
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationSilencedChangedTimeStampKey])) {
@@ -917,13 +932,16 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:CreatorKey] transportRequest:request userInfo:nil];
 }
 
-- (ZMUpstreamRequest *)requestForUpdatingTopAppsInConversation:(ZMConversation *)conversation
+- (ZMUpstreamRequest *)requestForUpdatingTopWebAppsInConversation:(ZMConversation *)conversation
 {
     NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
-    payload[@"top_apps"] = [conversation.topapps componentsSeparatedByString:@","];
+    NSArray *appIds = [conversation.topWebApps.array mapWithBlock:^id(ZMWebApp *webApp) {
+        return webApp.appId;
+    }];
+    payload[@"top_apps"] = appIds;
     NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
     ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
-    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationTopAppsKey] transportRequest:request userInfo:nil];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationTopWebAppsKey] transportRequest:request userInfo:nil];
 }
 
 
