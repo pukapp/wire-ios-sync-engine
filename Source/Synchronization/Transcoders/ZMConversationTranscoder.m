@@ -738,6 +738,11 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         NSArray *topapps = [dataPayload optionalArrayForKey:@"top_apps"];
         conversation.topapps = [topapps componentsJoinedByString:@","];
     }
+    ///群绑定的社区id
+    if ([dataPayload.allKeys containsObject:@"forumid"]) {
+        /// 会话绑定的社区id
+        conversation.communityID = [NSString stringWithFormat:@"%ld",[dataPayload[@"forumid"] integerValue]];
+    }
 }
 
 - (void)fetchImageData:(NSString *)key complete:(void(^)(NSData *)) complete {
