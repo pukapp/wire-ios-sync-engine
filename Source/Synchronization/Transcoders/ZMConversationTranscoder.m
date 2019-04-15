@@ -747,11 +747,6 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             [topWebApps addObject:[ZMWebApp createOrUpdateWebApp:appDict context:self.managedObjectContext]];
         }
         conversation.topWebApps = topWebApps;
-        
-        NSArray *topAppIds = [topWebApps.array mapWithBlock:^id(ZMWebApp *webApp) {
-            return webApp.appId;
-        }];
-        conversation.topapps = [topAppIds componentsJoinedByString:@","];
     }
     ///群绑定的社区id
     if ([dataPayload.allKeys containsObject:@"forumid"]) {
