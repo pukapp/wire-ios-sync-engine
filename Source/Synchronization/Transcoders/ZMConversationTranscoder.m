@@ -734,8 +734,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         NSArray *apps = [dataPayload optionalArrayForKey:@"apps"];
         conversation.apps = [apps componentsJoinedByString:@","];
     }
-    if ([dataPayload.allKeys containsObject:@"top_apps"]) {
-        NSArray *topApps = [dataPayload optionalArrayForKey:@"top_apps"];
+    if ([dataPayload.allKeys containsObject:ZMConversationInfoTopApps]) {
+        NSArray *topApps = [dataPayload optionalArrayForKey:ZMConversationInfoTopApps];
         NSMutableOrderedSet<ZMWebApp *> *topWebApps = [NSMutableOrderedSet orderedSet];
         
         for (NSDictionary *appDict in [topApps asDictionaries]) {
