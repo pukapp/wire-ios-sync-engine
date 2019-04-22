@@ -23,6 +23,7 @@ import UserNotifications
 
 let PushChannelUserIDKey = "user"
 let PushChannelDataKey = "data"
+let PushChannelConvIDKey = "conv"
 
 private let log = ZMSLog(tag: "Push")
 
@@ -39,6 +40,22 @@ extension Dictionary {
         }
     
         return UUID(uuidString: userIdString)
+    }
+    
+    /// 万人群ID
+    internal func hugeGroupConversationId() -> UUID? {
+        
+        guard let userInfoData = self[PushChannelDataKey as! Key] as? [String: Any] else {
+            log.debug("No data dictionary in notification userInfo payload");
+            return nil
+        }
+        
+        guard let cid = userInfoData[PushChannelConvIDKey] as? String else {
+            log.debug("No Conv ID in notification userInfo payload")
+            return nil
+        }
+        
+        return UUID(uuidString: cid)
     }
 }
 
