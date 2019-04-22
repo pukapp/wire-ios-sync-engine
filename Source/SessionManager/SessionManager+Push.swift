@@ -71,7 +71,19 @@ extension SessionManager: PKPushRegistryDelegate {
         log.debug("Received push payload: \(payload.dictionaryPayload)")
         notificationsTracker?.registerReceivedPush()
         
-        guard let accountId = payload.dictionaryPayload.accountId(),
+        var userId: UUID? = nil
+        
+        if let cid = payload.dictionaryPayload.hugeGroupConversationId() {
+            
+            if let conversations = ZMConversation.conversationsIncludingArchived(in: activeUserSession!.managedObjectContext) as? [ZMConversation],
+                !conversations.filter({ $0.remoteIdentifier?.transportString() == cid.transportString() }).isEmpty {
+                userId = accountManager.selectedAccount?.userIdentifier
+            }
+
+        } else {
+            userId = payload.dictionaryPayload.accountId()
+        }
+        guard let accountId = userId,
               let account = self.accountManager.account(with: accountId),
               let activity = BackgroundActivityFactory.sharedInstance().backgroundActivity(withName: "Process PushKit payload", expirationHandler: { [weak self] in
                 log.debug("Processing push payload expired")
