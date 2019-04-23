@@ -68,42 +68,51 @@ extension SessionManager: PKPushRegistryDelegate {
         // We only care about voIP pushes, other types are not related to push notifications (watch complications and files)
         guard type == .voIP else { return completion() }
         
+        if let cid = payload.dictionaryPayload.hugeGroupConversationId() {
+            pushNotificationIfUserIn(conversation: cid) { [weak self] accountNeedBeNoticed in
+                self?.pushNotification(to: accountNeedBeNoticed.userIdentifier, payload: payload, completion: completion)
+            }
+        } else {
+            guard let userId = payload.dictionaryPayload.accountId() else { return }
+            pushNotification(to: userId, payload: payload, completion: completion)
+        }
+    }
+    
+    private func pushNotification(to userId: UUID, payload: PKPushPayload, completion: @escaping () -> Void) {
         log.debug("Received push payload: \(payload.dictionaryPayload)")
         notificationsTracker?.registerReceivedPush()
-        
-        var userId: UUID? = nil
-        
-        if let cid = payload.dictionaryPayload.hugeGroupConversationId() {
-            
-            if let conversations = ZMConversation.conversationsIncludingArchived(in: activeUserSession!.managedObjectContext) as? [ZMConversation],
-                !conversations.filter({ $0.remoteIdentifier?.transportString() == cid.transportString() }).isEmpty {
-                userId = accountManager.selectedAccount?.userIdentifier
-            }
-
-        } else {
-            userId = payload.dictionaryPayload.accountId()
-        }
-        guard let accountId = userId,
-              let account = self.accountManager.account(with: accountId),
-              let activity = BackgroundActivityFactory.sharedInstance().backgroundActivity(withName: "Process PushKit payload", expirationHandler: { [weak self] in
+        guard
+            let account = accountManager.account(with: userId),
+            let activity = BackgroundActivityFactory.sharedInstance().backgroundActivity(withName: "Process PushKit payload", expirationHandler: { [weak self] in
                 log.debug("Processing push payload expired")
                 self?.notificationsTracker?.registerProcessingExpired()
-              }) else {
+            }) else {
                 log.debug("Aborted processing of payload: \(payload.dictionaryPayload)")
                 notificationsTracker?.registerProcessingAborted()
                 return completion()
         }
         
-        withSession(for: account, perform: { userSession in
+        withSession(for: account) { userSession in
             log.debug("Forwarding push payload to user session with account \(account.userIdentifier)")
             
-            userSession.receivedPushNotification(with: payload.dictionaryPayload, completion: { [weak self] in
+            userSession.receivedPushNotification(with: payload.dictionaryPayload) { [weak self] in
                 log.debug("Processing push payload completed")
                 self?.notificationsTracker?.registerNotificationProcessingCompleted()
                 activity.end()
                 completion()
-            })
-        })
+            }
+        }
+    }
+    
+    private func pushNotificationIfUserIn(conversation cid: UUID, needBeNoticedAccount: @escaping (Account) -> Void) {
+        accountManager.accounts.forEach { account in
+            withSession(for: account) { userSession in
+                if let conversations = ZMConversation.hugeGroupConversations(in: userSession.managedObjectContext) as? [ZMConversation],
+                    conversations.filter({ $0.remoteIdentifier == cid }).isEmpty == false {
+                    needBeNoticedAccount(account)
+                }
+            }
+        }
     }
 }
 
