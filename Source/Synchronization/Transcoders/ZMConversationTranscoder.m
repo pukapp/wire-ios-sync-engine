@@ -159,7 +159,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationOpenUrlJoinKey,
              ZMConversationAllowViewMembersKey,
              CreatorKey,
-             ZMConversationTopWebAppsKey];
+             ZMConversationTopWebAppsKey,
+             ZMConversationIsVisibleForMemberChangeKey,
+             ZMConversationIsAllowMemberAddEachOtherKey];
     
 }
 
@@ -734,8 +736,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         NSArray *apps = [dataPayload optionalArrayForKey:@"apps"];
         conversation.apps = [apps componentsJoinedByString:@","];
     }
-    if ([dataPayload.allKeys containsObject:ZMConversationInfoTopApps]) {
-        NSArray *topApps = [dataPayload optionalArrayForKey:ZMConversationInfoTopApps];
+    if ([dataPayload.allKeys containsObject:ZMConversationInfoTopAppsKey]) {
+        NSArray *topApps = [dataPayload optionalArrayForKey:ZMConversationInfoTopAppsKey];
         NSMutableOrderedSet<ZMWebApp *> *topWebApps = [NSMutableOrderedSet orderedSet];
         
         for (NSDictionary *appDict in [topApps asDictionaries]) {
@@ -759,13 +761,13 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
     
     // 成员是否可以互相添加好友
-    if ([dataPayload.allKeys containsObject:ZMConversationisForbidMemberAddEachOtherKey]) {
-        conversation.isForbidMemberAddEachOther = [dataPayload[ZMConversationisForbidMemberAddEachOtherKey] boolValue];
+    if ([dataPayload.allKeys containsObject:ZMConversationInfoIsAllowMemberAddEachOtherKey]) {
+        conversation.isAllowMemberAddEachOther = [dataPayload[ZMConversationInfoIsAllowMemberAddEachOtherKey] boolValue];
     }
     
     // 成员变动其他群成员是否可见
-    if ([dataPayload.allKeys containsObject:ZMConversationisVisibleForMemberChangeKey]) {
-        conversation.isVisibleForMemberChange = [dataPayload[ZMConversationisVisibleForMemberChangeKey] boolValue];
+    if ([dataPayload.allKeys containsObject:ZMConversationInfoIsVisibleForMemberChangeKey]) {
+        conversation.isVisibleForMemberChange = [dataPayload[ZMConversationInfoIsVisibleForMemberChangeKey] boolValue];
     }
     
 }
@@ -843,6 +845,12 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
     if([keys containsObject:ZMConversationTopWebAppsKey]) {
         request = [self requestForUpdatingTopWebAppsInConversation:updatedConversation];
+    }
+    if([keys containsObject:ZMConversationIsAllowMemberAddEachOtherKey]) {
+        request = [self requestForUpdatingMemberAddInConversation:updatedConversation];
+    }
+    if([keys containsObject:ZMConversationIsVisibleForMemberChangeKey]) {
+        request = [self requestForUpdatingVisibleForMemberChangeInConversation:updatedConversation];
     }
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationSilencedChangedTimeStampKey])) {
@@ -954,6 +962,25 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationTopWebAppsKey] transportRequest:request userInfo:nil];
 }
 
+- (ZMUpstreamRequest *)requestForUpdatingMemberAddInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
+
+    payload[ZMConversationInfoIsAllowMemberAddEachOtherKey] = @(conversation.isAllowMemberAddEachOther);
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationIsAllowMemberAddEachOtherKey] transportRequest:request userInfo:nil];
+}
+
+- (ZMUpstreamRequest *)requestForUpdatingVisibleForMemberChangeInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
+
+    payload[ZMConversationInfoIsVisibleForMemberChangeKey] = @(conversation.isVisibleForMemberChange);
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationIsVisibleForMemberChangeKey] transportRequest:request userInfo:nil];
+}
 
 - (ZMUpstreamRequest *)requestForInsertingObject:(ZMManagedObject *)managedObject forKeys:(NSSet *)keys;
 {
