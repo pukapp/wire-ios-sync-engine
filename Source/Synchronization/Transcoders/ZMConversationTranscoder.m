@@ -757,6 +757,17 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             conversation.communityID = [forumIdNumber stringValue];
         }
     }
+    
+    // 成员是否可以互相添加好友
+    if ([dataPayload.allKeys containsObject:ZMConversationisForbidMemberAddEachOtherKey]) {
+        conversation.isForbidMemberAddEachOther = [dataPayload[ZMConversationisForbidMemberAddEachOtherKey] boolValue];
+    }
+    
+    // 成员变动其他群成员是否可见
+    if ([dataPayload.allKeys containsObject:ZMConversationisVisibleForMemberChangeKey]) {
+        conversation.isVisibleForMemberChange = [dataPayload[ZMConversationisVisibleForMemberChangeKey] boolValue];
+    }
+    
 }
 
 - (void)fetchImageData:(NSString *)key complete:(void(^)(NSData *)) complete {
