@@ -161,7 +161,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              CreatorKey,
              ZMConversationTopWebAppsKey,
              ZMConversationIsVisibleForMemberChangeKey,
-             ZMConversationIsAllowMemberAddEachOtherKey];
+             ZMConversationIsAllowMemberAddEachOtherKey,
+             ZMConversationIsDisableSendMsgKey];
     
 }
 
@@ -362,6 +363,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationWalletNotify:
         case ZMUpdateEventTypeConversationBgpMessageAdd:
         case ZMUpdateEventTypeConversationUpdate:
+        case ZMUpdateEventTypeConversationUpdateBlockTime:
             return YES;
         default:
             return NO;
@@ -559,6 +561,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             [self processConversationUpdateAliasnameEvent:event forConversation:conversation];
             break;
         case ZMUpdateEventTypeConversationUpdate:
+        case ZMUpdateEventTypeConversationUpdateBlockTime:
         {
             [self processUpdateEvent:event forConversation:conversation];
         }
@@ -770,6 +773,12 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         conversation.isVisibleForMemberChange = [dataPayload[ZMConversationInfoIsVisibleForMemberChangeKey] boolValue];
     }
     
+    //禁言设置
+    if([dataPayload.allKeys containsObject:ZMConversationInfoBlockTimeKey]) {
+        conversation.isDisableSendMsg = !([dataPayload[ZMConversationInfoBlockTimeKey] integerValue] == 0);
+        [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
+    }
+    
 }
 
 - (void)fetchImageData:(NSString *)key complete:(void(^)(NSData *)) complete {
@@ -845,6 +854,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
     if([keys containsObject:ZMConversationTopWebAppsKey]) {
         request = [self requestForUpdatingTopWebAppsInConversation:updatedConversation];
+    }
+    if([keys containsObject:ZMConversationIsDisableSendMsgKey]) {
+        request = [self requestForUpdatingDisableSendMsgInConversation:updatedConversation];
     }
     if([keys containsObject:ZMConversationIsAllowMemberAddEachOtherKey]) {
         request = [self requestForUpdatingMemberAddInConversation:updatedConversation];
@@ -948,6 +960,15 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
     ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:CreatorKey] transportRequest:request userInfo:nil];
+}
+
+- (ZMUpstreamRequest *)requestForUpdatingDisableSendMsgInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
+    payload[ZMConversationInfoBlockTimeKey] = @(conversation.isDisableSendMsg ? -1 : 0);
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationIsDisableSendMsgKey] transportRequest:request userInfo:nil];
 }
 
 - (ZMUpstreamRequest *)requestForUpdatingTopWebAppsInConversation:(ZMConversation *)conversation
