@@ -561,7 +561,6 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             [self processConversationUpdateAliasnameEvent:event forConversation:conversation];
             break;
         case ZMUpdateEventTypeConversationUpdate:
-        case ZMUpdateEventTypeConversationUpdateBlockTime:
         {
             [self processUpdateEvent:event forConversation:conversation];
         }
@@ -773,12 +772,13 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         conversation.isVisibleForMemberChange = [dataPayload[ZMConversationInfoIsVisibleForMemberChangeKey] boolValue];
     }
     
-    //禁言设置
-    if([dataPayload.allKeys containsObject:ZMConversationInfoBlockTimeKey]) {
-        conversation.isDisableSendMsg = !([dataPayload[ZMConversationInfoBlockTimeKey] integerValue] == 0);
-        [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
+    //群禁言设置
+    if (event.type == ZMUpdateEventTypeConversationUpdate) {
+        if([dataPayload.allKeys containsObject:ZMConversationInfoBlockTimeKey]) {
+            conversation.isDisableSendMsg = !([dataPayload[ZMConversationInfoBlockTimeKey] integerValue] == 0);
+            [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
+        }
     }
-    
 }
 
 - (void)fetchImageData:(NSString *)key complete:(void(^)(NSData *)) complete {
