@@ -79,7 +79,7 @@ public class CallKitDelegate : NSObject {
     
     public static var providerConfiguration : CXProviderConfiguration {
         
-        let localizedName = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "Wire"
+        let localizedName = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "Secret"
         let configuration = CXProviderConfiguration(localizedName: localizedName)
 
         configuration.supportsVideo = true
