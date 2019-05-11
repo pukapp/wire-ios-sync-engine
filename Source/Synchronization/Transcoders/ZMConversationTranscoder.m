@@ -362,6 +362,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationUpdateAliasname:
         case ZMUpdateEventTypeConversationWalletNotify:
         case ZMUpdateEventTypeConversationBgpMessageAdd:
+        case ZMUpdateEventTypeConversationUserServiceNoticeAdd:
         case ZMUpdateEventTypeConversationUpdate:
         case ZMUpdateEventTypeConversationUpdateBlockTime:
             return YES;
@@ -444,6 +445,11 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         
         if (event.type == ZMUpdateEventTypeConversationWalletNotify) {
             [[NSNotificationCenter defaultCenter]postNotificationName:ConversationWalletNotify object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
+            [self createConversationAndJoinMemberFromEvent:event];
+            continue;
+        }
+        
+        if (event.type == ZMUpdateEventTypeConversationUserServiceNoticeAdd) {
             [self createConversationAndJoinMemberFromEvent:event];
             continue;
         }
