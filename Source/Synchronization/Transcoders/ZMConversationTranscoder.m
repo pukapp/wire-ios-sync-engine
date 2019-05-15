@@ -365,6 +365,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationUserServiceNoticeAdd:
         case ZMUpdateEventTypeConversationUpdate:
         case ZMUpdateEventTypeConversationUpdateBlockTime:
+        case ZMUpdateEventTypeConversationServiceNotify:
             return YES;
         default:
             return NO;
@@ -570,6 +571,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         {
             [self processUpdateEvent:event forConversation:conversation];
         }
+        case ZMUpdateEventTypeConversationServiceNotify:
+            [self processConversationServiceNotifyEvent:event forConversation:conversation];
+            break;
         default:
             break;
     }
@@ -586,8 +590,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 //}
 
 // 将群主更改
-- (void)processConversationChangecreatorEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
-{
+- (void)processConversationChangecreatorEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation {
     NSDictionary *data = [event.payload dictionaryForKey:@"data"];
     //    NSString *type = data[@"creator"];
     NSUUID *creatorId = [data uuidForKey:@"creator"];
@@ -595,6 +598,12 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         conversation.creator = [ZMUser userWithRemoteID:creatorId createIfNeeded:YES inContext:self.managedObjectContext];
     }
 }
+
+// 群应用通知
+- (void)processConversationServiceNotifyEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation {
+    [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
+}
+
 
 // 修改自动回复状态（机器人类型）
 - (void)processConversationAutoReplyEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
