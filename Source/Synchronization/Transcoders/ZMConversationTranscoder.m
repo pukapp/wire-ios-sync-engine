@@ -570,6 +570,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationUpdate:
         {
             [self processUpdateEvent:event forConversation:conversation];
+            break;
         }
         case ZMUpdateEventTypeConversationServiceNotify:
             [self processConversationServiceNotifyEvent:event forConversation:conversation];
