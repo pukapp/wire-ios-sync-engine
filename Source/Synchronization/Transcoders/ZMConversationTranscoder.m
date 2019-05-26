@@ -162,8 +162,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationTopWebAppsKey,
              ZMConversationIsVisibleForMemberChangeKey,
              ZMConversationIsAllowMemberAddEachOtherKey,
-             ZMConversationIsDisableSendMsgKey];
-    
+             ZMConversationIsDisableSendMsgKey,
+             ZMConversationInfoOratorKey];
 }
 
 - (NSUUID *)nextUUIDFromResponse:(ZMTransportResponse *)response forListPaginator:(ZMSimpleListRequestPaginator *)paginator
@@ -790,12 +790,23 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
     
     //群禁言设置
-    if (event.type == ZMUpdateEventTypeConversationUpdate) {
-        if([dataPayload.allKeys containsObject:ZMConversationInfoBlockTimeKey]) {
-            conversation.isDisableSendMsg = !([dataPayload[ZMConversationInfoBlockTimeKey] integerValue] == 0);
-            [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
-        }
+    if([dataPayload.allKeys containsObject:ZMConversationInfoBlockTimeKey]) {
+        conversation.isDisableSendMsg = !([dataPayload[ZMConversationInfoBlockTimeKey] integerValue] == 0);
+        [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
     }
+    //演讲者
+    if ([dataPayload.allKeys containsObject:ZMConversationInfoOratorKey]) {
+        NSArray *orator = [dataPayload optionalArrayForKey:ZMConversationInfoOratorKey];
+        if (!orator || orator.count == 0) {
+            return;
+        }
+        [orator enumerateObjectsUsingBlock:^(NSString*  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+            ZMUser *user = [ZMUser userWithRemoteID:[NSUUID uuidWithTransportString:obj] createIfNeeded:YES inContext:self.managedObjectContext];
+            user.needsToBeUpdatedFromBackend = YES;
+        }];
+        conversation.orator = orator.set;
+    }
+    
 }
 
 - (void)fetchImageData:(NSString *)key complete:(void(^)(NSData *)) complete {
@@ -880,6 +891,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
     if([keys containsObject:ZMConversationIsVisibleForMemberChangeKey]) {
         request = [self requestForUpdatingVisibleForMemberChangeInConversation:updatedConversation];
+    }
+    if ([keys containsObject:ZMConversationInfoOratorKey]) {
+        request = [self requestForUpdatingOratorInConversation:updatedConversation];
     }
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationSilencedChangedTimeStampKey])) {
@@ -1018,6 +1032,16 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
     ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationIsVisibleForMemberChangeKey] transportRequest:request userInfo:nil];
+}
+
+- (ZMUpstreamRequest *)requestForUpdatingOratorInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
+    
+    payload[ZMConversationInfoOratorKey] = [conversation.orator allObjects];
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationInfoOratorKey] transportRequest:request userInfo:nil];
 }
 
 - (ZMUpstreamRequest *)requestForInsertingObject:(ZMManagedObject *)managedObject forKeys:(NSSet *)keys;
