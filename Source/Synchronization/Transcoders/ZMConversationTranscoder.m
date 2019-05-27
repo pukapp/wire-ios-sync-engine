@@ -506,6 +506,16 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
 
 - (void)markConversationForDownloadIfNeeded:(ZMConversation *)conversation afterEvent:(ZMUpdateEvent *)event {
+    
+    if (event.type == ZMUpdateEventTypeConversationMemberLeave) {
+        NSDictionary *data = [event.payload dictionaryForKey:@"data"];
+        NSArray *leavingUserIds = [data optionalArrayForKey:@"user_ids"];
+        ZMUser *selfUser = [ZMUser selfUserInContext:self.managedObjectContext];
+        if ([leavingUserIds containsObject:selfUser.remoteIdentifier.transportString]) {
+            return;
+        }
+    }
+    
     // 可能需要添加，暂时不知道干嘛用，后续再看
     switch(event.type) {
         case ZMUpdateEventTypeConversationOtrAssetAdd:
