@@ -663,7 +663,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     NSNumber *membersCountNumber = [data optionalNumberForKey:@"memsum"];
     if (membersCountNumber != nil) {
         // Backend is sending the miliseconds, we need to convert to seconds.
-        conversation.membersCount = membersCountNumber.integerValue;
+        conversation.membersCount = conversation.conversationType == ZMConversationTypeHugeGroup
+        ? membersCountNumber.integerValue
+        : (NSInteger)conversation.activeParticipants.count;
     }
     
     for (ZMUser *user in users) {
@@ -687,7 +689,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     NSNumber *membersCountNumber = [data optionalNumberForKey:@"memsum"];
     if (membersCountNumber != nil) {
         // Backend is sending the miliseconds, we need to convert to seconds.
-        conversation.membersCount = membersCountNumber.integerValue;
+        conversation.membersCount = conversation.conversationType == ZMConversationTypeHugeGroup
+        ? membersCountNumber.integerValue
+        : (NSInteger)conversation.activeParticipants.count;
     }
 
     for (ZMUser *user in users) {
