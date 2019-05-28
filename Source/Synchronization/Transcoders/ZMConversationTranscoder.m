@@ -163,7 +163,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationIsVisibleForMemberChangeKey,
              ZMConversationIsAllowMemberAddEachOtherKey,
              ZMConversationIsDisableSendMsgKey,
-             ZMConversationInfoOratorKey];
+             ZMConversationInfoOratorKey,
+             ZMConversationIsPlaceTopKey
+             ];
 }
 
 - (NSUUID *)nextUUIDFromResponse:(ZMTransportResponse *)response forListPaginator:(ZMSimpleListRequestPaginator *)paginator
@@ -506,6 +508,16 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
 
 - (void)markConversationForDownloadIfNeeded:(ZMConversation *)conversation afterEvent:(ZMUpdateEvent *)event {
+    
+    if (event.type == ZMUpdateEventTypeConversationMemberLeave) {
+        NSDictionary *data = [event.payload dictionaryForKey:@"data"];
+        NSArray *leavingUserIds = [data optionalArrayForKey:@"user_ids"];
+        ZMUser *selfUser = [ZMUser selfUserInContext:self.managedObjectContext];
+        if ([leavingUserIds containsObject:selfUser.remoteIdentifier.transportString]) {
+            return;
+        }
+    }
+    
     // 可能需要添加，暂时不知道干嘛用，后续再看
     switch(event.type) {
         case ZMUpdateEventTypeConversationOtrAssetAdd:
@@ -543,6 +555,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             break;
         case ZMUpdateEventTypeConversationMemberLeave:
             [self processMemberLeaveEvent:event forConversation:conversation];
+            [self shouldDeleteConversation:conversation ifSelfUserLeftWithEvent:event];
             break;
         case ZMUpdateEventTypeConversationMemberUpdate:
             [self processMemberUpdateEvent:event forConversation:conversation previousLastServerTimeStamp:previousLastServerTimestamp];
@@ -696,6 +709,15 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
     for (ZMUser *user in users) {
         [conversation internalRemoveParticipants:[NSSet setWithObject:user] sender:sender];
+    }
+}
+
+- (void)shouldDeleteConversation: (ZMConversation *)conversation ifSelfUserLeftWithEvent: (ZMUpdateEvent *)event {
+    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
+    NSArray *leavingUserIds = [data optionalArrayForKey:@"user_ids"];
+    ZMUser *selfUser = [ZMUser selfUserInContext:self.managedObjectContext];
+    if ([leavingUserIds containsObject:selfUser.remoteIdentifier.transportString]) {
+        [conversation deleteConversation];
     }
 }
 
@@ -900,7 +922,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         request = [self requestForUpdatingOratorInConversation:updatedConversation];
     }
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
-                           || [keys containsObject:ZMConversationSilencedChangedTimeStampKey])) {
+                           || [keys containsObject:ZMConversationSilencedChangedTimeStampKey]
+                           || [keys containsObject:ZMConversationIsPlaceTopKey])) {
         request = [updatedConversation requestForUpdatingSelfInfo];
     }
     if (request == nil) {

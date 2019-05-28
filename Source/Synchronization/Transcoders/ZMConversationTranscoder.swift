@@ -94,6 +94,13 @@ extension ZMConversation {
             updatedKeys.insert(ZMConversationSilencedChangedTimeStampKey)
         }
         
+        if hasLocalModifications(forKey: ZMConversationIsPlaceTopKey) {
+            
+            payload[ZMConversationInfoPlaceTopKey] = isPlaceTop
+            
+            updatedKeys.insert(ZMConversationIsPlaceTopKey)
+        }
+        
         if hasLocalModifications(forKey: ZMConversationArchivedChangedTimeStampKey) {
             if archivedChangedTimestamp == nil {
                 archivedChangedTimestamp = Date()
