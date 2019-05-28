@@ -606,6 +606,19 @@ public protocol ForegroundNotificationResponder: class {
             }
         })
     }
+    
+    public func withSession(forLoginedAccount account: Account, perform completion: @escaping (ZMUserSession?) -> Void) {
+        log.debug("Request to load session for \(account)")
+        let group = self.dispatchGroup
+        group?.enter()
+        sessionLoadingQueue.serialAsync { onWorkDone in
+            let session = self.backgroundUserSessions[account.userIdentifier]
+            log.debug("Session for \(account) is already loaded")
+            completion(session)
+            onWorkDone()
+            group?.leave()
+        }
+    }
 
     // Creates the user session for @c account given, calls @c completion when done.
     private func startBackgroundSession(for account: Account, with provider: LocalStoreProviderProtocol) -> ZMUserSession {
