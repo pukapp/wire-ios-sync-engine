@@ -163,7 +163,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationIsVisibleForMemberChangeKey,
              ZMConversationIsAllowMemberAddEachOtherKey,
              ZMConversationIsDisableSendMsgKey,
-             ZMConversationInfoOratorKey];
+             ZMConversationInfoOratorKey,
+             ZMConversationIsPlaceTopKey
+             ];
 }
 
 - (NSUUID *)nextUUIDFromResponse:(ZMTransportResponse *)response forListPaginator:(ZMSimpleListRequestPaginator *)paginator
@@ -916,7 +918,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         request = [self requestForUpdatingOratorInConversation:updatedConversation];
     }
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
-                           || [keys containsObject:ZMConversationSilencedChangedTimeStampKey])) {
+                           || [keys containsObject:ZMConversationSilencedChangedTimeStampKey]
+                           || [keys containsObject:ZMConversationIsPlaceTopKey])) {
         request = [updatedConversation requestForUpdatingSelfInfo];
     }
     if (request == nil) {
