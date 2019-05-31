@@ -425,15 +425,15 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
     BOOL conversationCreated = NO;
     ZMConversation *conversation = [ZMConversation conversationWithRemoteID:convRemoteID createIfNeeded:YES inContext:self.managedObjectContext created:&conversationCreated];
-    conversation.conversationType = ZMConversationTypeOneOnOne;
     if (conversationCreated) {
+        conversation.conversationType = ZMConversationTypeOneOnOne;
+        conversation.isServiceNotice = YES;
         [conversation updateLastModified:serverTimestamp];
         [conversation updateServerModified:serverTimestamp];
         NSUUID * const userId = [payloadData uuidForKey:@"from"];
         ZMUser *user = [ZMUser userWithRemoteID:userId createIfNeeded:YES inContext:self.managedObjectContext];
         user.needsToBeUpdatedFromBackend = true;
         [conversation internalAddParticipants:[NSSet setWithObject:user]];
-        [self.managedObjectContext enqueueDelayedSave];
         user.connection.conversation = conversation;
     }
     return conversation;
