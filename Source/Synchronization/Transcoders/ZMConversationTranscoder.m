@@ -425,9 +425,10 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
     BOOL conversationCreated = NO;
     ZMConversation *conversation = [ZMConversation conversationWithRemoteID:convRemoteID createIfNeeded:YES inContext:self.managedObjectContext created:&conversationCreated];
+    conversation.isServiceNotice = YES;
     if (conversationCreated) {
         conversation.conversationType = ZMConversationTypeOneOnOne;
-        conversation.isServiceNotice = YES;
+        
         [conversation updateLastModified:serverTimestamp];
         [conversation updateServerModified:serverTimestamp];
         NSUUID * const userId = [payloadData uuidForKey:@"from"];
@@ -831,6 +832,11 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             user.needsToBeUpdatedFromBackend = YES;
         }];
         conversation.orator = orator.set;
+    }
+    
+    // 公众号属性设置
+    if([dataPayload.allKeys containsObject:ZMConversationInfoIsServiceNoticeKey]) {
+        conversation.isServiceNotice = [dataPayload[ZMConversationInfoIsServiceNoticeKey] boolValue];
     }
     
 }
