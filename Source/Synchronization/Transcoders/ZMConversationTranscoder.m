@@ -834,11 +834,6 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         conversation.orator = orator.set;
     }
     
-    // 公众号属性设置
-    if([dataPayload.allKeys containsObject:ZMConversationInfoIsServiceNoticeKey]) {
-        conversation.isServiceNotice = [dataPayload[ZMConversationInfoIsServiceNoticeKey] boolValue];
-    }
-    
 }
 
 - (void)fetchImageData:(NSString *)key complete:(void(^)(NSData *)) complete {
