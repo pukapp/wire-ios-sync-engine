@@ -164,7 +164,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationIsAllowMemberAddEachOtherKey,
              ZMConversationIsDisableSendMsgKey,
              ZMConversationInfoOratorKey,
-             ZMConversationIsPlaceTopKey
+             ZMConversationIsPlacedTopKey
              ];
 }
 
@@ -929,7 +929,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationSilencedChangedTimeStampKey]
-                           || [keys containsObject:ZMConversationIsPlaceTopKey])) {
+                           || [keys containsObject:ZMConversationIsPlacedTopKey])) {
         request = [updatedConversation requestForUpdatingSelfInfo];
     }
     if (request == nil) {
