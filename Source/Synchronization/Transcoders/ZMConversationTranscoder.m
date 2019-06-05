@@ -617,6 +617,11 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
 // 群应用通知
 - (void)processConversationServiceNotifyEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation {
+    NSString *userid = [event.payload optionalStringForKey:@"from"];
+    if (userid && userid.length > 0 && [userid.lowercaseString isEqualToString:[ZMUser selfUserInContext:self.managedObjectContext].remoteIdentifier.transportString]) {
+        return;
+    }
+    
     [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
 }
 
