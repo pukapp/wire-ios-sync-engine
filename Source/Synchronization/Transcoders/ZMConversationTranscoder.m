@@ -856,36 +856,30 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             if (userId == nil) {
                 continue;
             }
-            NSString * text = @"";
+            NSString * name = [userDict stringForKey:@"name"];
             if ([userId isEqualToString:selfUserUUIDString]) {
-                text = @"你已成为管理员";
+                [self appendManagerSystemMessageForUpdateEvent:event inConversation:conversation withManagerType:ZMSystemManagerMessageTypeMeBecameManager name:name];
             } else {
-                NSString * name = [userDict stringForKey:@"name"];
                 if (!name) {
-                    text = [NSString stringWithFormat:@"%@已成为管理员", [userDict stringForKey:@"handle"]];
-                } else {
-                    text = [NSString stringWithFormat:@"%@已成为管理员", name];
+                    name = [userDict stringForKey:@"handle"];
                 }
+                [self appendManagerSystemMessageForUpdateEvent:event inConversation:conversation withManagerType:ZMSystemManagerMessageTypeOtherBecameManager name:name];
             }
-            [self appendManagerSystemMessageForUpdateEvent:event inConversation:conversation withText:text];
         }
         for (NSDictionary *userDict in [delUsers asDictionaries]) {
             NSString *userId = [userDict stringForKey:@"id"];
             if (userId == nil) {
                 continue;
             }
-            NSString * text = @"";
+            NSString * name = [userDict stringForKey:@"name"];
             if ([userId isEqualToString:selfUserUUIDString]) {
-                text = @"你已被解除管理员";
+                [self appendManagerSystemMessageForUpdateEvent:event inConversation:conversation withManagerType:ZMSystemManagerMessageTypeMeDropManager name:name];
             } else {
-                NSString * name = [userDict stringForKey:@"name"];
                 if (!name) {
-                    text = [NSString stringWithFormat:@"%@已被解除管理员", [userDict stringForKey:@"handle"]];
-                } else {
-                    text = [NSString stringWithFormat:@"%@已被解除管理员", name];
+                    name = [userDict stringForKey:@"handle"];
                 }
+                [self appendManagerSystemMessageForUpdateEvent:event inConversation:conversation withManagerType:ZMSystemManagerMessageTypeOtherDropManager name:name];
             }
-            [self appendManagerSystemMessageForUpdateEvent:event inConversation:conversation withText:text];
         }
     }
     
@@ -911,10 +905,11 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
 }
 
-- (void)appendManagerSystemMessageForUpdateEvent:(ZMUpdateEvent *)event inConversation:(ZMConversation *)conversation withText:(NSString *)text
+- (void)appendManagerSystemMessageForUpdateEvent:(ZMUpdateEvent *)event inConversation:(ZMConversation *)conversation withManagerType:(ZMSystemManagerMessageType)type name:(NSString *)name
 {
     ZMSystemMessage *systemMessage = [ZMSystemMessage createOrUpdateMessageFromUpdateEvent:event inManagedObjectContext:self.managedObjectContext];
-    systemMessage.text = text;
+    systemMessage.managerType = type;
+    systemMessage.text = name;
     
     if (systemMessage != nil) {
         [self.localNotificationDispatcher processMessage:systemMessage];
