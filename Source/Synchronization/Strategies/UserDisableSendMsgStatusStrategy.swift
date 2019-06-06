@@ -160,13 +160,14 @@ public final class UserDisableSendMsgStatusStrategy: ZMObjectSyncStrategy, ZMObj
         //群内成员禁言设置
         if (event.type == .conversationUpdateBlockTime) {
             guard let dataPayload = event.payload["data"] as? [String: Any], let block = dataPayload[ZMConversationInfoBlockTimeKey] as? Int64,
+                let duration = dataPayload[ZMConversationInfoBlockDurationKey] as? Int64,
                 let cnv = event.payload["conversation"] as? String,
                 let context = self.managedObjectContext,
                 let userid = dataPayload["block_user"] as? String,
                 let uuid = UUID(uuidString: cnv),
                 let conversation = ZMConversation.init(remoteID: uuid, createIfNeeded: false, in: context) else {return}
-            if(dataPayload.keys.contains(ZMConversationInfoBlockTimeKey)) {
-                UserDisableSendMsgStatus.update(managedObjectContext: context, block_time: NSNumber(value: block), user: userid, conversation: cnv, fromPushChannel: true)
+            if(dataPayload.keys.contains(ZMConversationInfoBlockTimeKey) && dataPayload.keys.contains(ZMConversationInfoBlockDurationKey)) {
+                UserDisableSendMsgStatus.update(managedObjectContext: context, block_time: NSNumber(value: block), block_duration: NSNumber(value: duration), user: userid, conversation: cnv, fromPushChannel: true)
                 self.appendSystemMessage(event: event, inConversation: conversation)
             }
         }
@@ -186,7 +187,7 @@ public final class UserDisableSendMsgRequestFactory {
     
     public func updateUserDisableSendMsgRequest(status: ZMManagedObject) -> ZMUpstreamRequest? {
         if let status = status as? UserDisableSendMsgStatus  {
-            let payload = [ZMConversationInfoBlockTimeKey: status.block_time]
+            let payload = [ZMConversationInfoBlockTimeKey: status.block_time, ZMConversationInfoBlockDurationKey: status.block_duration]
             guard let cnv = status.withConversation?.remoteIdentifier?.transportString(),
                 let uid = status.userid else {return nil}
             let request = ZMTransportRequest(path: "/conversations/\(cnv)/block/\(uid)", method: ZMTransportRequestMethod.methodPUT, payload: payload as ZMTransportData)
