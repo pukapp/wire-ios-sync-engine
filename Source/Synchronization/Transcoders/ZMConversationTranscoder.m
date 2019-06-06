@@ -164,6 +164,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationIsAllowMemberAddEachOtherKey,
              ZMConversationIsDisableSendMsgKey,
              ZMConversationInfoOratorKey,
+             ZMConversationManagerAddKey,
+             ZMConversationManagerDelKey,
              ZMConversationIsPlacedTopKey
              ];
 }
@@ -833,6 +835,54 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         }];
         conversation.orator = orator.set;
     }
+    //管理员
+    if ([dataPayload.allKeys containsObject:ZMConversationInfoManagerKey]) {
+        NSArray *manager = [dataPayload optionalArrayForKey:ZMConversationInfoManagerKey];
+        conversation.manager = manager.set;
+        ///清空请求触发条件，防止下次设置相同值不发请求
+        conversation.managerAdd = [[NSSet alloc] init];
+        conversation.managerDel = [[NSSet alloc] init];
+        NSArray *addUsers = [dataPayload optionalArrayForKey:ZMConversationInfoManagerAddKey];
+        NSArray *delUsers = [dataPayload optionalArrayForKey:ZMConversationInfoManagerDelKey];
+        
+        NSString *selfUserUUIDString = [ZMUser selfUserInContext:self.managedObjectContext].remoteIdentifier.transportString;
+        for (NSDictionary *userDict in [addUsers asDictionaries]) {
+            NSString *userId = [userDict stringForKey:@"id"];
+            if (userId == nil) {
+                continue;
+            }
+            NSString * text = @"";
+            if ([userId isEqualToString:selfUserUUIDString]) {
+                text = @"你已成为管理员";
+            } else {
+                NSString * name = [userDict stringForKey:@"name"];
+                if (!name) {
+                    text = [NSString stringWithFormat:@"%@已成为管理员", [userDict stringForKey:@"handle"]];
+                } else {
+                    text = [NSString stringWithFormat:@"%@已成为管理员", name];
+                }
+            }
+            [self appendManagerSystemMessageForUpdateEvent:event inConversation:conversation withText:text];
+        }
+        for (NSDictionary *userDict in [delUsers asDictionaries]) {
+            NSString *userId = [userDict stringForKey:@"id"];
+            if (userId == nil) {
+                continue;
+            }
+            NSString * text = @"";
+            if ([userId isEqualToString:selfUserUUIDString]) {
+                text = @"你已被解除管理员";
+            } else {
+                NSString * name = [userDict stringForKey:@"name"];
+                if (!name) {
+                    text = [NSString stringWithFormat:@"%@已被解除管理员", [userDict stringForKey:@"handle"]];
+                } else {
+                    text = [NSString stringWithFormat:@"%@已被解除管理员", name];
+                }
+            }
+            [self appendManagerSystemMessageForUpdateEvent:event inConversation:conversation withText:text];
+        }
+    }
     
 }
 
@@ -853,6 +903,17 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         [conversation updateSelfStatusFromDictionary:dataPayload
                                            timeStamp:event.timeStamp
                          previousLastServerTimeStamp:previousLastServerTimestamp];
+    }
+}
+
+- (void)appendManagerSystemMessageForUpdateEvent:(ZMUpdateEvent *)event inConversation:(ZMConversation *)conversation withText:(NSString *)text
+{
+    ZMSystemMessage *systemMessage = [ZMSystemMessage createOrUpdateMessageFromUpdateEvent:event inManagedObjectContext:self.managedObjectContext];
+    systemMessage.text = text;
+    
+    if (systemMessage != nil) {
+        [self.localNotificationDispatcher processMessage:systemMessage];
+        [conversation resortMessagesWithUpdatedMessage:systemMessage];
     }
 }
 
@@ -921,6 +982,12 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
     if ([keys containsObject:ZMConversationInfoOratorKey]) {
         request = [self requestForUpdatingOratorInConversation:updatedConversation];
+    }
+    if ([keys containsObject:ZMConversationManagerAddKey]) {
+        request = [self requestForAddManagerInConversation:updatedConversation];
+    }
+    if ([keys containsObject:ZMConversationManagerDelKey]) {
+        request = [self requestForDelManagerInConversation:updatedConversation];
     }
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationSilencedChangedTimeStampKey]
@@ -1070,6 +1137,25 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
     ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationInfoOratorKey] transportRequest:request userInfo:nil];
+}
+
+- (ZMUpstreamRequest *)requestForAddManagerInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
+    
+    payload[ZMConversationInfoManagerAddKey] = [conversation.managerAdd allObjects];
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationManagerAddKey] transportRequest:request userInfo:nil];
+}
+- (ZMUpstreamRequest *)requestForDelManagerInConversation:(ZMConversation *)conversation
+{
+    NSMutableDictionary *payload = [[NSMutableDictionary alloc]init];
+    
+    payload[ZMConversationInfoManagerDelKey] = [conversation.managerDel allObjects];
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationManagerDelKey] transportRequest:request userInfo:nil];
 }
 
 - (ZMUpstreamRequest *)requestForInsertingObject:(ZMManagedObject *)managedObject forKeys:(NSSet *)keys;
