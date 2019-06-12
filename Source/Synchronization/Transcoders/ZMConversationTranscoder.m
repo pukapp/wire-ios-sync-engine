@@ -700,6 +700,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     ZMUser *sender = [ZMUser userWithRemoteID:senderUUID createIfNeeded:YES inContext:self.managedObjectContext];
     NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext createIfNeeded:YES];
     
+    if (!conversation.remoteIdentifier.transportString || users.count == 0) {///没有此群，或者没有此用户
+        return;
+    }
     ZMLogDebug(@"processMemberLeaveEvent (%@) leaving users.count = %lu", conversation.remoteIdentifier.transportString, (unsigned long)users.count);
     
     if ([users intersectsSet:conversation.activeParticipants.set]) {
