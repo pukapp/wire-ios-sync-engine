@@ -367,23 +367,23 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
     return NO;
 }
 
-- (NSArray<NSURLQueryItem *> *)hugeConversationQueryItems {
-    NSArray <ZMConversation *> *hugeConversations = [self.syncStrategy.syncMOC executeFetchRequestOrAssert:[ZMConversation sortedFetchRequestWithPredicate:ZMConversation.predicateForHugeGroupConversations]];
-    if (hugeConversations.count <= 0) {
-        return @[];
-    }
-    
-    NSMutableArray<NSString *> *ids = [NSMutableArray array];
-    for (ZMConversation *conversation in hugeConversations) {
-        if (conversation.remoteIdentifier.transportString != nil) {
-            [ids addObject: conversation.remoteIdentifier.transportString];
-        }
-    }
-    
-    if (ids.count > 0) {
-        return @[[NSURLQueryItem queryItemWithName: @"ids" value: [ids componentsJoinedByString: @","]]];
-    }
-    return @[];
-}
+//- (NSArray<NSURLQueryItem *> *)hugeConversationQueryItems {
+//    NSArray <ZMConversation *> *hugeConversations = [self.syncStrategy.syncMOC executeFetchRequestOrAssert:[ZMConversation sortedFetchRequestWithPredicate:ZMConversation.predicateForHugeGroupConversations]];
+//    if (hugeConversations.count <= 0) {
+//        return @[];
+//    }
+//    
+//    NSMutableArray<NSString *> *ids = [NSMutableArray array];
+//    for (ZMConversation *conversation in hugeConversations) {
+//        if (conversation.remoteIdentifier.transportString != nil) {
+//            [ids addObject: conversation.remoteIdentifier.transportString];
+//        }
+//    }
+//    
+//    if (ids.count > 0) {
+//        return @[[NSURLQueryItem queryItemWithName: @"ids" value: [ids componentsJoinedByString: @","]]];
+//    }
+//    return @[];
+//}
 
 @end
