@@ -29,6 +29,32 @@ public struct SearchResult {
 
 extension SearchResult {
     
+    ///TODO: 万人群里根据用户handle搜索用户，筛选结果不去除已是好友的d用户
+    public init?(payload: [AnyHashable : Any], query: String, userSession: ZMUserSession, needFilterConnected: Bool) {
+        guard let documents = payload["documents"] as? [[String : Any]] else {
+            return nil
+        }
+        
+        let isHandleQuery = query.hasPrefix("@")
+        let queryWithoutAtSymbol = (isHandleQuery ? String(query[query.index(after: query.startIndex)...]) : query).lowercased()
+        
+        let filteredDocuments = documents.filter { (document) -> Bool in
+            let name = document["name"] as? String
+            let handle = document["handle"] as? String
+            
+            return !isHandleQuery || name?.hasPrefix("@") ?? true || handle?.contains(queryWithoutAtSymbol) ?? false
+        }
+        
+        let searchUsers = ZMSearchUser.searchUsers(from: filteredDocuments, contextProvider: userSession)
+        
+        contacts = []
+        teamMembers = []
+        addressBook = []
+        directory = searchUsers
+        conversations = []
+        services = []
+    }
+    
     public init?(payload: [AnyHashable : Any], query: String, userSession: ZMUserSession) {
         guard let documents = payload["documents"] as? [[String : Any]] else {
             return nil
