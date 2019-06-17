@@ -82,6 +82,12 @@ public class SearchTask {
     public func startRemoteSearch(fetchLimit: Int = 10) {
         performRemoteSearch(fetchLimit: fetchLimit)
     }
+    
+    /// only search 'request.searchOptions.contains(.directory)'
+    /// seach with handle
+    public func startHandleRemoteSearch() {
+        performHandleRemoteSearch()
+    }
 }
 
 extension SearchTask {
@@ -283,6 +289,55 @@ extension SearchTask {
         url.queryItems = [URLQueryItem(name: "handles", value: handle)]
         let urlStr = url.string?.replacingOccurrences(of: "+", with: "%2B") ?? ""
         return ZMTransportRequest(getFromPath: urlStr)
+    }
+    
+    func performHandleRemoteSearch() {
+        guard request.searchOptions.contains(.directory) else { return }
+        
+        tasksRemaining += 1
+        
+        context.performGroupedBlock {
+            let request = type(of: self).searchRequestInDirectory(withHandle: self.request.query)
+            
+            request.add(ZMCompletionHandler(on: self.session.managedObjectContext, block: { [weak self] (response) in
+                
+                defer {
+                    self?.tasksRemaining -= 1
+                }
+                
+                guard
+                    let session = self?.session,
+                    let query = self?.request.query,
+                    let payload = response.payload?.asArray(),
+                    let userPayload = (payload.first as? ZMTransportData)?.asDictionary()
+                    else {
+                        return
+                }
+                
+                guard
+                    let handle = userPayload["handle"] as? String,
+                    let name = userPayload["name"] as? String,
+                    let id = userPayload["id"] as? String
+                    else {
+                        return
+                }
+                
+                let document = ["handle": handle, "name": name, "id": id]
+                let documentPayload = ["documents": [document]]
+                guard let result = SearchResult(payload: documentPayload, query: query, userSession: session, needFilterConnected: false) else {
+                    return
+                }
+                if let updatedResult = self?.result.union(withDirectoryResult: result) {
+                    self?.result = updatedResult
+                }
+            }))
+            
+            request.add(ZMTaskCreatedHandler(on: self.context, block: { [weak self] (taskIdentifier) in
+                self?.directoryTaskIdentifier = taskIdentifier
+            }))
+            
+            self.session.transportSession.enqueueOneTime(request)
+        }
     }
 }
 
