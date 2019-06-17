@@ -78,8 +78,9 @@ public class SearchTask {
     }
 
     /// only search 'request.searchOptions.contains(.directory)'
-    public func startRemoteSearch() {
-        performRemoteSearch()
+    /// fetchLimit default is 10
+    public func startRemoteSearch(fetchLimit: Int = 10) {
+        performRemoteSearch(fetchLimit: fetchLimit)
     }
 }
 
@@ -151,13 +152,13 @@ extension SearchTask {
 
 extension SearchTask {
     
-    func performRemoteSearch() {
+    func performRemoteSearch(fetchLimit: Int = 10) {
         guard request.searchOptions.contains(.directory) else { return }
         
         tasksRemaining += 1
         
         context.performGroupedBlock {
-            let request = type(of: self).searchRequestInDirectory(withQuery: self.request.query)
+            let request = type(of: self).searchRequestInDirectory(withQuery: self.request.query, fetchLimit: fetchLimit)
             
             request.add(ZMCompletionHandler(on: self.session.managedObjectContext, block: { [weak self] (response) in
                 
@@ -187,7 +188,7 @@ extension SearchTask {
         }
     }
     
-    static func searchRequestInDirectory(withQuery query : String, fetchLimit: Int = 10) -> ZMTransportRequest {
+    static func searchRequestInDirectory(withQuery query : String, fetchLimit: Int) -> ZMTransportRequest {
         var query = query
         
         if query.hasPrefix("@") {
