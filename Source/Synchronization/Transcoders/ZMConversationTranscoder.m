@@ -166,7 +166,10 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationInfoOratorKey,
              ZMConversationManagerAddKey,
              ZMConversationManagerDelKey,
-             ZMConversationIsPlacedTopKey
+             ZMConversationIsPlacedTopKey,
+             ZMConversationIsVisitorsVisibleKey,
+             ZMConversationIsMessageVisibleOnlyManagerAndCreatorKey,
+             ZMConversationAnnouncementKey
              ];
 }
 
