@@ -764,6 +764,22 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         ZMUser *user = [ZMUser userWithRemoteID:[NSUUID uuidWithTransportString:dataPayload[@"new_creator"]] createIfNeeded:false inContext:self.managedObjectContext];
         conversation.creator = user;
     }
+    
+    // 邀请人列表是否可见 更新
+    if ([dataPayload.allKeys containsObject:ZMConversationInfoIsVisitorsVisibleKey]) {
+        conversation.isVisitorsVisible = [dataPayload[ZMConversationInfoIsVisitorsVisibleKey] boolValue];
+    }
+    
+    // 消息可见性 更新
+    if ([dataPayload.allKeys containsObject:ZMConversationInfoIsMessageVisibleOnlyManagerAndCreatorKey]) {
+        conversation.isMessageVisibleOnlyManagerAndCreator = [dataPayload[ZMConversationInfoIsMessageVisibleOnlyManagerAndCreatorKey] boolValue];
+    }
+    
+    // 群公告更新
+    if ([dataPayload.allKeys containsObject:ZMConversationInfoAnnouncementKey]) {
+        conversation.announcement = [dataPayload optionalStringForKey:ZMConversationInfoAnnouncementKey];
+    }
+    
     /// 群头像更新
     if ([dataPayload.allKeys containsObject:@"assets"] && dataPayload[@"assets"] != nil) {
         NSArray *asstes = dataPayload[@"assets"];
@@ -992,6 +1008,15 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if ([keys containsObject:ZMConversationManagerDelKey]) {
         request = [self requestForDelManagerInConversation:updatedConversation];
     }
+    if ([keys containsObject:ZMConversationIsVisitorsVisibleKey]) {
+        request = [self requestForUpdatingIsVisitorsVisibleInConversation:updatedConversation];
+    }
+    if ([keys containsObject:ZMConversationIsMessageVisibleOnlyManagerAndCreatorKey]) {
+        request = [self requestForUpdatingIsMessageVisibleOnlyManagerAndCreatorInConversation:updatedConversation];
+    }
+    if ([keys containsObject:ZMConversationAnnouncementKey]) {
+        request = [self requestForUpdatingAnnouncementInConversation:updatedConversation];
+    }
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationSilencedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationIsPlacedTopKey])) {
@@ -1159,6 +1184,43 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     NSString *path = [NSString pathWithComponents:@[ConversationsPath, conversation.remoteIdentifier.transportString, @"update"]];
     ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationManagerDelKey] transportRequest:request userInfo:nil];
+}
+
+/// 邀请人列表是否可见 请求
+- (ZMUpstreamRequest *)requestForUpdatingIsVisitorsVisibleInConversation:(ZMConversation *)conversation
+{
+    NSString *remoteIdComponent = conversation.remoteIdentifier.transportString;
+    Require(remoteIdComponent != nil);
+    NSDictionary *payload = @{ ZMConversationInfoIsVisitorsVisibleKey : @(conversation.isVisitorsVisible) };
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, remoteIdComponent, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    [request expireAfterInterval:ZMTransportRequestDefaultExpirationInterval];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationIsVisitorsVisibleKey] transportRequest:request];
+}
+
+/// 消息可见性 请求
+/// 管理员发消息所有人可见，群成员发消息只有管理和群主可见
+- (ZMUpstreamRequest *)requestForUpdatingIsMessageVisibleOnlyManagerAndCreatorInConversation:(ZMConversation *)conversation
+{
+    NSString *remoteIdComponent = conversation.remoteIdentifier.transportString;
+    Require(remoteIdComponent != nil);
+    NSDictionary *payload = @{ ZMConversationInfoIsMessageVisibleOnlyManagerAndCreatorKey : @(conversation.isMessageVisibleOnlyManagerAndCreator) };
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, remoteIdComponent, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    [request expireAfterInterval:ZMTransportRequestDefaultExpirationInterval];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationIsMessageVisibleOnlyManagerAndCreatorKey] transportRequest:request];
+}
+    
+/// 群公告 请求
+- (ZMUpstreamRequest *)requestForUpdatingAnnouncementInConversation:(ZMConversation *)conversation
+{
+    NSString *remoteIdComponent = conversation.remoteIdentifier.transportString;
+    Require(remoteIdComponent != nil);
+    NSDictionary *payload = @{ ZMConversationInfoAnnouncementKey : conversation.announcement };
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, remoteIdComponent, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    [request expireAfterInterval:ZMTransportRequestDefaultExpirationInterval];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationAnnouncementKey] transportRequest:request];
 }
 
 - (ZMUpstreamRequest *)requestForInsertingObject:(ZMManagedObject *)managedObject forKeys:(NSSet *)keys;
