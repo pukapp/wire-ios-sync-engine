@@ -172,7 +172,7 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
     }
     
     public func request(forInserting managedObject: ZMManagedObject, forKeys keys: Set<String>?) -> ZMUpstreamRequest? {
-        guard let client = managedObject as? UserClient else { fatal("Called requestForInsertingObject() on \(managedObject.privateDescription)") }
+        guard let client = managedObject as? UserClient else { fatal("Called requestForInsertingObject() on \(managedObject.safeForLoggingDescription)") }
         return try? requestsFactory.registerClientRequest(
                 client,
                 credentials: clientRegistrationStatus?.emailCredentials,
@@ -191,7 +191,7 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
                 if didRetryRegisteringSignalingKeys {
                     (managedObject as? UserClient)?.needsToUploadSignalingKeys = false
                     managedObjectContext?.saveOrRollback()
-                    fatal("UserClientTranscoder sigKey request failed with bad-request - \(upstreamRequest.transportRequest.privateDescription)")
+                    fatal("UserClientTranscoder sigKey request failed with bad-request - \(upstreamRequest.transportRequest.safeForLoggingDescription)")
                 }
                 didRetryRegisteringSignalingKeys = true
                 return true
@@ -238,7 +238,7 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
             clientRegistrationStatus?.didRegister(client)
         }
         else {
-            fatal("Called updateInsertedObject() on \(managedObject.privateDescription)")
+            fatal("Called updateInsertedObject() on \(managedObject.safeForLoggingDescription)")
         }
     }
     
@@ -375,21 +375,28 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
     }
             
     fileprivate func processUpdateEvent(_ event: ZMUpdateEvent) {
-        if event.type != .userClientAdd && event.type != .userClientRemove {
-            return
+        switch event.type {
+        case .userClientAdd, .userClientRemove:
+            processClientListUpdateEvent(event)
+        default:
+            break
         }
+    }
+
+    fileprivate func processClientListUpdateEvent(_ event: ZMUpdateEvent) {
         guard let clientInfo = event.payload["client"] as? [String: AnyObject] else {
             zmLog.error("Client info has unexpected payload")
             return
         }
         guard let moc = self.managedObjectContext else { return }
-        
+
         let selfUser = ZMUser.selfUser(in: moc)
-        
+
         switch event.type {
         case .userClientAdd:
             if let client = UserClient.createOrUpdateSelfUserClient(clientInfo, context: moc) {
-                selfUser.selfClient()?.addNewClientToIgnored(client, causedBy: .none)
+                selfUser.selfClient()?.addNewClientToIgnored(client)
+                selfUser.selfClient()?.updateSecurityLevelAfterDiscovering(Set(arrayLiteral: client))
             }
         case .userClientRemove:
             let selfClientId = selfUser.selfClient()?.remoteIdentifier
@@ -403,7 +410,6 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
                 clientRegistrationStatus?.didDetectCurrentClientDeletion()
                 clientUpdateStatus?.didDetectCurrentClientDeletion()
             }
-            
         default: break
         }
     }

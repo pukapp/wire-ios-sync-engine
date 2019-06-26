@@ -63,8 +63,7 @@ NSString *const UserMomentAdd = @"UserMomentAdd";
 
 - (ZMStrategyConfigurationOption)configuration
 {
-    return ZMStrategyConfigurationOptionAllowsRequestsDuringEventProcessing
-         | ZMStrategyConfigurationOptionAllowsRequestsDuringSync
+    return ZMStrategyConfigurationOptionAllowsRequestsDuringSync
          | ZMStrategyConfigurationOptionAllowsRequestsDuringEventProcessing;
 }
 
@@ -166,11 +165,11 @@ NSString *const UserMomentAdd = @"UserMomentAdd";
            liveEvents:(BOOL)liveEvents
        prefetchResult:(__unused ZMFetchRequestBatchResult *)prefetchResult;
 {
-    if(!liveEvents) {
+    if (!liveEvents) {
         return;
     }
     
-    for(ZMUpdateEvent *event in events) {
+    for (ZMUpdateEvent *event in events) {
         [self processUpdateEvent:event];
     }
 }
@@ -222,6 +221,7 @@ NSString *const UserMomentAdd = @"UserMomentAdd";
     
     return;
 }
+
 
 - (NSArray *)fetchConnectedUsersInContext:(NSManagedObjectContext *)context
 {

@@ -90,9 +90,9 @@ class AccountStatusTests : MessagingTest {
         XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
         
         // then
-        XCTAssertEqual(oneOnOne.messages.count, 0)
-        XCTAssertEqual(group.messages.count, 0)
-        XCTAssertEqual(connection.messages.count, 0)
+        XCTAssertEqual(oneOnOne.allMessages.count, 0)
+        XCTAssertEqual(group.allMessages.count, 0)
+        XCTAssertEqual(connection.allMessages.count, 0)
         
         XCTAssertEqual(self.sut.accountState, AccountState.activated)
     }
@@ -124,10 +124,11 @@ class AccountStatusTests : MessagingTest {
         XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
 
         // then
-        XCTAssertEqual(oneOnOne.messages.count, 1)
-        XCTAssertEqual(group.messages.count, 1)
-        XCTAssertEqual(connection.messages.count, 0)
-        if let oneOnOneMsg = oneOnOne.messages.lastObject as? ZMSystemMessage, let groupMsg = oneOnOne.messages.lastObject as? ZMSystemMessage {
+        XCTAssertEqual(oneOnOne.allMessages.count, 1)
+        XCTAssertEqual(group.allMessages.count, 1)
+        XCTAssertEqual(connection.allMessages.count, 0)
+        if let oneOnOneMsg = oneOnOne.lastMessage as? ZMSystemMessage,
+            let groupMsg = oneOnOne.lastMessage as? ZMSystemMessage {
             XCTAssertEqual(oneOnOneMsg.systemMessageType, ZMSystemMessageType.usingNewDevice)
             XCTAssertEqual(groupMsg.systemMessageType, ZMSystemMessageType.usingNewDevice)
         } else {
@@ -159,10 +160,10 @@ class AccountStatusTests : MessagingTest {
         XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
         
         // then
-        XCTAssertEqual(oneOnOne.messages.count, 1)
-        XCTAssertEqual(group.messages.count, 1)
-        XCTAssertEqual(connection.messages.count, 0)
-        if let oneOnOneMsg = oneOnOne.messages.lastObject as? ZMSystemMessage, let groupMsg = oneOnOne.messages.lastObject as? ZMSystemMessage {
+        XCTAssertEqual(oneOnOne.allMessages.count, 1)
+        XCTAssertEqual(group.allMessages.count, 1)
+        XCTAssertEqual(connection.allMessages.count, 0)
+        if let oneOnOneMsg = oneOnOne.lastMessage as? ZMSystemMessage, let groupMsg = oneOnOne.lastMessage as? ZMSystemMessage {
             XCTAssertEqual(oneOnOneMsg.systemMessageType, ZMSystemMessageType.reactivatedDevice)
             XCTAssertEqual(groupMsg.systemMessageType, ZMSystemMessageType.reactivatedDevice)
         } else {

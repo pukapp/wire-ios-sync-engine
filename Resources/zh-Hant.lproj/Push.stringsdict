@@ -90,7 +90,7 @@
     <key>push.notification.knock.group</key>
     <dict>
       <key>NSStringLocalizedFormatKey</key>
-      <string>%1$@曾招呼%2$#@new_knocks@次</string>
+      <string>%1$@曾招呼%2$#@new_knocks@</string>
       <key>new_knocks</key>
       <dict>
         <key>NSStringFormatSpecTypeKey</key>
@@ -98,13 +98,13 @@
         <key>NSStringFormatValueTypeKey</key>
         <string>@</string>
         <key>other</key>
-        <string> %2$@ times </string>
+        <string>%2$@次</string>
       </dict>
     </dict>
     <key>push.notification.knock.group.noconversationname</key>
     <dict>
       <key>NSStringLocalizedFormatKey</key>
-      <string>在對話%1$@中曾招呼%2$#@new_knocks@次</string>
+      <string>在對話%1$@中曾招呼%2$#@new_knocks@</string>
       <key>new_knocks</key>
       <dict>
         <key>NSStringFormatSpecTypeKey</key>
@@ -112,7 +112,7 @@
         <key>NSStringFormatValueTypeKey</key>
         <string>@</string>
         <key>other</key>
-        <string> %2$@ times </string>
+        <string>%2$@次</string>
       </dict>
     </dict>
     <key>push.notification.knock.group.nousername</key>
@@ -154,7 +154,7 @@
         <key>NSStringFormatValueTypeKey</key>
         <string>@</string>
         <key>other</key>
-        <string> %1$@ times</string>
+        <string>%1$@次</string>
       </dict>
     </dict>
     <key>push.notification.knock.oneonone.nousername</key>

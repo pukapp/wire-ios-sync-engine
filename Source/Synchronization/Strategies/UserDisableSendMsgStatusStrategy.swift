@@ -131,7 +131,7 @@ public final class UserDisableSendMsgStatusStrategy: ZMObjectSyncStrategy, ZMObj
             status.needUpload = false
         }
         else {
-            fatal("Called updateInsertedObject() on \(managedObject.privateDescription)")
+            fatal("Called updateInsertedObject() on \(managedObject.description)")
         }
     }
     
@@ -177,7 +177,6 @@ public final class UserDisableSendMsgStatusStrategy: ZMObjectSyncStrategy, ZMObj
         guard let context = self.managedObjectContext else {return}
         guard let systemMessage = ZMSystemMessage.createOrUpdate(from: event, in: context) else {return}
         self.dispatcher.process(systemMessage)
-        inConversation.resortMessages(withUpdatedMessage: systemMessage)
     }
     
 }

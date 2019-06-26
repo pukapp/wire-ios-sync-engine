@@ -55,6 +55,11 @@ static NSString *const ConversationAccessRoleKey = @"access_role";
 static NSString *const ConversationTeamIdKey = @"teamid";
 static NSString *const ConversationTeamManagedKey = @"managed";
 
+typedef NS_ENUM(NSUInteger, ZMConversationSource) {
+    ZMConversationSourceUpdateEvent,
+    ZMConversationSourceSlowSync
+};
+
 @interface ZMConversationTranscoder () <ZMSimpleListRequestPaginatorSync>
 
 @property (nonatomic) ZMUpstreamModifiedObjectSync *modifiedSync;
@@ -128,8 +133,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 - (ZMStrategyConfigurationOption)configuration
 {
     return ZMStrategyConfigurationOptionAllowsRequestsDuringSync
-         | ZMStrategyConfigurationOptionAllowsRequestsDuringEventProcessing
-         | ZMStrategyConfigurationOptionAllowsRequestsDuringNotificationStreamFetch;
+         | ZMStrategyConfigurationOptionAllowsRequestsDuringEventProcessing;
 }
 
 // 只有加入key才能发送请求
@@ -212,7 +216,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     
     for (ZMConversation *inactiveConversation in inactiveConversations) {
         if (inactiveConversation.conversationType == ZMConversationTypeGroup) {
-            [inactiveConversation internalRemoveParticipants:[NSSet setWithObject:selfUser] sender:selfUser];
+            [inactiveConversation internalRemoveParticipants:@[selfUser] sender:selfUser];
         }
     }
 }
@@ -253,6 +257,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
 - (ZMConversation *)createConversationFromTransportData:(NSDictionary *)transportData
                                         serverTimeStamp:(NSDate *)serverTimeStamp
+                                                 source:(ZMConversationSource)source
 {
     // If the conversation is not a group conversation, we need to make sure that we check if there's any existing conversation without a remote identifier for that user.
     // If it is a group conversation, we don't need to.
@@ -260,10 +265,11 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     NSNumber *typeNumber = [transportData numberForKey:@"type"];
     VerifyReturnNil(typeNumber != nil);
     ZMConversationType const type = [ZMConversation conversationTypeFromTransportData:typeNumber];
+
     if (type == ZMConversationTypeGroup  ||
         type == ZMConversationTypeHugeGroup ||
         type == ZMConversationTypeSelf) {
-        return [self createGroupOrSelfConversationFromTransportData:transportData serverTimeStamp:serverTimeStamp];
+        return [self createGroupOrSelfConversationFromTransportData:transportData serverTimeStamp:serverTimeStamp source: source];
     } else {
         return [self createOneOnOneConversationFromTransportData:transportData type:type serverTimeStamp:serverTimeStamp];
     }
@@ -271,6 +277,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
 - (ZMConversation *)createGroupOrSelfConversationFromTransportData:(NSDictionary *)transportData
                                                    serverTimeStamp:(NSDate *)serverTimeStamp
+                                                            source:(ZMConversationSource)source
 {
     NSUUID * const convRemoteID = [transportData uuidForKey:@"id"];
     if(convRemoteID == nil) {
@@ -283,8 +290,12 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     
     if (conversation.conversationType != ZMConversationTypeSelf && conversationCreated) {
         // we just got a new conversation, we display new conversation header
-        [conversation appendNewConversationSystemMessageIfNeeded];
-        [self.managedObjectContext enqueueDelayedSave];
+        [conversation appendNewConversationSystemMessageAtTimestamp:serverTimeStamp users:conversation.activeParticipants];
+        
+        if (source == ZMConversationSourceSlowSync) {
+             // Slow synced conversations should be considered read from the start
+            conversation.lastReadServerTimeStamp = conversation.lastModifiedDate;
+        }
     }
     return conversation;
 }
@@ -373,6 +384,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationUpdate:
         case ZMUpdateEventTypeConversationUpdateBlockTime:
         case ZMUpdateEventTypeConversationServiceNotify:
+        case ZMUpdateEventTypeConversationReceiptModeUpdate:
             return YES;
         default:
             return NO;
@@ -413,7 +425,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         return;
     }
     NSDate *serverTimestamp = [event.payload dateForKey:@"time"];
-    [self createConversationFromTransportData:payloadData serverTimeStamp:serverTimestamp];
+    [self createConversationFromTransportData:payloadData serverTimeStamp:serverTimestamp source:ZMConversationSourceUpdateEvent];
 }
 
 - (ZMConversation *)createConversationAndJoinMemberFromEvent:(ZMUpdateEvent *)event {
@@ -439,7 +451,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         NSUUID * const userId = [payloadData uuidForKey:@"from"];
         ZMUser *user = [ZMUser userWithRemoteID:userId createIfNeeded:YES inContext:self.managedObjectContext];
         user.needsToBeUpdatedFromBackend = true;
-        [conversation internalAddParticipants:[NSSet setWithObject:user]];
+        [conversation internalAddParticipants:@[user]];
         user.connection.conversation = conversation;
     }
     return conversation;
@@ -595,6 +607,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationServiceNotify:
             [self processConversationServiceNotifyEvent:event forConversation:conversation];
             break;
+        case ZMUpdateEventTypeConversationReceiptModeUpdate:
+            [self processReceiptModeUpdate:event inConversation:conversation lastServerTimestamp:previousLastServerTimestamp];
         default:
             break;
     }
@@ -679,7 +693,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     
     ZMUser *selfUser = [ZMUser selfUserInContext:self.managedObjectContext];
     
-    if (![users isSubsetOfSet:conversation.activeParticipants.set] || (selfUser && [users intersectsSet:[NSSet setWithObject:selfUser]])) {
+    if (![users isSubsetOfSet:conversation.activeParticipants] || (selfUser && [users intersectsSet:[NSSet setWithObject:selfUser]])) {
         [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
     }
     // 群成员数量
@@ -693,7 +707,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
     
     for (ZMUser *user in users) {
-        [conversation internalAddParticipants:[NSSet setWithObject:user]];
+        [conversation internalAddParticipants:@[user]];
     }
 }
 
@@ -708,7 +722,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
     ZMLogDebug(@"processMemberLeaveEvent (%@) leaving users.count = %lu", conversation.remoteIdentifier.transportString, (unsigned long)users.count);
     
-    if ([users intersectsSet:conversation.activeParticipants.set]) {
+    if ([users intersectsSet:conversation.activeParticipants]) {
         [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
     }
     // 群成员数量
@@ -722,7 +736,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
 
     for (ZMUser *user in users) {
-        [conversation internalRemoveParticipants:[NSSet setWithObject:user] sender:sender];
+        [conversation internalRemoveParticipants:@[user] sender:sender];
     }
 }
 
@@ -935,17 +949,16 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     
     if (systemMessage != nil) {
         [self.localNotificationDispatcher processMessage:systemMessage];
-        [conversation resortMessagesWithUpdatedMessage:systemMessage];
     }
 }
 
-- (void)appendSystemMessageForUpdateEvent:(ZMUpdateEvent *)event inConversation:(ZMConversation *)conversation
+
+- (void)appendSystemMessageForUpdateEvent:(ZMUpdateEvent *)event inConversation:(ZMConversation * ZM_UNUSED)conversation
 {
     ZMSystemMessage *systemMessage = [ZMSystemMessage createOrUpdateMessageFromUpdateEvent:event inManagedObjectContext:self.managedObjectContext];
     
     if (systemMessage != nil) {
         [self.localNotificationDispatcher processMessage:systemMessage];
-        [conversation resortMessagesWithUpdatedMessage:systemMessage];
     }
 }
 
@@ -1238,16 +1251,19 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }];
     
     NSMutableDictionary *payload = [@{ @"users" : participantUUIDs } mutableCopy];
-    if(insertedConversation.userDefinedName != nil) {
+    if (insertedConversation.userDefinedName != nil) {
         payload[@"name"] = insertedConversation.userDefinedName;
     }
-    
     ///新增应用参数
     payload[@"top_apps"] = [insertedConversation.topapps componentsSeparatedByString: @","];
 
     // 万人群type=5, 其他群不传type
     if (insertedConversation.conversationType == ZMConversationTypeHugeGroup) {
         payload[@"type"] = [NSNumber numberWithInteger: 5];
+    }
+    
+    if (insertedConversation.hasReadReceiptsEnabled) {
+        payload[@"receipt_mode"] = @(1);
     }
 
     if (insertedConversation.team.remoteIdentifier != nil) {
@@ -1421,7 +1437,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     // Self user has been removed from the group conversation but missed the conversation.member-leave event.
     if (response.HTTPStatus == 404 && conversation.conversationType == ZMConversationTypeGroup && conversation.isSelfAnActiveMember) {
         ZMUser *selfUser = [ZMUser selfUserInContext:self.managedObjectContext];
-        [conversation internalRemoveParticipants:[NSSet setWithObject:selfUser] sender:selfUser];
+        [conversation internalRemoveParticipants:@[selfUser] sender:selfUser];
     }
     
     if (response.isPermanentylUnavailableError) {
@@ -1464,7 +1480,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     NSArray *conversations = [payload arrayForKey:@"conversations"];
     
     for (NSDictionary *rawConversation in [conversations asDictionaries]) {
-        ZMConversation *conversation = [self createConversationFromTransportData:rawConversation serverTimeStamp:nil];
+        ZMConversation *conversation = [self createConversationFromTransportData:rawConversation serverTimeStamp:[NSDate date] source:ZMConversationSourceSlowSync];
         conversation.needsToBeUpdatedFromBackend = NO;
         
         if (conversation != nil) {

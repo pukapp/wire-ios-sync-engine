@@ -32,11 +32,14 @@
     [super setUp];
     self.testFiles = [NSMutableArray array];
     [self setupGroupConversationWithOnlyConnectedParticipants];
-    self.receivedConversationWindowChangeNotifications = [NSMutableArray array];
+
+    BackgroundActivityFactory.sharedFactory.activityManager = UIApplication.sharedApplication;
 }
 
 - (void)tearDown
 {
+    BackgroundActivityFactory.sharedFactory.activityManager = nil;
+
     [self.userSession.syncManagedObjectContext performGroupedBlockAndWait:^{
         [self.userSession.syncManagedObjectContext zm_teardownMessageObfuscationTimer];
     }];
@@ -45,7 +48,6 @@
     [self.userSession.managedObjectContext zm_teardownMessageDeletionTimer];
     XCTAssert([self waitForAllGroupsToBeEmptyWithTimeout: 0.5]);
     self.groupConversationWithOnlyConnected = nil;
-    self.receivedConversationWindowChangeNotifications = nil;
 
     for (NSURL *testFile in self.testFiles) {
         [NSFileManager.defaultManager removeItemAtURL:testFile error:nil];
@@ -119,11 +121,6 @@
     
     ZMConversation *conversation = [self conversationForMockConversation:mockConversation];
     
-    // Make sure this relationship is not a fault:
-    for (id obj in conversation.messages) {
-        (void) obj;
-    }
-    
     // when
     ConversationChangeObserver *observer = [[ConversationChangeObserver alloc] initWithConversation:conversation];
     [observer clearNotifications];
@@ -141,7 +138,6 @@
     XCTAssertNotNil(note);
     XCTAssertTrue(note.messagesChanged);
     XCTAssertFalse(note.participantsChanged);
-    XCTAssertFalse(note.nameChanged);
     XCTAssertTrue(note.lastModifiedDateChanged);
     if(!ignoreLastRead) {
         XCTAssertTrue(note.unreadCountChanged);
@@ -172,11 +168,6 @@
     WaitForAllGroupsToBeEmpty(0.5);
     ZMConversation *conversation = [self conversationForMockConversation:mockConversation];
     
-    // Make sure this relationship is not a fault:
-    for (id obj in conversation.messages) {
-        (void) obj;
-    }
-    
     // when
     ConversationChangeObserver *observer = [[ConversationChangeObserver alloc] initWithConversation:conversation];
     [observer clearNotifications];
@@ -195,7 +186,7 @@
 {
     BOOL hasAllMessages = YES;
     for (NSUUID *nonce in nonces) {
-        BOOL hasMessageWithNonce = [conversation.messages.array containsObjectMatchingWithBlock:^BOOL(ZMMessage *msg) {
+        BOOL hasMessageWithNonce = [conversation.allMessages.allObjects containsObjectMatchingWithBlock:^BOOL(ZMMessage *msg) {
             return [msg.nonce isEqual:nonce];
         }];
         hasAllMessages &= hasMessageWithNonce;
@@ -211,11 +202,6 @@
     XCTAssertTrue([self login]);
     
     ZMConversation *conversation = [self conversationForMockConversation:mockConversation];
-    
-    // Make sure this relationship is not a fault:
-    for (id obj in conversation.messages) {
-        (void) obj;
-    }
     
     // when
     ConversationChangeObserver *observer = [[ConversationChangeObserver alloc] initWithConversation:conversation];
@@ -241,28 +227,6 @@
     // then
     verifyConversation(conversation);
     
-}
-
-- (MockConversationWindowObserver *)windowObserverAfterLogginInAndInsertingMessagesInMockConversation:(MockConversation *)mockConversation;
-{
-    XCTAssertTrue([self login]);
-    ZMConversation *conversation = [self conversationForMockConversation:mockConversation];
-    
-    const int MESSAGES = 10;
-    const NSUInteger WINDOW_SIZE = 5;
-    for(int i = 0; i < MESSAGES; ++i)
-    {
-        [self.userSession performChanges:^{ // I save multiple times so that it is inserted in the mocktransportsession in the order I expect
-            NSString *text = [NSString stringWithFormat:@"Message %d", i+1];
-            [conversation appendMessageWithText:text];
-        }];
-        WaitForAllGroupsToBeEmpty(0.5);
-    }
-    
-    [conversation markAsRead];
-    MockConversationWindowObserver *observer = [[MockConversationWindowObserver alloc] initWithConversation:conversation size:WINDOW_SIZE];
-    
-    return observer;
 }
 
 @end

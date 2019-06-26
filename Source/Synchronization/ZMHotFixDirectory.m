@@ -146,6 +146,42 @@ static NSString* ZMLogTag ZM_UNUSED = @"HotFix";
                      patchCode:^(NSManagedObjectContext *context) {
                          [ZMHotFixDirectory refetchAllConversations:context];
                      }],
+                    
+                    /// We need to refetch all group conversations and the self-user-read-receipt setting after the introduction of read receipts.
+                    [ZMHotFixPatch
+                     patchWithVersion:@"213.1.4"
+                     patchCode:^(NSManagedObjectContext *context) {
+                         [ZMHotFixDirectory refetchUserProperties:context];
+                         [ZMHotFixDirectory refetchGroupConversations:context];
+                     }],
+                    
+                    /// We need to mark all .newConversation system messages as read after we start to treat them as a readable message
+                    [ZMHotFixPatch
+                     patchWithVersion:@"230.0.0"
+                     patchCode:^(NSManagedObjectContext *context) {
+                         [ZMHotFixDirectory markAllNewConversationSystemMessagesAsRead:context];
+                     }],
+
+                    /// We need to refetch the managedBy flag of the user after the backend release.
+                    [ZMHotFixPatch
+                     patchWithVersion:@"235.0.1"
+                     patchCode:^(NSManagedObjectContext *context) {
+                         [ZMHotFixDirectory refetchSelfUser:context];
+                     }],
+                    
+                    /// We need to refetch the team members after createdBy and createdAt fields were introduced
+                    [ZMHotFixPatch
+                     patchWithVersion:@"238.0.1"
+                     patchCode:^(NSManagedObjectContext *context) {
+                         [ZMHotFixDirectory refetchTeamMembers:context];
+                     }],
+                    
+                    /// We need to refetch the users after email field was introduced
+                    [ZMHotFixPatch
+                     patchWithVersion:@"249.0.3"
+                     patchCode:^(NSManagedObjectContext *context) {
+                         [ZMHotFixDirectory refetchUsers:context];
+                     }],
                     ];
     });
     return patches;

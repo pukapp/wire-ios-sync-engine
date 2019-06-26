@@ -21,8 +21,6 @@ import CallKit
 import Intents
 import avs
 
-private let zmLog = ZMSLog(tag: "calling")
-
 private let identifierSeparator : Character = "+"
 
 private struct CallKitCall {
@@ -77,7 +75,11 @@ public class CallKitDelegate : NSObject {
         provider.invalidate()
     }
     
-    public static var providerConfiguration : CXProviderConfiguration {
+    public func updateConfiguration() {
+        provider.configuration = CallKitDelegate.providerConfiguration
+    }
+    
+    internal static var providerConfiguration : CXProviderConfiguration {
         
         let localizedName = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "Secret"
         let configuration = CXProviderConfiguration(localizedName: localizedName)
@@ -219,6 +221,8 @@ extension CallKitDelegate {
         let endCallActions = actionsToEndAllOngoingCalls(exceptIn: conversation)
         let transaction = CXTransaction(actions: endCallActions + [action])
         
+        log("request CXStartCallAction")
+        
         callController.request(transaction) { [weak self] (error) in
             if let error = error as? CXErrorCodeRequestTransactionError, error.code == .callUUIDAlreadyExists {
                 self?.requestAnswerCall(in: conversation, video: video)
@@ -236,6 +240,8 @@ extension CallKitDelegate {
         let endPreviousActions = actionsToEndAllOngoingCalls(exceptIn: conversation)
         let transaction = CXTransaction(actions: endPreviousActions + [action])
         
+        log("request CXAnswerCallAction")
+        
         callController.request(transaction) { [weak self] (error) in
             if let error = error {
                 self?.log("Cannot answer call: \(error)")
@@ -243,21 +249,25 @@ extension CallKitDelegate {
         }
     }
     
-    func requestEndCall(in conversation: ZMConversation) {
+    func requestEndCall(in conversation: ZMConversation, completion: (()->())? = nil) {
         guard let callUUID = callUUID(for: conversation) else { return }
         
         let action = CXEndCallAction(call: callUUID)
         let transaction = CXTransaction(action: action)
+        
+        log("request CXEndCallAction")
         
         callController.request(transaction) { [weak self] (error) in
             if let error = error {
                 self?.log("Cannot end call: \(error)")
                 conversation.voiceChannel?.leave()
             }
+            completion?()
         }
     }
     
     func reportIncomingCall(from user: ZMUser, in conversation: ZMConversation, video: Bool) {
+        
         guard let handle = conversation.callKitHandle else {
             return log("Cannot report incoming call: conversation is missing handle")
         }
@@ -277,6 +287,8 @@ extension CallKitDelegate {
         
         let callUUID = UUID()
         calls[callUUID] = CallKitCall(conversation: conversation)
+        
+        log("provider.reportNewIncomingCall")
         
         provider.reportNewIncomingCall(with: callUUID, update: update) { [weak self] (error) in
             if let error = error {
@@ -443,7 +455,7 @@ extension CallKitDelegate : WireCallCenterCallStateObserver, WireCallCenterMisse
         switch callState {
         case .incoming(video: let video, shouldRing: let shouldRing, degraded: _):
             if shouldRing {
-                if conversation.mutedMessageTypes == .none {
+                if conversation.mutedMessageTypesIncludingAvailability == .none {
                     reportIncomingCall(from: caller, in: conversation, video: video)
                 }
             } else {
@@ -548,7 +560,7 @@ class CallObserver : WireCallCenterCallStateObserver {
         switch callState {
         case .answered(degraded: false):
             onAnswered?()
-        case .establishedDataChannel:
+        case .establishedDataChannel, .established:
             onEstablished?()
         case .terminating(reason: let reason):
             switch reason {

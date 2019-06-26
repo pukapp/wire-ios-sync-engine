@@ -60,11 +60,10 @@ final class MockAuthenticatedSessionFactory: AuthenticatedSessionFactory {
 
     let transportSession: ZMTransportSession
 
-    init(apnsEnvironment: ZMAPNSEnvironment?, application: ZMApplication, mediaManager: AVSMediaManager, flowManager: FlowManagerType, transportSession: ZMTransportSession, environment: BackendEnvironment, reachability: ReachabilityProvider & TearDownCapable) {
+    init(application: ZMApplication, mediaManager: AVSMediaManager, flowManager: FlowManagerType, transportSession: ZMTransportSession, environment: BackendEnvironmentProvider, reachability: ReachabilityProvider & TearDownCapable) {
         self.transportSession = transportSession
         super.init(
             appVersion: "0.0.0",
-            apnsEnvironment: apnsEnvironment,
             application: application,
             mediaManager: mediaManager,
             flowManager: flowManager,
@@ -80,7 +79,6 @@ final class MockAuthenticatedSessionFactory: AuthenticatedSessionFactory {
             flowManager: flowManager,
             analytics: analytics,
             transportSession: transportSession,
-            apnsEnvironment: apnsEnvironment,
             application: application,
             appVersion: appVersion,
             storeProvider: storeProvider
@@ -93,7 +91,7 @@ final class MockUnauthenticatedSessionFactory: UnauthenticatedSessionFactory {
 
     let transportSession: UnauthenticatedTransportSessionProtocol
     
-    init(transportSession: UnauthenticatedTransportSessionProtocol, environment: BackendEnvironment, reachability: ReachabilityProvider) {
+    init(transportSession: UnauthenticatedTransportSessionProtocol, environment: BackendEnvironmentProvider, reachability: ReachabilityProvider) {
         self.transportSession = transportSession
         super.init(environment: environment, reachability: reachability)
     }
@@ -125,11 +123,26 @@ extension IntegrationTest {
         WireCallCenterV3Factory.wireCallCenterClass = WireCallCenterV3IntegrationMock.self
         mockTransportSession.cookieStorage.deleteKeychainItems()
                 
-        createSessionManager()
+        createSessionManager()        
+    }
+    
+    func setupTimers() {
+        userSession?.syncManagedObjectContext.performGroupedAndWait() {
+            $0.zm_createMessageObfuscationTimer()
+        }
+        userSession?.managedObjectContext.zm_createMessageDeletionTimer()
+    }
+    
+    func destroyTimers() {
+        userSession?.syncManagedObjectContext.performGroupedAndWait() { 
+            $0.zm_teardownMessageObfuscationTimer()
+        }
+        userSession?.managedObjectContext.zm_teardownMessageDeletionTimer()
     }
     
     @objc
     func _tearDown() {
+        destroyTimers()
         sharedSearchDirectory?.tearDown()
         sharedSearchDirectory = nil
         userSession = nil
@@ -170,6 +183,7 @@ extension IntegrationTest {
     
     @objc
     func destroySessionManager() {
+        destroyTimers()
         userSession?.tearDown()
         userSession = nil
         sessionManager = nil
@@ -209,11 +223,10 @@ extension IntegrationTest {
     func createSessionManager() {
         guard let mediaManager = mediaManager, let application = application, let transportSession = transportSession else { return XCTFail() }
         StorageStack.shared.createStorageAsInMemory = useInMemoryStore
-        let environment = BackendEnvironment(type: .wire(.staging))
+        let environment = MockEnvironment()
         let reachability = TestReachability()
         let unauthenticatedSessionFactory = MockUnauthenticatedSessionFactory(transportSession: transportSession as! UnauthenticatedTransportSessionProtocol, environment: environment, reachability: reachability)
         let authenticatedSessionFactory = MockAuthenticatedSessionFactory(
-            apnsEnvironment: apnsEnvironment,
             application: application,
             mediaManager: mediaManager,
             flowManager: FlowManagerMock(),
@@ -262,7 +275,7 @@ extension IntegrationTest {
     var unauthenticatedSession : UnauthenticatedSession? {
         return sessionManager?.unauthenticatedSession
     }
-    
+
     @objc
     func createSelfUserAndConversation() {
         
@@ -285,7 +298,7 @@ extension IntegrationTest {
         
         XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
     }
-    
+
     @objc
     func createExtraUsersAndConversations() {
         
@@ -478,7 +491,7 @@ extension IntegrationTest {
     func establishSession(with mockUser: MockUser) {
         mockTransportSession.performRemoteChanges({ session in
             if mockUser.clients.count == 0 {
-                session.registerClient(for: mockUser, label: "Wire for MS-DOS", type: "permanent")
+                session.registerClient(for: mockUser)
             }
             
             for client in mockUser.clients {
@@ -594,6 +607,8 @@ extension IntegrationTest : SessionManagerDelegate {
         userSession.syncManagedObjectContext.performGroupedBlock {
             userSession.syncManagedObjectContext.setPersistentStoreMetadata(NSNumber(value: true), key: ZMSkipHotfix)
         }
+        
+        setupTimers()
     }
     
     public func sessionManagerWillMigrateLegacyAccount() {
@@ -604,9 +619,9 @@ extension IntegrationTest : SessionManagerDelegate {
         // no-op
     }
     
-    public func sessionManagerWillLogout(error: Error?, userSessionCanBeTornDown: @escaping () -> Void) {
+    public func sessionManagerWillLogout(error: Error?, userSessionCanBeTornDown: (() -> Void)?) {
         self.userSession = nil
-        userSessionCanBeTornDown()
+        userSessionCanBeTornDown?()
     }
 
     public func sessionManagerDidBlacklistCurrentVersion() {

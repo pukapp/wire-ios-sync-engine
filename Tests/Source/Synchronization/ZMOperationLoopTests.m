@@ -279,7 +279,6 @@
     [[[self.transportSession expect] andReturn:resultYES] attemptToEnqueueSyncRequestWithGenerator:[OCMArg checkWithBlock:checkGenerator]];
     [[[self.transportSession expect] andReturn:resultNO] attemptToEnqueueSyncRequestWithGenerator:OCMOCK_ANY];
     [[[self.transportSession expect] andReturn:resultNO] attemptToEnqueueSyncRequestWithGenerator:OCMOCK_ANY];
-    [[[self.transportSession expect] andReturn:resultNO] attemptToEnqueueSyncRequestWithGenerator:OCMOCK_ANY];
     [ZMRequestAvailableNotification notifyNewRequestsAvailable:self]; // this will enqueue `request`
     WaitForAllGroupsToBeEmpty(0.5);
     
@@ -948,7 +947,7 @@
     WaitForAllGroupsToBeEmpty(1.0);
     
     // when
-    [self.pushNotificationStatus didFetchEventIds:@[notificationID] finished:YES];
+    [self.pushNotificationStatus didFetchEventIds:@[notificationID] lastEventId:notificationID finished:YES];
     
     XCTAssertTrue([self waitForCustomExpectationsWithTimeout:0.5]);
 }
@@ -973,7 +972,7 @@
     
     // when
     [self.callEventStatus scheduledCallEventForProcessing];
-    [self.pushNotificationStatus didFetchEventIds:@[notificationID] finished:YES];
+    [self.pushNotificationStatus didFetchEventIds:@[notificationID] lastEventId:notificationID finished:YES];
     WaitForAllGroupsToBeEmpty(1.0);
     
     XCTAssertFalse(completionHandlerHasBeenCalled);

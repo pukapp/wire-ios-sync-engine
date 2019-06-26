@@ -54,8 +54,6 @@ extension TeamDownloadRequestStrategy: ZMEventConsumer {
         case .teamMemberJoin: processAddedMember(with: event)
         case .teamMemberLeave: processRemovedMember(with: event)
         case .teamMemberUpdate: processUpdatedMember(with: event)
-        case .teamConversationCreate: createTeamConversation(with: event)
-        case .teamConversationDelete: deleteTeamConversation(with: event)
         // Note: "conversation-delete" is not handled yet, 
         // cf. disabled_testThatItDeletesALocalTeamConversationInWhichSelfIsAGuest in TeamDownloadRequestStrategy_EventsTests
         default: break
@@ -98,18 +96,12 @@ extension TeamDownloadRequestStrategy: ZMEventConsumer {
         guard let removedUserId = (data[TeamEventPayloadKey.user.rawValue] as? String).flatMap(UUID.init) else { return }
         guard let user = ZMUser(remoteID: removedUserId, createIfNeeded: false, in: managedObjectContext) else { return }
         if let member = user.membership {
-            managedObjectContext.delete(member)
             if user.isSelfUser {
                 deleteAccount()
             } else {
-                // Remove member from all team conversations he was a participant of
-                team.conversations.filter {
-                    $0.lastServerSyncedActiveParticipants.contains(user)
-                }.forEach {
-                    $0.appendTeamMemberRemovedSystemMessage(user: user, at: event.timeStamp() ?? Date())
-                    $0.internalRemoveParticipants(Set(arrayLiteral: user), sender: user)
-                }
+                user.markAccountAsDeleted(at: event.timeStamp() ?? Date())
             }
+            managedObjectContext.delete(member)
         } else {
             log.error("Trying to delete non existent membership of \(user) in \(team)")
         }
@@ -120,27 +112,6 @@ extension TeamDownloadRequestStrategy: ZMEventConsumer {
         guard let userId = (data[TeamEventPayloadKey.user.rawValue] as? String).flatMap(UUID.init) else { return }
         guard let member = Member.fetch(withRemoteIdentifier: userId, in: managedObjectContext) else { return }
         member.needsToBeUpdatedFromBackend = true
-    }
-
-    private func createTeamConversation(with event: ZMUpdateEvent) {
-        guard let identifier = event.teamId, let data = event.dataPayload else { return }
-        guard let team = Team.fetchOrCreate(with: identifier, create: false, in: managedObjectContext, created: nil) else { return }
-        guard let conversationId = (data[TeamEventPayloadKey.conversation.rawValue] as? String).flatMap(UUID.init) else { return }
-        let conversation = ZMConversation(remoteID: conversationId, createIfNeeded: true, in: managedObjectContext)
-        conversation?.team = team
-        conversation?.needsToBeUpdatedFromBackend = true
-    }
-
-    private func deleteTeamConversation(with event: ZMUpdateEvent) {
-        guard let identifier = event.teamId, let data = event.dataPayload else { return }
-        guard let team = Team.fetchOrCreate(with: identifier, create: false, in: managedObjectContext, created: nil) else { return }
-        guard let conversationId = (data[TeamEventPayloadKey.conversation.rawValue] as? String).flatMap(UUID.init) else { return }
-        guard let conversation = ZMConversation(remoteID: conversationId, createIfNeeded: false, in: managedObjectContext) else { return }
-        if conversation.team == team {
-            managedObjectContext.delete(conversation)
-        } else {
-            log.error("Specified conversation \(conversation) to delete not in specified team \(team)")
-        }
     }
 
     private func deleteTeamAndConversations(_ team: Team) {

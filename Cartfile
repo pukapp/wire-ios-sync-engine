@@ -1,3 +1,6 @@
-github "pukapp/wire-ios-request-strategy" "secret"
-github "wireapp/avs-ios-binaries" "4.7.157"
+
+github "pukapp/wire-ios-request-strategy" "mergewire"
+
+github "wireapp/avs-ios-binaries" "4.8.168"
 github "wireapp/ZipArchive" "v2.1.3"
+github "wireapp/libPhoneNumber-iOS" "0.9.3"

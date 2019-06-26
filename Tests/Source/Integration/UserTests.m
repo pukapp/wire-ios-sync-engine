@@ -47,22 +47,6 @@
     return @[self.user1, self.user2, self.user3, self.selfUser];
 }
 
-- (NSArray *)visibleUsersWithPicture
-{
-    NSMutableArray *usersWithPicture = [NSMutableArray array];
-    
-    [self.mockTransportSession performRemoteChanges:^(MockTransportSession<MockTransportSessionObjectCreation> *session) {
-        NOT_USED(session);
-        for(MockUser *user in [self allVisibileUsers]) {
-            if(user.smallProfileImageIdentifier != nil) {
-                [usersWithPicture addObject:user];
-            }
-        }
-    }];
-    
-    return usersWithPicture;
-}
-
 - (void)testThatSelfUserImagesAreDownloaded
 {
     XCTAssertTrue([self login]);
@@ -90,7 +74,7 @@
     XCTAssertTrue([self login]);
     
     ZMUser *someUser = [self userForMockUser:self.allVisibileUsers.firstObject];
-    someUser.imageSmallProfileData = [self verySmallJPEGData];
+    [someUser setImageData:self.verySmallJPEGData size:ProfileImageSizePreview];
     NSData *imageData = [someUser imageSmallProfileData];
     XCTAssertNotNil(imageData);
     
@@ -108,7 +92,7 @@
     XCTAssertTrue([self login]);
     
     ZMUser *someUser = [self userForMockUser:self.allVisibileUsers.firstObject];
-    someUser.imageMediumData = [self verySmallJPEGData];
+    [someUser setImageData:self.verySmallJPEGData size:ProfileImageSizeComplete];
     NSData *imageData = [someUser imageMediumData];
     XCTAssertNotNil(imageData);
     

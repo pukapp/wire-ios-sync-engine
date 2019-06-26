@@ -37,7 +37,7 @@ class ZMLocalNotificationTests_CallState : MessagingTest {
             let conversation = ZMConversation.insertNewObject(in: self.syncMOC)
             conversation.conversationType = .oneOnOne
             conversation.remoteIdentifier = UUID()
-            conversation.internalAddParticipants(Set<ZMUser>(arrayLiteral: sender))
+            conversation.internalAddParticipants([sender])
             
             self.conversation = conversation
             
@@ -62,6 +62,33 @@ class ZMLocalNotificationTests_CallState : MessagingTest {
         XCTAssertEqual(note.body, "is calling")
         XCTAssertEqual(note.category, WireSyncEngine.PushNotificationCategory.incomingCall.rawValue)
         XCTAssertEqual(note.sound, .call)
+    }
+    
+    func testIncomingAudioCall_WithAvailabilityAway() {
+        
+        // given
+        syncMOC.performGroupedBlockAndWait {
+            let selfUser = ZMUser.selfUser(in: self.syncMOC)
+            selfUser.availability = .away
+        }
+        
+        let state: CallState = .incoming(video: false, shouldRing: true, degraded: false)
+        
+        // then
+        XCTAssertNil(note(for: state))
+    }
+    
+    func testIncomingAudioCall_WithAllMutedConversation() {
+        
+        // given
+        syncMOC.performGroupedBlockAndWait {
+            self.conversation.mutedMessageTypes = .all
+        }
+        
+        let state: CallState = .incoming(video: false, shouldRing: true, degraded: false)
+        
+        // then
+        XCTAssertNil(note(for: state))
     }
     
     func testIncomingAudioCall_ShouldRing_False() {

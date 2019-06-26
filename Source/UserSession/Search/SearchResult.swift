@@ -75,7 +75,7 @@ extension SearchResult {
         contacts = []
         teamMembers = []
         addressBook = []
-        directory = searchUsers.filter({ !$0.isConnected })
+        directory = searchUsers.filter({ !$0.isConnected && !$0.isTeamMember })
         conversations = []
         services = []
     }
@@ -93,6 +93,22 @@ extension SearchResult {
         directory = []
         conversations = []
         services = searchUsersServices
+    }
+    
+    public init?(userLookupPayload: [AnyHashable : Any], userSession: ZMUserSession) {
+        guard let userLookupPayload = userLookupPayload as? [String : Any],
+              let searchUser = ZMSearchUser.searchUser(from: userLookupPayload, contextProvider: userSession),
+              searchUser.user == nil ||
+              searchUser.user?.isTeamMember == false else {
+            return nil
+        }
+        
+        contacts = []
+        teamMembers = []
+        addressBook = []
+        directory = [searchUser]
+        conversations = []
+        services = []
     }
     
     func copy(on context: NSManagedObjectContext) -> SearchResult {

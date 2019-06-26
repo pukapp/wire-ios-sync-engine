@@ -47,6 +47,7 @@
 @protocol FlowManagerType;
 @protocol ZMApplication;
 @protocol LocalStoreProviderProtocol;
+@protocol EventProcessingTrackerProtocol;
 
 @interface ZMSyncStrategy : NSObject <ZMObjectStrategyDirectory, TearDownCapable>
 
@@ -54,6 +55,7 @@
                                   cookieStorage:(ZMPersistentCookieStorage * _Nullable)cookieStorage
                                     flowManager:(id<FlowManagerType> _Nonnull)flowManager
                    localNotificationsDispatcher:(LocalNotificationDispatcher * _Nonnull)localNotificationsDispatcher
+                        notificationsDispatcher:(NotificationDispatcher * _Nonnull)notificationsDispatcher
                      applicationStatusDirectory:(ApplicationStatusDirectory * _Nonnull)applicationStatusDirectory
                                     application:(id<ZMApplication> _Nonnull)application;
 
@@ -73,6 +75,7 @@
 @property (nonatomic, readonly, nonnull) NSArray<id<ZMEventConsumer>> *eventConsumers;
 @property (nonatomic, weak, readonly, nullable) LocalNotificationDispatcher *localNotificationDispatcher;
 @property (nonatomic, readonly) BOOL isReadyToProcessEvents;
+@property (nonatomic, nullable) id<EventProcessingTrackerProtocol> eventProcessingTracker;
 
 @end
 

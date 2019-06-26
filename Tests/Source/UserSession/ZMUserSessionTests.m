@@ -63,7 +63,6 @@
                                                              flowManager:self.flowManagerMock
                                                                analytics:nil
                                                         transportSession:transportSession
-                                                         apnsEnvironment:nil
                                                              application:self.application
                                                               appVersion:version
                                                            storeProvider:self.storeProvider];
@@ -209,7 +208,6 @@
                                                                     mediaManager:self.mediaManager
                                                                      flowManager:self.flowManagerMock
                                                                        analytics:nil
-                                                                 apnsEnvironment:self.apnsEnvironment
                                                                    operationLoop:nil
                                                                      application:self.application
                                                                       appVersion:@"00000"
@@ -376,6 +374,48 @@
     XCTAssertTrue(contextSaved);
 }
 
+- (void)testThatEnqueueDelayedChangesAreDoneAsynchronouslyOnTheMainQueueWithCompletionHandler
+{
+    // given
+    __block BOOL executed = NO;
+    __block BOOL blockExecuted = NO;
+    __block BOOL contextSaved = NO;
+    
+    // expect
+    [[NSNotificationCenter defaultCenter] addObserverForName:NSManagedObjectContextDidSaveNotification object:self.uiMOC queue:nil usingBlock:^(NSNotification *note) {
+        NOT_USED(note);
+        contextSaved = YES;
+    }];
+    
+    // when
+    [self.sut enqueueDelayedChanges:^{
+        XCTAssertEqual([NSOperationQueue currentQueue], [NSOperationQueue mainQueue]);
+        XCTAssertFalse(executed);
+        XCTAssertFalse(contextSaved);
+        executed = YES;
+        [ZMConversation insertNewObjectInManagedObjectContext:self.uiMOC]; // force a save
+    } completionHandler:^{
+        XCTAssertTrue(executed);
+        XCTAssertEqual([NSOperationQueue currentQueue], [NSOperationQueue mainQueue]);
+        XCTAssertFalse(blockExecuted);
+        XCTAssertTrue(contextSaved);
+        blockExecuted = YES;
+    }];
+    
+    // then
+    XCTAssertFalse(executed);
+    XCTAssertFalse(blockExecuted);
+    XCTAssertFalse(contextSaved);
+    
+    // and when
+    [self spinMainQueueWithTimeout:0.2]; // the delayed save will wait 0.1 seconds
+    
+    // then
+    XCTAssertTrue(executed);
+    XCTAssertTrue(blockExecuted);
+    XCTAssertTrue(contextSaved);
+}
+
 @end
 
 @implementation ZMUserSessionTests (NetworkState)
@@ -414,7 +454,6 @@
                                                                     mediaManager:self.mediaManager
                                                                      flowManager:self.flowManagerMock
                                                                        analytics:nil
-                                                                 apnsEnvironment:self.apnsEnvironment
                                                                    operationLoop:nil
                                                                      application:self.application
                                                                       appVersion:@"00000"
@@ -467,8 +506,8 @@
 - (void)testThatWeSetUserSessionToSyncDoneWhenSyncIsDone
 {
     // when
-    [self.sut didStartSync];
-    [self.sut didFinishSync];
+    [self.sut didStartQuickSync];
+    [self.sut didFinishQuickSync];
     
     // then
     XCTAssertTrue([self waitForStatus:ZMNetworkStateOnline]);
@@ -480,22 +519,22 @@
     XCTAssertEqual(self.thirdPartyServices.uploadCount, 0u);
     
     // when
-    [self.sut didFinishSync];
+    [self.sut didFinishQuickSync];
     WaitForAllGroupsToBeEmpty(0.5);
     
     // then
     XCTAssertEqual(self.thirdPartyServices.uploadCount, 1u);
 }
 
-- (void)testThatItOnlyNotifiesThirdPartyServicesOne
+- (void)testThatItOnlyNotifiesThirdPartyServicesOnce
 {
     // given
     XCTAssertEqual(self.thirdPartyServices.uploadCount, 0u);
     
     // when
-    [self.sut didFinishSync];
-    [self.sut didStartSync];
-    [self.sut didFinishSync];
+    [self.sut didFinishQuickSync];
+    [self.sut didStartQuickSync];
+    [self.sut didFinishQuickSync];
     WaitForAllGroupsToBeEmpty(0.5);
     
     // then
@@ -524,6 +563,7 @@
     [self.sut applicationDidEnterBackground:nil];
     [self.sut applicationWillEnterForeground:nil];
     [self.sut applicationDidEnterBackground:nil];
+    WaitForAllGroupsToBeEmpty(0.5);
     
     // then
     XCTAssertEqual(self.thirdPartyServices.uploadCount, 2u);
@@ -535,7 +575,7 @@
     XCTAssertEqual(self.thirdPartyServices.uploadCount, 0u);
     
     // when
-    [self.sut didFinishSync];
+    [self.sut didFinishQuickSync];
     [self.sut applicationDidEnterBackground:nil];
     WaitForAllGroupsToBeEmpty(0.5);
     
@@ -543,9 +583,10 @@
     XCTAssertEqual(self.thirdPartyServices.uploadCount, 1u);
 
     [self.sut applicationWillEnterForeground:nil];
-    [self.sut didStartSync];
-    [self.sut didFinishSync];
+    [self.sut didStartQuickSync];
+    [self.sut didFinishQuickSync];
     [self.sut applicationDidEnterBackground:nil];
+    WaitForAllGroupsToBeEmpty(0.5);
     
     // then
     XCTAssertEqual(self.thirdPartyServices.uploadCount, 2u);
@@ -557,7 +598,7 @@
 {
     // when
     [self.sut didGoOffline];
-    [self.sut didFinishSync];
+    [self.sut didFinishQuickSync];
     
     // then
     XCTAssertTrue([self waitForOfflineStatus]);
@@ -566,7 +607,7 @@
 - (void)testThatWeSetUserSessionToSynchronizingWhenSyncIsStarted
 {
     // when
-    [self.sut didStartSync];
+    [self.sut didStartQuickSync];
     
     // then
     XCTAssertTrue([self waitForStatus:ZMNetworkStateOnlineSynchronizing]);

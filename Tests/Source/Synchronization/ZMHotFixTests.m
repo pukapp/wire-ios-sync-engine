@@ -128,6 +128,11 @@
     [self.syncMOC setPersistentStoreMetadata:@"0.1" forKey:@"lastSavedVersion"];
 }
 
+- (void)updateLastSavedVersion:(NSString *)lastSavedVersion
+{
+    [self.syncMOC setPersistentStoreMetadata:lastSavedVersion forKey:@"lastSavedVersion"];
+}
+
 - (void)testThatItOnlyCallsMethodsForVersionsNewerThanTheLastSavedVersion
 {
     [self.syncMOC performGroupedBlockAndWait:^{
@@ -221,7 +226,7 @@
     [self.syncMOC performGroupedBlockAndWait:^{
 
         // given
-        [self saveNewVersion];
+        [self updateLastSavedVersion:@"40.3"];
 
         // when
         self.sut = [[ZMHotFix alloc] initWithSyncMOC:self.syncMOC];
@@ -261,8 +266,8 @@
 
     [self.syncMOC performGroupedBlockAndWait:^{
         // given
-        [self saveNewVersion];
-
+        [self updateLastSavedVersion:@"40.22"];
+        
         [[NSFileManager defaultManager] createDirectoryAtURL:imageURL withIntermediateDirectories:YES attributes:nil error:nil];
         [[NSFileManager defaultManager] createDirectoryAtURL:conversationUrl withIntermediateDirectories:YES attributes:nil error:nil];
 
@@ -291,7 +296,7 @@
 
     [self.syncMOC performGroupedBlockAndWait:^{
         // given
-        [self saveNewVersion];
+        [self updateLastSavedVersion:@"41.41"];
         userClient = [self createSelfClient];
 
         [ZMKeychain setData:verificationKey forAccount:@"APSVerificationKey"];
@@ -343,7 +348,7 @@
 
     [self.syncMOC performGroupedBlockAndWait:^{
         // given
-        [self saveNewVersion];
+        [self updateLastSavedVersion:@"41.41"];
         userClient = [self createSelfClient];
         XCTAssertFalse(userClient.needsToUploadSignalingKeys);
         XCTAssertFalse([userClient hasLocalModificationsForKey:@"needsToUploadSignalingKeys"]);
@@ -393,39 +398,35 @@
 
     [self.syncMOC performGroupedBlockAndWait:^{
         // given
-        [self saveNewVersion];
+        [self updateLastSavedVersion:@"41.10"];
         ZMConversation *conversation = [ZMConversation insertNewObjectInManagedObjectContext:self.syncMOC];
         conversation.conversationType = ZMConversationTypeOneOnOne;
         conversation.remoteIdentifier = NSUUID.createUUID;
 
         uploadedImageMessage = (id)[conversation appendImageFromData:self.mediumJPEGData nonce:NSUUID.createUUID];
         [uploadedImageMessage markAsSent];
-        uploadedImageMessage.uploadState = AssetUploadStateDone;
+        [uploadedImageMessage updateTransferState:AssetTransferStateUploaded synchronize:NO];
         uploadedImageMessage.assetId = NSUUID.createUUID;
         XCTAssertTrue(uploadedImageMessage.delivered);
-        XCTAssertTrue(uploadedImageMessage.hasDownloadedImage);
-        XCTAssertEqual(uploadedImageMessage.uploadState, AssetUploadStateDone);
+        XCTAssertTrue(uploadedImageMessage.hasDownloadedFile);
 
         notUploadedImageMessage = (id)[conversation appendImageFromData:self.mediumJPEGData nonce:NSUUID.createUUID];
-        notUploadedImageMessage.uploadState = AssetUploadStateUploadingFullAsset;
+        [notUploadedImageMessage updateTransferState:AssetTransferStateUploading synchronize:NO];
         XCTAssertFalse(notUploadedImageMessage.delivered);
-        XCTAssertTrue(notUploadedImageMessage.hasDownloadedImage);
-        XCTAssertEqual(notUploadedImageMessage.uploadState, AssetUploadStateUploadingFullAsset);
+        XCTAssertTrue(notUploadedImageMessage.hasDownloadedFile);
 
         uploadedFileMessage = (id)[conversation appendMessageWithFileMetadata:[[ZMVideoMetadata alloc] initWithFileURL:self.testVideoFileURL thumbnail:self.verySmallJPEGData]];
         [uploadedFileMessage markAsSent];
-        uploadedFileMessage.uploadState = AssetUploadStateDone;
+        [uploadedFileMessage updateTransferState:AssetTransferStateUploaded synchronize:NO];
         uploadedFileMessage.assetId = NSUUID.createUUID;
         XCTAssertTrue(uploadedFileMessage.delivered);
-        XCTAssertTrue(uploadedFileMessage.hasDownloadedImage);
-        XCTAssertEqual(uploadedFileMessage.uploadState, AssetUploadStateDone);
+        XCTAssertTrue(uploadedFileMessage.hasDownloadedFile);
 
         notUploadedFileMessage = (id)[conversation appendMessageWithFileMetadata:[[ZMVideoMetadata alloc] initWithFileURL:self.testVideoFileURL thumbnail:self.verySmallJPEGData]];
         [notUploadedFileMessage markAsSent];
-        notUploadedFileMessage.uploadState = AssetUploadStateDone;
+        [notUploadedFileMessage updateTransferState:AssetTransferStateUploading synchronize:NO];
         XCTAssertTrue(notUploadedFileMessage.delivered);
-        XCTAssertTrue(notUploadedFileMessage.hasDownloadedImage);
-        XCTAssertEqual(notUploadedFileMessage.uploadState, AssetUploadStateDone);
+        XCTAssertTrue(notUploadedFileMessage.hasDownloadedFile);
 
         XCTAssertTrue([self.syncMOC saveOrRollback]);
     }];
@@ -444,20 +445,20 @@
 
         // then
         XCTAssertTrue(uploadedImageMessage.delivered);
-        XCTAssertTrue(uploadedImageMessage.hasDownloadedImage);
-        XCTAssertEqual(uploadedImageMessage.uploadState, AssetUploadStateDone);
+        XCTAssertTrue(uploadedImageMessage.hasDownloadedFile);
+        XCTAssertEqual(uploadedImageMessage.transferState, AssetTransferStateUploaded);
 
         XCTAssertFalse(notUploadedImageMessage.delivered);
-        XCTAssertTrue(notUploadedImageMessage.hasDownloadedImage);
-        XCTAssertEqual(notUploadedImageMessage.uploadState, AssetUploadStateUploadingFailed);
+        XCTAssertTrue(notUploadedImageMessage.hasDownloadedFile);
+        XCTAssertEqual(notUploadedImageMessage.transferState, AssetTransferStateUploadingFailed);
 
         XCTAssertTrue(uploadedFileMessage.delivered);
-        XCTAssertTrue(uploadedFileMessage.hasDownloadedImage);
-        XCTAssertEqual(uploadedFileMessage.uploadState, AssetUploadStateDone);
+        XCTAssertTrue(uploadedFileMessage.hasDownloadedFile);
+        XCTAssertEqual(uploadedFileMessage.transferState, AssetTransferStateUploaded);
 
         XCTAssertTrue(notUploadedFileMessage.delivered);
-        XCTAssertTrue(notUploadedFileMessage.hasDownloadedImage);
-        XCTAssertEqual(notUploadedFileMessage.uploadState, AssetUploadStateUploadingFailed);
+        XCTAssertTrue(notUploadedFileMessage.hasDownloadedFile);
+        XCTAssertEqual(notUploadedFileMessage.transferState, AssetTransferStateUploadingFailed);
     }];
 }
 
@@ -488,10 +489,10 @@
     }];
 
     [self.syncMOC performGroupedBlockAndWait:^{
-        XCTAssertEqual(oneOnOneConversation.messages.count, 0u);
-        XCTAssertEqual(groupConversation.messages.count, 0u);
-        XCTAssertEqual(selfConversation.messages.count, 0u);
-        XCTAssertEqual(connectionConversation.messages.count, 0u);
+        XCTAssertEqual(oneOnOneConversation.allMessages.count, 0u);
+        XCTAssertEqual(groupConversation.allMessages.count, 0u);
+        XCTAssertEqual(selfConversation.allMessages.count, 0u);
+        XCTAssertEqual(connectionConversation.allMessages.count, 0u);
 
         // when
         self.sut = [[ZMHotFix alloc] initWithSyncMOC:self.syncMOC];
@@ -505,56 +506,15 @@
         XCTAssertEqualObjects(newVersion, @"44.4");
 
         // then
-        XCTAssertEqual(oneOnOneConversation.messages.count, 0u);
+        XCTAssertEqual(oneOnOneConversation.allMessages.count, 0u);
 
-        XCTAssertEqual(groupConversation.messages.count, 1u);
-        ZMSystemMessage *message = groupConversation.messages.lastObject;
+        XCTAssertEqual(groupConversation.allMessages.count, 1u);
+        ZMSystemMessage *message = (ZMSystemMessage *)groupConversation.lastMessage;
         XCTAssertEqual(message.systemMessageType, ZMSystemMessageTypeNewConversation);
 
-        XCTAssertEqual(selfConversation.messages.count, 0u);
+        XCTAssertEqual(selfConversation.allMessages.count, 0u);
 
-        XCTAssertEqual(connectionConversation.messages.count, 0u);
-    }];
-}
-
-- (void)testThatItRemovesPendingConfirmationsForDeletedMessages_54_0_1
-{
-    __block ZMClientMessage* confirmation = nil;
-    [self.syncMOC performGroupedBlockAndWait:^{
-        // given
-        [self saveNewVersion];
-        [self.syncMOC setPersistentStoreMetadata:@YES forKey:@"HasHistory"];
-
-        ZMConversation *oneOnOneConversation = [ZMConversation insertNewObjectInManagedObjectContext:self.syncMOC];
-        oneOnOneConversation.conversationType = ZMConversationTypeOneOnOne;
-        oneOnOneConversation.remoteIdentifier = [NSUUID UUID];
-
-        ZMUser *otherUser = [ZMUser insertNewObjectInManagedObjectContext:self.syncMOC];
-        otherUser.remoteIdentifier = [NSUUID UUID];
-        ZMClientMessage* incomingMessage = (ZMClientMessage *)[oneOnOneConversation appendMessageWithText:@"Test"];
-        incomingMessage.sender = otherUser;
-
-        confirmation = [incomingMessage confirmReception];
-        [self.syncMOC saveOrRollback];
-
-        XCTAssertNotNil(confirmation);
-        XCTAssert(!confirmation.isDeleted);
-
-        [incomingMessage setVisibleInConversation:nil];
-        [incomingMessage setHiddenInConversation:oneOnOneConversation];
-
-        // when
-        self.sut = [[ZMHotFix alloc] initWithSyncMOC:self.syncMOC];
-        [self performIgnoringZMLogError:^{
-            [self.sut applyPatchesForCurrentVersion:@"54.0.1"];
-        }];
-    }];
-    [self.syncMOC performGroupedBlockAndWait:^{
-        [self.syncMOC saveOrRollback];
-    }];
-    [self.syncMOC performGroupedBlockAndWait:^{
-        // then
-        XCTAssertNil(confirmation.managedObjectContext);
+        XCTAssertEqual(connectionConversation.allMessages.count, 0u);
     }];
 }
 
@@ -568,7 +528,7 @@
     NSURL *directoryNotBeDeleted = [cachesDirectory URLByAppendingPathComponent:@"dontDeleteMe" isDirectory:YES];
 
     [self.syncMOC performGroupedBlockAndWait:^{
-        [self saveNewVersion];
+        [self updateLastSavedVersion:@"60.0.0"];
         // Create expected PINCache folders
         for (NSString *cache in PINCaches) {
             NSURL *cacheURL = [cachesDirectory URLByAppendingPathComponent:cache isDirectory:YES];
@@ -619,7 +579,7 @@
 
     [self.syncMOC performGroupedBlockAndWait:^{
         // given
-        [self saveNewVersion];
+        [self updateLastSavedVersion:@"62.41"];
         connectedUser = [ZMUser insertNewObjectInManagedObjectContext:self.syncMOC];
         connectedUser.connection = [ZMConnection insertNewObjectInManagedObjectContext:self.syncMOC];
         connectedUser.connection.status = ZMConnectionStatusAccepted;
@@ -671,7 +631,7 @@
 
     [self.syncMOC performGroupedBlockAndWait:^{
         // given
-        [self saveNewVersion];
+        [self updateLastSavedVersion:@"75.0.0"];
         connectedUser = [ZMUser insertNewObjectInManagedObjectContext:self.syncMOC];
         connectedUser.connection = [ZMConnection insertNewObjectInManagedObjectContext:self.syncMOC];
         connectedUser.connection.status = ZMConnectionStatusAccepted;
@@ -758,7 +718,6 @@
         // then
         XCTAssertTrue(connectedUser.needsToBeUpdatedFromBackend);
         XCTAssertTrue(unconnectedUser.needsToBeUpdatedFromBackend);
-        XCTAssertFalse(selfUser.needsToBeUpdatedFromBackend);
     }];
 }
 

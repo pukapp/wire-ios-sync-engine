@@ -492,7 +492,7 @@ class TeamDownloadRequestStrategy_EventsTests: MessagingTest {
         token = nil
     }
 
-    func testThatItRemovesAMemberFromAllTeamConversationsSheWasPartOfWhenReceivingAMemberLeaveForThatMember() {
+    func testThatItRemovesAMemberFromAllGroupConversationsSheWasPartOfWhenReceivingAMemberLeaveForThatMember() {
         let teamId = UUID.create()
         let teamConversationId = UUID.create(), conversationId = UUID.create()
         let userId = UUID.create()
@@ -508,7 +508,7 @@ class TeamDownloadRequestStrategy_EventsTests: MessagingTest {
             let teamConversation1 = ZMConversation.insertNewObject(in: self.syncMOC)
             teamConversation1.remoteIdentifier = teamConversationId
             teamConversation1.conversationType = .group
-            teamConversation1.internalAddParticipants(Set(arrayLiteral: user))
+            teamConversation1.internalAddParticipants([user])
             teamConversation1.team = team
             let conversation = ZMConversation.insertGroupConversation(into: self.syncMOC, withParticipants: [user, otherUser])
             conversation?.remoteIdentifier = conversationId
@@ -534,7 +534,7 @@ class TeamDownloadRequestStrategy_EventsTests: MessagingTest {
             guard let teamConversation = ZMConversation.fetch(withRemoteIdentifier: teamConversationId, in: self.syncMOC) else { return XCTFail("No Team Conversation") }
             guard let conversation = ZMConversation.fetch(withRemoteIdentifier: conversationId, in: self.syncMOC) else { return XCTFail("No Conversation") }
             XCTAssertFalse(teamConversation.lastServerSyncedActiveParticipants.contains(user))
-            XCTAssert(conversation.lastServerSyncedActiveParticipants.contains(user))
+            XCTAssertFalse(conversation.lastServerSyncedActiveParticipants.contains(user))
         }
     }
     
@@ -556,13 +556,13 @@ class TeamDownloadRequestStrategy_EventsTests: MessagingTest {
             let teamConversation1 = ZMConversation.insertNewObject(in: self.syncMOC)
             teamConversation1.remoteIdentifier = teamConversationId
             teamConversation1.conversationType = .group
-            teamConversation1.internalAddParticipants(Set(arrayLiteral: user))
+            teamConversation1.internalAddParticipants([user])
             teamConversation1.team = team
             
             let teamConversation2 = ZMConversation.insertNewObject(in: self.syncMOC)
             teamConversation2.remoteIdentifier = teamAnotherConversationId
             teamConversation2.conversationType = .group
-            teamConversation2.internalAddParticipants(Set(arrayLiteral: user))
+            teamConversation2.internalAddParticipants([user])
             teamConversation2.team = team
 
             
@@ -595,14 +595,14 @@ class TeamDownloadRequestStrategy_EventsTests: MessagingTest {
             self.checkLastMessage(in: teamConversation, isLeaveMessageFor: user, at: timestamp)
             self.checkLastMessage(in: teamAnotherConversation, isLeaveMessageFor: user, at: timestamp)
             
-            if let lastMessage = conversation.messages.lastObject as? ZMSystemMessage, lastMessage.systemMessageType == .teamMemberLeave {
+            if let lastMessage = conversation.lastMessage as? ZMSystemMessage, lastMessage.systemMessageType == .teamMemberLeave {
                 XCTFail("Should not append leave message to regular conversation")
             }
         }
     }
     
     private func checkLastMessage(in conversation: ZMConversation, isLeaveMessageFor user: ZMUser, at timestamp: Date,  file: StaticString = #file, line: UInt = #line) {
-        guard let lastMessage = conversation.messages.lastObject as? ZMSystemMessage else { XCTFail("Last message is not system message", file: file, line: line); return }
+        guard let lastMessage = conversation.lastMessage as? ZMSystemMessage else { XCTFail("Last message is not system message", file: file, line: line); return }
         guard lastMessage.systemMessageType == .teamMemberLeave else { XCTFail("System message is not teamMemberLeave: but '\(lastMessage.systemMessageType.rawValue)'", file: file, line: line); return }
         guard let serverTimestamp = lastMessage.serverTimestamp else { XCTFail("System message should have timestamp", file: file, line: line); return }
         XCTAssertEqual(serverTimestamp.timeIntervalSince1970, timestamp.timeIntervalSince1970, accuracy: 0.1, file: file, line:line)
@@ -647,129 +647,31 @@ class TeamDownloadRequestStrategy_EventsTests: MessagingTest {
         XCTAssertFalse(team.needsToRedownloadMembers)
         XCTAssertEqual(member.team, team)
     }
-
+    
     // MARK: - Team Conversation-Create
-
-    func testThatItCreatesANewTeamConversationWhenReceivingATeamConversationCreateUpdateEvent() {
+    
+    func testThatItIgnoresTeamConversationCreateUpdateEvent() {
         // given
         let conversationId = UUID.create()
         let teamId = UUID.create()
-
+        
         syncMOC.performGroupedBlockAndWait {
             _ = Team.fetchOrCreate(with: teamId, create: true, in: self.syncMOC, created: nil)
         }
-
+        
         let payload: [String: Any] = [
             "type": "team.conversation-create",
             "team": teamId.transportString(),
             "time": Date().transportString(),
             "data": ["conv": conversationId.transportString()]
         ]
-
+        
         // when
         processEvent(fromPayload: payload)
-
-        // then
-        syncMOC.performGroupedBlockAndWait {
-            guard let conversation = ZMConversation.fetch(withRemoteIdentifier: conversationId, in: self.syncMOC) else { return XCTFail("No conversation") }
-            XCTAssertNotNil(conversation.team)
-            XCTAssertEqual(conversation.team?.remoteIdentifier, teamId)
-            XCTAssertTrue(conversation.needsToBeUpdatedFromBackend)
-        }
-    }
-
-    func testThatItDoesNotCreateANewTeamConversationWhenReceivingATeamConversationCreateEventWithoutLocalTeam() {
-        // given
-        let conversationId = UUID.create()
-        let teamId = UUID.create()
-
-        let payload: [String: Any] = [
-            "type": "team.conversation-create",
-            "team": teamId.transportString(),
-            "time": Date().transportString(),
-            "data": ["conv": conversationId.transportString()]
-        ]
-
-        // when
-        processEvent(fromPayload: payload)
-
+        
         // then
         syncMOC.performGroupedBlockAndWait {
             XCTAssertNil(ZMConversation.fetch(withRemoteIdentifier: conversationId, in: self.syncMOC))
-            XCTAssertNil(Team.fetch(withRemoteIdentifier: teamId, in: self.syncMOC))
-        }
-    }
-
-    // MARK: - Team Conversation-Delete (Member)
-
-    func testThatItDeletesALocalTeamConversationInWhichSelfIsAMember() {
-        // given
-        let conversationId = UUID.create()
-        let teamId = UUID.create()
-
-        syncMOC.performGroupedBlockAndWait {
-            let team = Team.fetchOrCreate(with: teamId, create: true, in: self.syncMOC, created: nil)
-            let conversation = ZMConversation.insertNewObject(in: self.syncMOC)
-            conversation.remoteIdentifier = conversationId
-            conversation.conversationType = .group
-            conversation.team = team
-
-            XCTAssertNotNil(ZMConversation.fetch(withRemoteIdentifier: conversationId, in: self.syncMOC))
-            XCTAssertNotNil(Team.fetch(withRemoteIdentifier: teamId, in: self.syncMOC))
-        }
-
-        let payload: [String: Any] = [
-            "type": "team.conversation-delete",
-            "team": teamId.transportString(),
-            "time": Date().transportString(),
-            "data": ["conv": conversationId.transportString()]
-        ]
-
-        // when
-        processEvent(fromPayload: payload)
-
-        // then
-        syncMOC.performGroupedBlockAndWait {
-            XCTAssertNil(ZMConversation.fetch(withRemoteIdentifier: conversationId, in: self.syncMOC))
-            XCTAssertNotNil(Team.fetch(withRemoteIdentifier: teamId, in: self.syncMOC))
-        }
-    }
-
-    func testThatItDoesNotDeleteALocalConversationIfTheTeamDoesNotMatchTheTeamInTheEventPayload() {
-        // given
-        let conversationId = UUID.create()
-        let teamId = UUID.create()
-        let otherTeamId = UUID.create()
-
-        syncMOC.performGroupedBlockAndWait {
-            let team = Team.fetchOrCreate(with: teamId, create: true, in: self.syncMOC, created: nil)
-            _ = Team.fetchOrCreate(with: otherTeamId, create: true, in: self.syncMOC, created: nil)
-            let conversation = ZMConversation.insertNewObject(in: self.syncMOC)
-            conversation.remoteIdentifier = conversationId
-            conversation.conversationType = .group
-            conversation.team = team
-
-            XCTAssertNotNil(ZMConversation.fetch(withRemoteIdentifier: conversationId, in: self.syncMOC))
-            XCTAssertNotNil(Team.fetch(withRemoteIdentifier: teamId, in: self.syncMOC))
-        }
-
-        let payload: [String: Any] = [
-            "type": "team.conversation-delete",
-            "team": otherTeamId.transportString(),
-            "time": Date().transportString(),
-            "data": ["conv": conversationId.transportString()]
-        ]
-
-        // when
-        performIgnoringZMLogError {
-            self.processEvent(fromPayload: payload)
-        }
-
-        // then
-        syncMOC.performGroupedBlockAndWait {
-            guard let conversation = ZMConversation.fetch(withRemoteIdentifier: conversationId, in: self.syncMOC) else { return XCTFail("No conversation") }
-            XCTAssertEqual(conversation.team?.remoteIdentifier, teamId)
-            XCTAssertNotNil(Team.fetch(withRemoteIdentifier: teamId, in: self.syncMOC))
         }
     }
 

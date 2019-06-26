@@ -142,18 +142,19 @@ extension VoiceChannelV3 : CallActions {
     
     public func continueByDecreasingConversationSecurity(userSession: ZMUserSession) {
         guard let conversation = conversation else { return }
-        conversation.makeNotSecure()
+        conversation.acknowledgePrivacyWarning(withResendIntent: false)
     }
     
-    public func leaveAndKeepDegradedConversationSecurity(userSession: ZMUserSession) {
+    public func leaveAndDecreaseConversationSecurity(userSession: ZMUserSession) {
         guard let conversation = conversation else { return }
+        conversation.acknowledgePrivacyWarning(withResendIntent: false)
         userSession.syncManagedObjectContext.performGroupedBlock {
             let conversationId = conversation.objectID
             if let syncConversation = (try? userSession.syncManagedObjectContext.existingObject(with: conversationId)) as? ZMConversation {
                 userSession.callingStrategy.dropPendingCallMessages(for: syncConversation)
             }
         }
-        leave(userSession: userSession)
+        leave(userSession: userSession, completion: nil)
     }
     
     public func join(video: Bool, userSession: ZMUserSession) -> Bool {
@@ -165,11 +166,12 @@ extension VoiceChannelV3 : CallActions {
         }
     }
     
-    public func leave(userSession: ZMUserSession) {
+    public func leave(userSession: ZMUserSession, completion: (() -> ())?) {
         if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *) {
-            userSession.callKitDelegate?.requestEndCall(in: conversation!)
+            userSession.callKitDelegate?.requestEndCall(in: conversation!, completion: completion)
         } else {
-            return leave()
+            leave()
+            completion?()
         }
     }
     

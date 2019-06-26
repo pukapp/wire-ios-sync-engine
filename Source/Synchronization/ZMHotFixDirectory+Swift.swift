@@ -49,7 +49,7 @@ import Foundation
         guard let messages = context.executeFetchRequestOrAssert(fetchRequest) as? [ZMAssetClientMessage] else { return }
         
         messages.forEach { message in
-            message.uploadState = .uploadingFailed
+            message.updateTransferState(.uploadingFailed, synchronize: false)
             if nil != message.imageMessageData {
                 message.expire()
             }
@@ -62,9 +62,51 @@ import Foundation
         let fetchRequest = ZMConversation.sortedFetchRequest()
         guard let conversations = context.executeFetchRequestOrAssert(fetchRequest) as? [ZMConversation] else { return }
         
-        // Conversation Type Group are ongoing, active conversation
-        conversations.filter { $0.conversationType == .group }.forEach {
-            $0.appendNewConversationSystemMessageIfNeeded()
+        // Add .newConversation system message in all group conversations if not already present
+        conversations.filter { $0.conversationType == .group }.forEach { conversation in
+            
+            let fetchRequest = NSFetchRequest<ZMMessage>(entityName: ZMMessage.entityName())
+            fetchRequest.predicate = NSPredicate(format: "%K == %@", ZMMessageConversationKey, conversation.objectID)
+            fetchRequest.sortDescriptors = ZMMessage.defaultSortDescriptors()
+            fetchRequest.fetchLimit = 1
+            
+            let messages = context.fetchOrAssert(request: fetchRequest)
+            
+            if let firstSystemMessage = messages.first as? ZMSystemMessage, firstSystemMessage.systemMessageType == .newConversation {
+                return // Skip if conversation already has a .newConversation system message
+            }
+            
+            conversation.appendNewConversationSystemMessage(at: Date.distantPast, users: conversation.activeParticipants)
+        }
+    }
+    
+    public static func markAllNewConversationSystemMessagesAsRead(_ context: NSManagedObjectContext) {
+        let fetchRequest = ZMConversation.sortedFetchRequest()
+        guard let conversations = context.executeFetchRequestOrAssert(fetchRequest) as? [ZMConversation] else { return }
+        
+        conversations.filter({ $0.conversationType == .group }).forEach { conversation in
+        
+            let fetchRequest = NSFetchRequest<ZMMessage>(entityName: ZMMessage.entityName())
+            fetchRequest.predicate = NSPredicate(format: "%K == %@", ZMMessageConversationKey, conversation.objectID)
+            fetchRequest.sortDescriptors = ZMMessage.defaultSortDescriptors()
+            fetchRequest.fetchLimit = 1
+            
+            let messages = context.fetchOrAssert(request: fetchRequest)
+            
+            // Mark the first .newConversation system message as read if it's not already read.
+            if let firstSystemMessage = messages.first as? ZMSystemMessage,firstSystemMessage.systemMessageType == .newConversation,
+               let serverTimestamp = firstSystemMessage.serverTimestamp {
+                
+                guard let lastReadServerTimeStamp = conversation.lastReadServerTimeStamp else {
+                    // if lastReadServerTimeStamp is nil the conversation was never read
+                    return conversation.lastReadServerTimeStamp = serverTimestamp
+                }
+                
+                if serverTimestamp > lastReadServerTimeStamp {
+                    // conversation was read but not up until our system message
+                    conversation.lastReadServerTimeStamp = serverTimestamp
+                }
+            }
         }
     }
     
@@ -101,6 +143,13 @@ import Foundation
 
         context.enqueueDelayedSave()
     }
+
+    /// Refreshes the self user.
+    public static func refetchSelfUser(_ context: NSManagedObjectContext) {
+        let selfUser = ZMUser.selfUser(in: context)
+        selfUser.needsToBeUpdatedFromBackend = true
+        context.enqueueDelayedSave()
+    }
     
     /// Marks all connected users (including self) to be refetched.
     /// Unconnected users are refreshed with a call to `refreshData` when information is displayed.
@@ -133,8 +182,17 @@ import Foundation
     
     /// Marks all group conversations to be refetched.
     public static func refetchGroupConversations(_ context: NSManagedObjectContext) {
-        let predicate = NSPredicate(format: "conversationType == %d", ZMConversationType.group.rawValue)
+        let predicate = NSPredicate(format: "conversationType == %d AND lastServerSyncedActiveParticipants CONTAINS %@", ZMConversationType.group.rawValue, ZMUser.selfUser(in: context))
         refetchConversations(matching: predicate, in: context)
+    }
+    
+    public static func refetchUserProperties(_ context: NSManagedObjectContext) {
+        ZMUser.selfUser(in: context).needsPropertiesUpdate = true
+        context.enqueueDelayedSave()
+    }
+    
+    public static func refetchTeamMembers(_ context: NSManagedObjectContext) {
+        ZMUser.selfUser(in: context).team?.needsToRedownloadMembers = true
     }
     
     /// Marks all conversations to be refetched.

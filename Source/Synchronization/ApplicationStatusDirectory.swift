@@ -39,16 +39,12 @@ public final class ApplicationStatusDirectory : NSObject, ApplicationStatus {
     public let teamInvitationStatus: TeamInvitationStatus
     public let assetDeletionStatus: AssetDeletionStatus
     public let callEventStatus: CallEventStatus
-
-    public var notificationFetchStatus: BackgroundNotificationFetchStatus {
-        return pushNotificationStatus.status
-    }
     
     fileprivate var callInProgressObserverToken : Any? = nil
     
     public init(withManagedObjectContext managedObjectContext : NSManagedObjectContext, cookieStorage : ZMPersistentCookieStorage, requestCancellation: ZMRequestCancellation, application : ZMApplication, syncStateDelegate: ZMSyncStateDelegate, analytics: AnalyticsType? = nil) {
         self.requestCancellation = requestCancellation
-        self.apnsConfirmationStatus = BackgroundAPNSConfirmationStatus(application: application, managedObjectContext: managedObjectContext, backgroundActivityFactory: BackgroundActivityFactory.sharedInstance())
+        self.apnsConfirmationStatus = BackgroundAPNSConfirmationStatus(application: application, managedObjectContext: managedObjectContext)
         self.operationStatus = OperationStatus()
         self.callEventStatus = CallEventStatus()
         self.analytics = analytics
@@ -106,6 +102,15 @@ public final class ApplicationStatusDirectory : NSObject, ApplicationStatus {
             return .synchronizing
         } else {
             return .eventProcessing
+        }
+    }
+    
+    public var notificationFetchStatus: BackgroundNotificationFetchStatus {
+        switch pushNotificationStatus.status {
+        case .done:
+            return .done
+        case .inProgress:
+            return syncStatus.isSlowSyncing ? .done : .inProgress
         }
     }
     

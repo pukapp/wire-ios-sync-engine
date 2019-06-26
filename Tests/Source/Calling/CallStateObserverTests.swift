@@ -52,8 +52,8 @@ class CallStateObserverTests : MessagingTest {
             let conversation = ZMConversation.insertNewObject(in: self.syncMOC)
             conversation.conversationType = .oneOnOne
             conversation.remoteIdentifier = UUID()
-            conversation.internalAddParticipants(Set<ZMUser>(arrayLiteral:sender))
-            conversation.internalAddParticipants(Set<ZMUser>(arrayLiteral:receiver))
+            conversation.internalAddParticipants([sender])
+            conversation.internalAddParticipants([receiver])
             conversation.userDefinedName = "Main"
             
             self.conversation = conversation
@@ -104,7 +104,7 @@ class CallStateObserverTests : MessagingTest {
         XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
         
         // then
-        if let message =  conversationUI.messages.lastObject as? ZMSystemMessage {
+        if let message =  conversationUI.lastMessage as? ZMSystemMessage {
             XCTAssertEqual(message.systemMessageType, .missedCall)
             XCTAssertFalse(message.relevantForConversationStatus)
             XCTAssertEqual(message.sender, senderUI)
@@ -122,7 +122,7 @@ class CallStateObserverTests : MessagingTest {
         
         self.syncMOC.performGroupedBlockAndWait {
             // then
-            if let message = self.conversationUI.messages.lastObject as? ZMSystemMessage {
+            if let message = self.conversationUI.lastMessage as? ZMSystemMessage {
                 XCTAssertEqual(message.systemMessageType, .missedCall)
                 XCTAssertTrue(message.relevantForConversationStatus)
                 XCTAssertEqual(message.sender, self.senderUI)
@@ -154,7 +154,7 @@ class CallStateObserverTests : MessagingTest {
         XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
         
         // then
-        XCTAssertEqual(conversationUI.messages.count, 0)
+        XCTAssertEqual(conversationUI.allMessages.count, 0)
     }
     
     func testThatMissedCallMessageIsAppendedForMissedCalls() {
@@ -164,7 +164,7 @@ class CallStateObserverTests : MessagingTest {
         XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
         
         // then
-        if let message =  conversationUI.messages.lastObject as? ZMSystemMessage {
+        if let message =  conversationUI.lastMessage as? ZMSystemMessage {
             XCTAssertEqual(message.systemMessageType, .missedCall)
             XCTAssertTrue(message.relevantForConversationStatus)
             XCTAssertEqual(message.sender, senderUI)
@@ -189,6 +189,19 @@ class CallStateObserverTests : MessagingTest {
         
         // when
         sut.callCenterDidChange(callState: .incoming(video: false, shouldRing: true, degraded: false), conversation: conversationUI, caller: senderUI, timestamp: Date(), previousCallState: nil)
+        XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
+        
+        // then
+        XCTAssertEqual(notificationCenter.scheduledRequests.count, 1)
+    }
+    
+    func testThatIncomingCallsInMutedConversationAreForwardedToTheNotificationDispatcher_whenCallStyleIsCallkit() {
+        // given
+        mockCallNotificationStyle = .callKit
+        conversationUI.mutedMessageTypes = .regular
+        
+        // when
+        sut.callCenterDidChange(callState: .incoming(video: false, shouldRing: true, degraded: false), conversation: conversationUI, caller: senderUI, timestamp: nil, previousCallState: nil)
         XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
         
         // then
@@ -293,7 +306,7 @@ class CallStateObserverTests : MessagingTest {
         XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
         
         // then
-        XCTAssertEqual(conversationUI.messages.count, 1)
+        XCTAssertEqual(conversationUI.allMessages.count, 1)
         XCTAssertEqual(notificationCenter.scheduledRequests.count, 1)
     }
 
@@ -414,8 +427,8 @@ class CallStateObserverTests : MessagingTest {
             otherConvo = ZMConversation.insertNewObject(in: self.syncMOC)
             otherConvo?.conversationType = .oneOnOne
             otherConvo?.remoteIdentifier = UUID()
-            otherConvo?.internalAddParticipants(Set<ZMUser>(arrayLiteral:self.sender))
-            otherConvo?.internalAddParticipants(Set<ZMUser>(arrayLiteral:self.receiver))
+            otherConvo?.internalAddParticipants([self.sender])
+            otherConvo?.internalAddParticipants([self.receiver])
             otherConvo?.userDefinedName = "Other"
             otherConvo?.lastServerTimeStamp = Date()
             otherConvo?.lastModifiedDate = startDate.addingTimeInterval(500)

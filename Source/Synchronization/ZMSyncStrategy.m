@@ -22,7 +22,6 @@
 @import WireUtilities;
 @import WireTransport;
 @import WireDataModel;
-@import WireRequestStrategy; 
 @import WireRequestStrategy;
 
 #import "ZMSyncStrategy+Internal.h"
@@ -56,7 +55,7 @@
 @property (nonatomic) ZMMissingUpdateEventsTranscoder *missingUpdateEventsTranscoder;
 @property (nonatomic) ZMLastUpdateEventIDTranscoder *lastUpdateEventIDTranscoder;
 @property (nonatomic) LinkPreviewAssetUploadRequestStrategy *linkPreviewAssetUploadRequestStrategy;
-@property (nonatomic) ImageDownloadRequestStrategy *imageDownloadRequestStrategy;
+@property (nonatomic) ImageV2DownloadRequestStrategy *imageV2DownloadRequestStrategy;
 
 @property (nonatomic) ZMUpdateEventsBuffer *eventsBuffer;
 @property (nonatomic) ZMChangeTrackerBootstrap *changeTrackerBootStrap;
@@ -112,18 +111,20 @@ ZM_EMPTY_ASSERTING_INIT()
                         cookieStorage:(ZMPersistentCookieStorage *)cookieStorage
                           flowManager:(id<FlowManagerType>)flowManager
          localNotificationsDispatcher:(LocalNotificationDispatcher *)localNotificationsDispatcher
+              notificationsDispatcher:(NotificationDispatcher *)notificationsDispatcher
            applicationStatusDirectory:(ApplicationStatusDirectory *)applicationStatusDirectory
                           application:(id<ZMApplication>)application
 {
     self = [super init];
     if (self) {
-        self.notificationDispatcher = [[NotificationDispatcher alloc] initWithManagedObjectContext: storeProvider.contextDirectory.uiContext];
+        self.notificationDispatcher = notificationsDispatcher;
         self.application = application;
         self.localNotificationDispatcher = localNotificationsDispatcher;
         self.syncMOC = storeProvider.contextDirectory.syncContext;
         self.uiMOC = storeProvider.contextDirectory.uiContext;
         self.hotFix = [[ZMHotFix alloc] initWithSyncMOC:self.syncMOC];
-
+        self.eventProcessingTracker = [[EventProcessingTracker alloc] init];
+        
         self.eventMOC = [NSManagedObjectContext createEventContextWithSharedContainerURL:storeProvider.applicationContainer userIdentifier:storeProvider.userIdentifier];
         [self.eventMOC addGroup:self.syncMOC.dispatchGroup];
         self.applicationStatusDirectory = applicationStatusDirectory;
@@ -144,22 +145,23 @@ ZM_EMPTY_ASSERTING_INIT()
                                    self.missingUpdateEventsTranscoder,
                                    self.fetchingClientRequestStrategy,
                                    self.userDisableSendMsgStrategy,
+                                   [[VerifyLegalHoldRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    [[ProxiedRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory requestsStatus:applicationStatusDirectory.proxiedRequestStatus],
                                    [[DeleteAccountRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory cookieStorage: cookieStorage],
-                                   [[AssetDownloadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
+                                   [[AssetV3UploadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
+                                   [[AssetV2DownloadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    [[AssetV3DownloadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    [[AssetClientMessageRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
-                                   [[AssetV3ImageUploadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    [[AssetV3PreviewDownloadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
-                                   [[AssetV3FileUploadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    [[AddressBookUploadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    [[AvailabilityRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
+                                   [[UserPropertyRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    [[UserProfileRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC
                                                                                   applicationStatus:applicationStatusDirectory
                                                                             userProfileUpdateStatus:applicationStatusDirectory.userProfileUpdateStatus],
                                    self.linkPreviewAssetDownloadRequestStrategy,
                                    self.linkPreviewAssetUploadRequestStrategy,
-                                   self.imageDownloadRequestStrategy,
+                                   self.imageV2DownloadRequestStrategy,
                                    [[PushTokenStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory analytics:applicationStatusDirectory.analytics],
                                    [[TypingStrategy alloc] initWithApplicationStatus:applicationStatusDirectory managedObjectContext:self.syncMOC],
                                    [[SearchUserImageStrategy alloc] initWithApplicationStatus:applicationStatusDirectory managedObjectContext:self.syncMOC],
@@ -169,10 +171,10 @@ ZM_EMPTY_ASSERTING_INIT()
                                    self.userTranscoder,
                                    self.lastUpdateEventIDTranscoder,
                                    self.missingUpdateEventsTranscoder,
-                                   [[UserImageStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    [[LinkPreviewUploadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    self.selfStrategy,
                                    self.callingRequestStrategy,
+                                   [[LegalHoldRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory syncStatus:applicationStatusDirectory.syncStatus],
                                    [[GenericMessageNotificationRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC clientRegistrationDelegate:applicationStatusDirectory.clientRegistrationStatus],
                                    [[UserImageAssetUpdateStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatusDirectory:applicationStatusDirectory],
                                    [[ImageAssetUpdateStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatusDirectory:applicationStatusDirectory],
@@ -181,7 +183,8 @@ ZM_EMPTY_ASSERTING_INIT()
                                    [[MemberDownloadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    [[PermissionsDownloadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    [[TeamInvitationRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory teamInvitationStatus:applicationStatusDirectory.teamInvitationStatus],
-                                   [[AssetDeletionRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory identifierProvider:applicationStatusDirectory.assetDeletionStatus]
+                                   [[AssetDeletionRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory identifierProvider:applicationStatusDirectory.assetDeletionStatus],
+                                   [[UserRichProfileRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory]
                                    ];
         
         self.changeTrackerBootStrap = [[ZMChangeTrackerBootstrap alloc] initWithManagedObjectContext:self.syncMOC changeTrackers:self.allChangeTrackers];
@@ -212,31 +215,37 @@ ZM_EMPTY_ASSERTING_INIT()
     self.userDisableSendMsgStrategy = [[UserDisableSendMsgStatusStrategy alloc]initWithContext:self.syncMOC dispatcher:self.localNotificationDispatcher];
     self.conversationStatusSync = [[ConversationStatusStrategy alloc] initWithManagedObjectContext:self.syncMOC];
     self.linkPreviewAssetDownloadRequestStrategy = [[LinkPreviewAssetDownloadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory];
-    self.linkPreviewAssetUploadRequestStrategy = [[LinkPreviewAssetUploadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory linkPreviewPreprocessor:nil previewImagePreprocessor:nil];
-    self.imageDownloadRequestStrategy = [[ImageDownloadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory];
+    self.linkPreviewAssetUploadRequestStrategy = [LinkPreviewAssetUploadRequestStrategy createWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory];
+    self.imageV2DownloadRequestStrategy = [[ImageV2DownloadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory];
 }
 
 - (void)appDidEnterBackground:(NSNotification *)note
 {
     NOT_USED(note);
-    ZMBackgroundActivity *activity = [[BackgroundActivityFactory sharedInstance] backgroundActivityWithName:@"enter background"];
+    BackgroundActivity *activity = [BackgroundActivityFactory.sharedFactory startBackgroundActivityWithName:@"enter background"];
     [self.notificationDispatcher applicationDidEnterBackground];
     [self.syncMOC performGroupedBlock:^{
         self.applicationStatusDirectory.operationStatus.isInBackground = YES;
         [ZMRequestAvailableNotification notifyNewRequestsAvailable:self];
-        [activity endActivity];
+
+        if (activity) {
+            [BackgroundActivityFactory.sharedFactory endBackgroundActivity:activity];
+        }
     }];
 }
 
 - (void)appWillEnterForeground:(NSNotification *)note
 {
     NOT_USED(note);
-    ZMBackgroundActivity *activity = [[BackgroundActivityFactory sharedInstance] backgroundActivityWithName:@"enter foreground"];
+    BackgroundActivity *activity = [BackgroundActivityFactory.sharedFactory startBackgroundActivityWithName:@"enter foreground"];
     [self.notificationDispatcher applicationWillEnterForeground];
     [self.syncMOC performGroupedBlock:^{
         self.applicationStatusDirectory.operationStatus.isInBackground = NO;
         [ZMRequestAvailableNotification notifyNewRequestsAvailable:self];
-        [activity endActivity];
+
+        if (activity) {
+            [BackgroundActivityFactory.sharedFactory endBackgroundActivity:activity];
+        }
     }];
 }
 
@@ -335,7 +344,6 @@ ZM_EMPTY_ASSERTING_INIT()
             return nil;
         }];
         _allChangeTrackers = [_allChangeTrackers arrayByAddingObject:self.conversationStatusSync];
-        _allChangeTrackers = [_allChangeTrackers arrayByAddingObject:self.applicationStatusDirectory.userProfileImageUpdateStatus];
     }
     
     return _allChangeTrackers;

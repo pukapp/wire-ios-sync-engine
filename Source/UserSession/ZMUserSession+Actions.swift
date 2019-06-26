@@ -18,8 +18,6 @@
 
 import Foundation
 
-private let zmLog = ZMSLog(tag: "Push")
-
 @objc extension ZMUserSession {
     
     // MARK: - Foreground Actions
@@ -78,24 +76,30 @@ private let zmLog = ZMSLog(tag: "Push")
     // MARK: - Background Actions
     
     public func ignoreCall(with userInfo: NotificationUserInfo, completionHandler: @escaping () -> Void) {
-        let activity = BackgroundActivityFactory.sharedInstance().backgroundActivity(withName: "IgnoreCall Action Handler")
+        guard let activity = BackgroundActivityFactory.shared.startBackgroundActivity(withName: "IgnoreCall Action Handler") else {
+            return
+        }
+
         let conversation = userInfo.conversation(in: managedObjectContext)
         
         managedObjectContext.perform { 
-            conversation?.voiceChannel?.leave(userSession: self)
-            activity?.end()
+            conversation?.voiceChannel?.leave(userSession: self, completion: nil)
+            BackgroundActivityFactory.shared.endBackgroundActivity(activity)
             completionHandler()
         }
     }
     
     public func muteConversation(with userInfo: NotificationUserInfo, completionHandler: @escaping () -> Void) {
-        let activity = BackgroundActivityFactory.sharedInstance().backgroundActivity(withName: "Mute Conversation Action Handler")
+        guard let activity = BackgroundActivityFactory.shared.startBackgroundActivity(withName: "Mute Conversation Action Handler") else {
+            return
+        }
+
         let conversation = userInfo.conversation(in: managedObjectContext)
 
         managedObjectContext.perform {
             conversation?.mutedMessageTypes = .all
             self.managedObjectContext.saveOrRollback()
-            activity?.end()
+            BackgroundActivityFactory.shared.endBackgroundActivity(activity)
             completionHandler()
         }
     }
@@ -106,7 +110,9 @@ private let zmLog = ZMSLog(tag: "Push")
             let conversation = userInfo.conversation(in: managedObjectContext)
             else { return completionHandler() }
 
-        let activity = BackgroundActivityFactory.sharedInstance().backgroundActivity(withName: "DirectReply Action Handler")
+        guard let activity = BackgroundActivityFactory.shared.startBackgroundActivity(withName: "DirectReply Action Handler") else {
+            return
+        }
 
         operationStatus.startBackgroundTask { [weak self] (result) in
             guard let `self` = self else { return }
@@ -116,21 +122,30 @@ private let zmLog = ZMSLog(tag: "Push")
             
                 let conversationOnSyncContext = userInfo.conversation(in: self.syncManagedObjectContext)
                 if result == .failed {
-                    zmLog.warn("failed to reply via push notification action")
+                    Logging.push.safePublic("failed to reply via push notification action")
                     self.localNotificationDispatcher.didFailToSendMessage(in: conversationOnSyncContext!)
                 } else {
                     self.syncManagedObjectContext.analytics?.tagActionOnPushNotification(conversation: conversationOnSyncContext, action: .text)
                 }
-                activity?.end()
+                BackgroundActivityFactory.shared.endBackgroundActivity(activity)
                 completionHandler()
             }
         }
         
         enqueueChanges {
             guard let message = conversation.append(text: message) else { return /* failure */ }
+            self.appendReadReceiptIfNeeded(with: userInfo, in: conversation)
             self.messageReplyObserver = ManagedObjectContextChangeObserver(context: self.managedObjectContext, callback: { [weak self] in
                 self?.updateBackgroundTask(with: message)
             })
+        }
+    }
+    
+    private func appendReadReceiptIfNeeded(with userInfo: NotificationUserInfo, in conversation: ZMConversation) {
+        if let originalMessage = userInfo.message(in: conversation, managedObjectContext: self.managedObjectContext) as? ZMClientMessage,
+            originalMessage.needsReadConfirmation {
+            let confirmation = ZMGenericMessage.message(content: ZMConfirmation.confirm(messageId: originalMessage.nonce!, type: .READ))
+            conversation.appendClientMessage(with: confirmation)
         }
     }
     
@@ -162,21 +177,24 @@ private let zmLog = ZMSLog(tag: "Push")
             let message = userInfo.message(in: conversation, managedObjectContext: managedObjectContext)
             else { return completionHandler() }
 
-        let activity = BackgroundActivityFactory.sharedInstance().backgroundActivity(withName: "Like Message Activity")
+        guard let activity = BackgroundActivityFactory.shared.startBackgroundActivity(withName: "Like Message Activity") else {
+            return
+        }
 
         operationStatus.startBackgroundTask { [weak self] (result) in
             guard let `self` =  self else { return }
         
             self.likeMesssageObserver = nil
             if result == .failed {
-                zmLog.warn("failed to like message via push notification action")
+                Logging.push.safePublic("failed to like message via push notification action")
             }
-            activity?.end()
+            BackgroundActivityFactory.shared.endBackgroundActivity(activity)
             completionHandler()
         }
             
         enqueueChanges {
             guard let reaction = ZMMessage.addReaction(.like, toMessage: message) else { return }
+            self.appendReadReceiptIfNeeded(with: userInfo, in: conversation)
             self.likeMesssageObserver = ManagedObjectContextChangeObserver(context: self.managedObjectContext, callback: { [weak self] in
                 self?.updateBackgroundTask(with: reaction)
             })
@@ -184,13 +202,10 @@ private let zmLog = ZMSLog(tag: "Push")
     }
     
     func updateBackgroundTask(with message : ZMConversationMessage) {
-        switch message.deliveryState {
-        case .sent, .delivered:
+        if message.isSent {
             operationStatus.finishBackgroundTask(withTaskResult: .finished)
-        case .failedToSend:
+        } else if message.deliveryState == .failedToSend {
             operationStatus.finishBackgroundTask(withTaskResult: .failed)
-        default:
-            break
         }
     }
  
@@ -198,8 +213,7 @@ private let zmLog = ZMSLog(tag: "Push")
         
 public extension ZMUserSession {
     public func markAllConversationsAsRead() {
-        self.managedObjectContext.conversationListDirectory().conversationsIncludingArchived.forEach { conversation in
-            (conversation as! ZMConversation).markAsRead()
-        }
+        let allConversations = managedObjectContext.fetchOrAssert(request: NSFetchRequest<ZMConversation>(entityName: ZMConversation.entityName()))
+        allConversations.forEach({ $0.markAsRead() })
     }
 }

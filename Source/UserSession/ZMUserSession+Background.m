@@ -32,6 +32,7 @@ static NSString *ZMLogTag = @"Push";
 
 - (void)application:(id<ZMApplication>)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions;
 {
+    [self startEphemeralTimers];
     NSDictionary *payload = launchOptions[UIApplicationLaunchOptionsRemoteNotificationKey];
     if (payload != nil) {
         [self application:application didReceiveRemoteNotification:payload fetchCompletionHandler:^(UIBackgroundFetchResult result) {
@@ -51,6 +52,7 @@ static NSString *ZMLogTag = @"Push";
 performFetchWithCompletionHandler:(void (^)(UIBackgroundFetchResult result))completionHandler;
 {
     NOT_USED(application);
+    [BackgroundActivityFactory.sharedFactory resume];
     [self.syncManagedObjectContext performGroupedBlock:^{
         [self.operationLoop.syncStrategy.missingUpdateEventsTranscoder startDownloadingMissingNotifications];
         [self.operationStatus startBackgroundFetchWithCompletionHandler:completionHandler];
@@ -68,6 +70,7 @@ performFetchWithCompletionHandler:(void (^)(UIBackgroundFetchResult result))comp
 {
     NOT_USED(note);
     [self notifyThirdPartyServices];
+    [self stopEphemeralTimers];
 }
 
 - (void)applicationWillEnterForeground:(NSNotification *)note;
@@ -77,8 +80,7 @@ performFetchWithCompletionHandler:(void (^)(UIBackgroundFetchResult result))comp
 
     [self mergeChangesFromStoredSaveNotificationsIfNeeded];
     
-    [ZMConversationList refetchAllListsInUserSession:self];
-    
+    [self startEphemeralTimers];
     // In the case that an ephemeral was sent via the share extension, we need
     // to ensure that they have timers running or are deleted/obfuscated if
     // needed. Note: ZMMessageTimer will only create a new timer for a message
@@ -104,8 +106,8 @@ performFetchWithCompletionHandler:(void (^)(UIBackgroundFetchResult result))comp
         }];
     }
 
-    [self.managedObjectContext processPendingChanges];
-
+    // we only process pending changes on sync context bc changes on the
+    // ui context will be processed when we do the save.
     [self.syncManagedObjectContext performGroupedBlock:^{
         [self.syncManagedObjectContext processPendingChanges];
     }];

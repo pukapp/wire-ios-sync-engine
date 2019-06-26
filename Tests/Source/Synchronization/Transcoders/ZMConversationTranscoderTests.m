@@ -1438,7 +1438,7 @@ static NSString *const CONVERSATION_ID_REQUEST_PREFIX = @"/conversations?ids=";
         Team *team = [Team insertNewObjectInManagedObjectContext:self.syncMOC];
         team.remoteIdentifier = NSUUID.createUUID;
         Member *member = [Member getOrCreateMemberForUser:[ZMUser selfUserInContext:self.syncMOC] inTeam:team context:self.syncMOC];
-        [member setPermissionsObjC:PermissionsObjCMember];
+        [member setTeamRole:TeamRoleMember];
         NOT_USED(member);
         ZMConversation *insertedConversation = [ZMConversation insertGroupConversationIntoManagedObjectContext:self.syncMOC withParticipants:users inTeam:team];
         if (modifier) {
@@ -1888,9 +1888,9 @@ static NSString *const CONVERSATION_ID_REQUEST_PREFIX = @"/conversations?ids=";
     // then
     ZMConversation *conv = [ZMConversation conversationWithRemoteID:[NSUUID uuidWithTransportString:rawConversation[@"id"]] createIfNeeded:NO inContext:self.syncMOC];
     
-    NSArray *messages = [conv.messages filteredOrderedSetUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(ZMMessage * _Nonnull evaluatedObject, NSDictionary<NSString *,id> * _Nullable ZM_UNUSED bindings) {
+    NSArray *messages = [[conv lastMessagesWithLimit:50] filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(ZMMessage * _Nonnull evaluatedObject, NSDictionary<NSString *,id> * _Nullable ZM_UNUSED bindings) {
         return [evaluatedObject isKindOfClass:[ZMSystemMessage class]] && [(ZMSystemMessage *)evaluatedObject systemMessageType] == ZMSystemMessageTypeNewClient && [[(ZMSystemMessage *)evaluatedObject clients] containsObject:(id<UserClientType>)selfClient];
-    }]].array;
+    }]];
     
     XCTAssertEqual(messages.count, 0u);
 }
@@ -1922,9 +1922,9 @@ static NSString *const CONVERSATION_ID_REQUEST_PREFIX = @"/conversations?ids=";
     // then
     ZMConversation *conv = [ZMConversation conversationWithRemoteID:[NSUUID uuidWithTransportString:rawConversation[@"id"]] createIfNeeded:NO inContext:self.syncMOC];
     
-    NSArray *messages = [conv.messages filteredOrderedSetUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(ZMMessage * _Nonnull evaluatedObject, NSDictionary<NSString *,id> * _Nullable ZM_UNUSED bindings) {
+    NSArray *messages = [[conv lastMessagesWithLimit:50] filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(ZMMessage * _Nonnull evaluatedObject, NSDictionary<NSString *,id> * _Nullable ZM_UNUSED bindings) {
         return [evaluatedObject isKindOfClass:[ZMSystemMessage class]] && [(ZMSystemMessage *)evaluatedObject systemMessageType] == ZMSystemMessageTypeNewConversation;
-    }]].array;
+    }]];
     
     XCTAssertEqual(messages.count, 1u);
 }
@@ -1957,7 +1957,7 @@ static NSString *const CONVERSATION_ID_REQUEST_PREFIX = @"/conversations?ids=";
         conversation = [ZMConversation insertNewObjectInManagedObjectContext:self.syncMOC];
         conversation.conversationType = ZMConversationTypeGroup;
         conversation.remoteIdentifier = conversationID;
-        [conversation internalAddParticipants:[NSSet setWithObjects:removedUser, nonRemovedUser, nil]];
+        [conversation internalAddParticipants:@[removedUser, nonRemovedUser]];
         
         XCTAssertEqual(conversation.lastServerSyncedActiveParticipants.count, 2u);
     }];
@@ -2032,7 +2032,7 @@ static NSString *const CONVERSATION_ID_REQUEST_PREFIX = @"/conversations?ids=";
         conversation = [ZMConversation insertNewObjectInManagedObjectContext:self.syncMOC];
         conversation.conversationType = ZMConversationTypeGroup;
         conversation.remoteIdentifier = conversationID;
-        [conversation internalAddParticipants:[NSSet setWithObjects:user1, user2, nil]];
+        [conversation internalAddParticipants:@[user1, user2]];
         
         XCTAssertEqual(conversation.lastServerSyncedActiveParticipants.count, 2u);
         
@@ -2091,7 +2091,6 @@ static NSString *const CONVERSATION_ID_REQUEST_PREFIX = @"/conversations?ids=";
         }
         
         // then
-        XCTAssertEqualObjects(conversation.keysThatHaveLocalModifications, [NSSet set]);
         XCTAssertTrue(conversation.isSelfAnActiveMember);
         XCTAssertTrue(conversation.needsToBeUpdatedFromBackend);
         ZMTransportRequest *request2 = [self.sut nextRequest];
@@ -2138,7 +2137,7 @@ static NSString *const CONVERSATION_ID_REQUEST_PREFIX = @"/conversations?ids=";
         XCTAssertTrue(createdConversation.isSelfAnActiveMember);
         
         // this is the member join system message
-        XCTAssertEqual(createdConversation.messages.count, 1u);
+        XCTAssertEqual(createdConversation.allMessages.count, 1u);
     }];
     WaitForAllGroupsToBeEmpty(0.5);
 }
@@ -2720,7 +2719,7 @@ static NSString *const CONVERSATION_ID_REQUEST_PREFIX = @"/conversations?ids=";
         XCTAssertNotEqual(createdConversation, existingConnection.conversation);
         
         // this is the member join system message
-        XCTAssertEqual(createdConversation.messages.count, 1u);
+        XCTAssertEqual(createdConversation.allMessages.count, 1u);
         
         NSFetchRequest *request = [NSFetchRequest fetchRequestWithEntityName:[ZMConversation entityName]];
         NSArray *allConversations = [self.syncMOC executeFetchRequestOrAssert:request];
@@ -2756,7 +2755,7 @@ static NSString *const CONVERSATION_ID_REQUEST_PREFIX = @"/conversations?ids=";
         XCTAssertEqualObjects(existingConnection.to.remoteIdentifier, otherUserID);
         
         // check that the conversation has both events
-        XCTAssertEqual(conversation.messages.count, 2u);
+        XCTAssertEqual(conversation.allMessages.count, 2u);
     }];
     WaitForAllGroupsToBeEmpty(0.5);
 }
@@ -2956,7 +2955,7 @@ static NSString *const CONVERSATION_ID_REQUEST_PREFIX = @"/conversations?ids=";
     // when
     ZMConversation *conversation = (id) [self.uiMOC objectWithID:syncConversation.objectID];
     conversation.lastReadTimestampSaveDelay = 0.2;
-    ZMMessage *toMessage = conversation.messages[42];
+    ZMMessage *toMessage = [conversation lastMessagesWithLimit:50][42];
     [conversation markMessagesAsReadUntil:toMessage];
     XCTAssert([self.uiMOC saveOrRollback]);
     WaitForAllGroupsToBeEmpty(conversation.lastReadTimestampSaveDelay + 0.2);

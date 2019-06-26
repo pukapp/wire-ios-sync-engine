@@ -36,20 +36,34 @@ extension ZMSyncStrategy: ZMUpdateEventConsumer {
         eventDecoder.processEvents(updateEvents) { [weak self] (decryptedUpdateEvents) in
             guard let `self` = self else { return }
             
+            let date = Date()
             let fetchRequest = prefetchRequest(updateEvents: decryptedUpdateEvents)
             let prefetchResult = syncMOC.executeFetchRequestBatchOrAssert(fetchRequest)
             
             Logging.eventProcessing.info("Consuming: [\n\(decryptedUpdateEvents.map({ "\tevent: \(ZMUpdateEvent.eventTypeString(for: $0.type) ?? "Unknown")" }).joined(separator: "\n"))\n]")
+        
+            for event in decryptedUpdateEvents {
+                for eventConsumer in self.eventConsumers {
+                    eventConsumer.processEvents([event], liveEvents: true, prefetchResult: prefetchResult)
+                }
+                self.eventProcessingTracker?.registerEventProcessed()
+            }
+            localNotificationDispatcher?.processEvents(decryptedUpdateEvents, liveEvents: true, prefetchResult: nil)
             
-            for eventConsumer in self.eventConsumers {
-                autoreleasepool {
-                    eventConsumer.processEvents(decryptedUpdateEvents, liveEvents: true, prefetchResult: prefetchResult)
+            if let messages = fetchRequest.noncesToFetch as? Set<UUID>,
+                let conversations = fetchRequest.remoteIdentifiersToFetch as? Set<UUID> {
+                let confirmationMessages = ZMConversation.confirmDeliveredMessages(messages, in: conversations, with: syncMOC)
+                for message in confirmationMessages {
+                    self.applicationStatusDirectory?.deliveryConfirmation.needsToConfirmMessage(message.nonce!)
                 }
             }
             
-            localNotificationDispatcher?.processEvents(decryptedUpdateEvents, liveEvents: true, prefetchResult: nil)
-            syncMOC.enqueueDelayedSave()
+            syncMOC.saveOrRollback()
+            
+            Logging.eventProcessing.debug("Events processed in \(-date.timeIntervalSinceNow): \(self.eventProcessingTracker?.debugDescription ?? "")")
+            
         }
+        
     }
     
     @objc(prefetchRequestForUpdateEvents:)

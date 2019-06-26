@@ -23,6 +23,48 @@ import XCTest
 
 final class DummyServiceUser: NSObject, ServiceUser {
     
+    var hasLegalHoldRequest: Bool = false
+    
+    var needsRichProfileUpdate: Bool = false
+    
+    var availability: Availability = .none
+    
+    var teamName: String? = nil
+    
+    var isBlocked: Bool = false
+    
+    var isExpired: Bool = false
+    
+    var isPendingApprovalBySelfUser: Bool = false
+    
+    var isPendingApprovalByOtherUser: Bool = false
+    
+    var isWirelessUser: Bool = false
+    
+    var isUnderLegalHold: Bool = false
+
+    var allClients: [UserClientType]  = []
+    
+    var expiresAfter: TimeInterval = 0
+    
+    var readReceiptsEnabled: Bool = true
+    
+    var richProfile: [UserRichProfileField] = []
+    
+    var canCreateConversation: Bool = false
+    
+    func canAccessCompanyInformation(of user: UserType) -> Bool {
+        return false
+    }
+    
+    func canAddUser(to conversation: ZMConversation) -> Bool {
+        return false
+    }
+    
+    func canRemoveUser(from conversation: ZMConversation) -> Bool {
+        return false
+    }
+    
     var previewImageData: Data? = nil
     
     var completeImageData: Data? = nil
@@ -35,6 +77,8 @@ final class DummyServiceUser: NSObject, ServiceUser {
     
     var handle: String? = "service"
     
+    var emailAddress: String? = "dummy@email.com"
+    
     var isSelfUser: Bool = false
     
     var smallProfileImageCacheKey: String? = ""
@@ -42,6 +86,8 @@ final class DummyServiceUser: NSObject, ServiceUser {
     var mediumProfileImageCacheKey: String? = ""
     
     var isConnected: Bool = false
+
+    var oneToOneConversation: ZMConversation? = nil
     
     var accentColorValue: ZMAccentColor = ZMAccentColor.brightOrange
     
@@ -55,9 +101,21 @@ final class DummyServiceUser: NSObject, ServiceUser {
     
     var isTeamMember: Bool = false
     
+    var teamRole: TeamRole = .member
+    
     var canBeConnected: Bool = false
     
     var isServiceUser: Bool = true
+
+    var usesCompanyLogin: Bool = false
+    
+    var isAccountDeleted: Bool = false
+    
+    var managedByWire: Bool = true
+    
+    var extendedMetadata: [[String : String]]? = nil
+    
+    var activeConversations: Set<ZMConversation> = Set()
     
     func requestPreviewProfileImage() {
         
@@ -135,7 +193,8 @@ public final class ServiceUserTests : IntegrationTest {
             XCTAssertNil(error)
             jobIsDone.fulfill()
         })
-        
+        XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
+
         // then
         XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))
     }
@@ -150,6 +209,7 @@ public final class ServiceUserTests : IntegrationTest {
             XCTAssertNotNil(conversation)
             jobIsDone.fulfill()
         }
+        XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
         
         // then
         XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))

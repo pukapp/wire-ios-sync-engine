@@ -26,14 +26,12 @@ open class AuthenticatedSessionFactory {
     let mediaManager: AVSMediaManager
     let flowManager : FlowManagerType
     var analytics: AnalyticsType?
-    var apnsEnvironment : ZMAPNSEnvironment?
     let application : ZMApplication
-    let environment: BackendEnvironmentProvider
+    var environment: BackendEnvironmentProvider
     let reachability: ReachabilityProvider & TearDownCapable
 
     public init(
         appVersion: String,
-        apnsEnvironment: ZMAPNSEnvironment? = nil,
         application: ZMApplication,
         mediaManager: AVSMediaManager,
         flowManager: FlowManagerType,
@@ -45,7 +43,6 @@ open class AuthenticatedSessionFactory {
         self.mediaManager = mediaManager
         self.flowManager = flowManager
         self.analytics = analytics
-        self.apnsEnvironment = apnsEnvironment
         self.application = application
         self.environment = environment
         self.reachability = reachability
@@ -53,8 +50,7 @@ open class AuthenticatedSessionFactory {
 
     func session(for account: Account, storeProvider: LocalStoreProviderProtocol) -> ZMUserSession? {
         let transportSession = ZMTransportSession(
-            baseURL: environment.backendURL,
-            websocketURL: environment.backendWSURL,
+            environment: environment,
             cookieStorage: environment.cookieStorage(for: account),
             reachability: reachability,
             initialAccessToken: nil,
@@ -66,7 +62,6 @@ open class AuthenticatedSessionFactory {
             flowManager:flowManager,
             analytics: analytics,
             transportSession: transportSession,
-            apnsEnvironment: apnsEnvironment,
             application: application,
             appVersion: appVersion,
             storeProvider: storeProvider
@@ -78,7 +73,7 @@ open class AuthenticatedSessionFactory {
 
 open class UnauthenticatedSessionFactory {
 
-    let environment: BackendEnvironmentProvider
+    var environment: BackendEnvironmentProvider
     let reachability: ReachabilityProvider
 
     init(environment: BackendEnvironmentProvider, reachability: ReachabilityProvider) {

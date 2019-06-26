@@ -21,12 +21,21 @@ import Foundation
 import XCTest
 @testable import WireSyncEngine
 
-class UserSessionSourceDummy: UserSessionSource {
-    weak var activeUserSession: ZMUserSession? = nil
-    weak var unauthenticatedSession: UnauthenticatedSession? = nil
-}
+final class UserSessionSourceDummy: UserSessionSource {
+    var activeUserSession: ZMUserSession? = nil
+    var activeUnauthenticatedSession: UnauthenticatedSession
+    var isSelectedAccountAuthenticated: Bool = true
 
-class OpenerDelegate: SessionManagerURLHandlerDelegate {
+    init() {
+        activeUnauthenticatedSession = UnauthenticatedSession(transportSession: TestUnauthenticatedTransportSession(), reachability: TestReachability(), delegate: nil)
+    }
+
+    deinit {
+        activeUnauthenticatedSession.tearDown()
+    }
+}
+ 
+final class OpenerDelegate: SessionManagerURLHandlerDelegate {
     var calls: [(URLAction, (Bool) -> Void)] = []
     func sessionManagerShouldExecuteURLAction(_ action: URLAction, callback: @escaping (Bool) -> Void) {
         calls.append((action, callback))
@@ -104,5 +113,151 @@ final class SessionManagerURLHandlerTests: MessagingTest {
 
         XCTAssertEqual(delegate.calls.count, 1)
         XCTAssertEqual(delegate.calls[0].0, .connectBot(serviceUser: expectedUserData))
+    }
+
+    func testThatItParsesCompanyLoginLink() {
+        // given
+        let id = UUID(uuidString: "4B1BEDB9-8899-4855-96AF-6CCED6F6F638")!
+        let url = URL(string: "wire://start-sso/wire-\(id)")!
+
+        // when
+        let action = URLAction(url: url)
+
+        // then
+        XCTAssertEqual(action, .startCompanyLogin(code: id))
+    }
+
+    func testThatItDiscardsInvalidCompanyLoginLink() {
+        // given
+        let url = URL(string: "wire://start-sso/wire-4B1BEDB9-8899-4855-96AF")!
+
+        // when
+        let action = URLAction(url: url)
+
+        // then
+        XCTAssertEqual(action, .warnInvalidCompanyLogin(error: .invalidLink))
+    }
+
+    func testThatItDiscardsCompanyLoginLinkWithExtraContent() {
+        // given
+        let id = UUID(uuidString: "4B1BEDB9-8899-4855-96AF-6CCED6F6F638")!
+        let url = URL(string: "wire://start-sso/wire-\(id)/content")!
+
+        // when
+        let action = URLAction(url: url)
+
+        // then
+        XCTAssertEqual(action, .warnInvalidCompanyLogin(error: .invalidLink))
+    }
+
+    // MARK: - Deep link
+
+    func testThatItParsesOpenConversationLink() {
+        // given
+        let uuidString = "fc43d637-6cc2-4d03-9185-2563c73d6ef2"
+        let url = URL(string: "wire://conversation/\(uuidString)")!
+        let uuid = UUID(uuidString: uuidString)!
+
+        // when
+        let action = URLAction(url: url)
+
+        // then
+        XCTAssertEqual(action, URLAction.openConversation(id: uuid, conversation: nil))
+    }
+
+    func testThatItChangesTheActionToWarningWhenTheSessionNotFindTheConverationID() {
+        // given
+        let uuidString = "fc43d637-6cc2-4d03-9185-2563c73d6ef2"
+        let url = URL(string: "wire://conversation/\(uuidString)")!
+
+        // when
+        var action = URLAction(url: url)
+        action?.setUserSession(userSession: mockUserSession)
+
+        // then
+        XCTAssertEqual(action, URLAction.warnInvalidDeepLink(error: .invalidConversationLink))
+    }
+
+
+    func testThatItParsesOpenUserProfileLink() {
+        // given
+        let uuidString = "fc43d637-6cc2-4d03-9185-2563c73d6ef2"
+        let url = URL(string: "wire://user/\(uuidString)")!
+        let uuid = UUID(uuidString: uuidString)!
+
+
+        // when
+        let action = URLAction(url: url)
+
+        // then
+        XCTAssertEqual(action, URLAction.openUserProfile(id: uuid))
+    }
+
+    func testThatItDiscardsInvalidOpenUserProfileLink() {
+        // given
+        let url = URL(string: "wire://user/blahBlah)")!
+
+        // when
+        let action = URLAction(url: url)
+
+        // then
+        XCTAssertEqual(action, URLAction.warnInvalidDeepLink(error: .invalidUserLink))
+    }
+
+    func testThatItDiscardsInvalidOpenConversationLink() {
+        // given
+        let url = URL(string: "wire://conversation/foobar)")!
+
+        // when
+        let action = URLAction(url: url)
+
+        // then
+        XCTAssertEqual(action, URLAction.warnInvalidDeepLink(error: .invalidConversationLink))
+    }
+    
+    func testThatItDiscardsInvalidWireURLs() {
+        // given
+        let url = URL(string: "wire://userx/abc/def)")!
+        
+        // when
+        let action = URLAction(url: url)
+        
+        // then
+        XCTAssertEqual(action, URLAction.warnInvalidDeepLink(error: .malformedLink))
+    }
+    
+    func testThatItDiscardsInvalidConnectBotURLs() {
+        // given
+        let url = URL(string: "wire://connect/something)")!
+        
+        // when
+        let action = URLAction(url: url)
+        
+        // then
+        XCTAssertEqual(action, URLAction.warnInvalidDeepLink(error: .malformedLink))
+    }
+    
+    func testThatItParsesValidBackendChangeURL() {
+        // given
+        let config = URL(string: "some.host/config.json")!
+        let url = URL(string: "wire://access/?config=\(config)")!
+        
+        // when
+        let action = URLAction(url: url)
+        
+        // then
+        XCTAssertEqual(action, URLAction.accessBackend(configurationURL: config))
+    }
+    
+    func testThatItDiscardsInvalidBackendChangeURL() {
+        // given
+        
+        let url = URL(string: "wire://access/?noconfig")!
+        
+        // when
+        let action = URLAction(url: url)
+        
+        // then
+        XCTAssertEqual(action, URLAction.warnInvalidDeepLink(error: .malformedLink))
     }
 }

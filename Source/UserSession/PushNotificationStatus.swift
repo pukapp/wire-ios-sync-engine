@@ -64,12 +64,13 @@ open class PushNotificationStatus: NSObject, BackgroundNotificationFetchStatusPr
             return zmLog.error("Attempt to fetch event id not conforming to UUID type1: \(eventId)")
         }
         
-        if lastEventIdIsNewerThan(eventId: eventId){
+        if lastEventIdIsNewerThan(lastEventId: managedObjectContext.zm_lastNotificationID, eventId: eventId){
             // We have already fetched the event and will therefore immediately call the completion handler
+            Logging.eventProcessing.info("Already fetched event with [\(eventId)]")
             return completionHandler()
         }
         
-        Logging.eventProcessing.info("Scheduling to fetch events notified by push")
+        Logging.eventProcessing.info("Scheduling to fetch events notified by push [\(eventId)]")
         
         eventIdRanking.add(eventId)
         completionHandlers[eventId] = completionHandler
@@ -81,8 +82,8 @@ open class PushNotificationStatus: NSObject, BackgroundNotificationFetchStatusPr
     ///
     /// - parameter eventIds: List of UUIDs for events that been downloaded
     /// - parameter finished: True when when all available events have been downloaded
-    @objc(didFetchEventIds:finished:)
-    public func didFetch(eventIds: [UUID], finished: Bool) {
+    @objc(didFetchEventIds:lastEventId:finished:)
+    public func didFetch(eventIds: [UUID], lastEventId: UUID?, finished: Bool) {
         let highestRankingEventId = eventIdRanking.firstObject as? UUID
         
         highestRankingEventId.apply(eventIdRanking.remove)
@@ -92,7 +93,8 @@ open class PushNotificationStatus: NSObject, BackgroundNotificationFetchStatusPr
         
         Logging.eventProcessing.info("Finished to fetching all available events")
         
-        for eventId in completionHandlers.keys.filter({  self.lastEventIdIsNewerThan(eventId: $0) || highestRankingEventId == $0 }) {
+        // We take all events that are older than or equal to lastEventId and add highest ranking event ID
+        for eventId in completionHandlers.keys.filter({  self.lastEventIdIsNewerThan(lastEventId: lastEventId, eventId: $0) || highestRankingEventId == $0 }) {
             let completionHandler = completionHandlers.removeValue(forKey: eventId)
             completionHandler?()
         }
@@ -108,8 +110,8 @@ open class PushNotificationStatus: NSObject, BackgroundNotificationFetchStatusPr
         completionHandlers.removeAll()
     }
     
-    private func lastEventIdIsNewerThan(eventId: UUID) -> Bool {
-        guard let order = managedObjectContext.zm_lastNotificationID?.compare(withType1: eventId) else { return false }
+    private func lastEventIdIsNewerThan(lastEventId: UUID?, eventId: UUID) -> Bool {
+        guard let order = lastEventId?.compare(withType1: eventId) else { return false }
         return order == .orderedDescending || order == .orderedSame
     }
     

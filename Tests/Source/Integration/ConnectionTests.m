@@ -132,7 +132,7 @@
 
     ZMConversation *conversation = [self conversationForMockConversation:self.groupConversation];
     
-    ZMUser *userToConnectTo = [conversation.activeParticipants.array firstObjectMatchingWithBlock:^BOOL(ZMUser* user) {
+    ZMUser *userToConnectTo = [conversation.sortedActiveParticipants firstObjectMatchingWithBlock:^BOOL(ZMUser* user) {
         return [user.name isEqual:userName];
     }];
     XCTAssertNotNil(userToConnectTo);
@@ -393,13 +393,11 @@
         XCTAssertNotNil(conv2);
         XCTAssertEqual(conv2.conversationType, ZMConversationTypeConnection);
         
-        NSIndexSet *expectedSet = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, 2)];
         NSArray *listNotes = pendingConversationListObserver.notifications;
         XCTAssertNotNil(listNotes);
-        ConversationListChangeInfo *listNote = listNotes.firstObject;
-        XCTAssertNotNil(listNote);
-        XCTAssertEqualObjects(listNote.insertedIndexes, expectedSet);
+        XCTAssertGreaterThan(listNotes.count, 0);
         [conversationListObserver clearNotifications];
+        WaitForAllGroupsToBeEmpty(0.5);
     }
     
     id token1 = [ConversationChangeInfo addObserver:convObserver forConversation:conv1];
@@ -451,13 +449,13 @@
         }
         XCTAssertTrue(conv1StateChanged);
         XCTAssertEqual(conv1.conversationType, ZMConversationTypeOneOnOne);
-        XCTAssertEqual(conv1.messages.count, 1u); // accepting connection request produces a new conversation system message
-        XCTAssertEqual(((ZMSystemMessage *)conv1.messages.firstObject).systemMessageType, ZMSystemMessageTypeNewConversation);
+        XCTAssertEqual(conv1.allMessages.count, 1u); // accepting connection request produces a new conversation system message
+        XCTAssertEqual(((ZMSystemMessage *)conv1.lastMessage).systemMessageType, ZMSystemMessageTypeNewConversation);
 
         XCTAssertTrue(conv2StateChanged);
         XCTAssertEqual(conv2.conversationType, ZMConversationTypeOneOnOne);
-        XCTAssertEqual(conv2.messages.count, 1u); // accepting connection request produces a new conversation system message
-        XCTAssertEqual(((ZMSystemMessage *)conv2.messages.firstObject).systemMessageType, ZMSystemMessageTypeNewConversation);
+        XCTAssertEqual(conv2.allMessages.count, 1u); // accepting connection request produces a new conversation system message
+        XCTAssertEqual(((ZMSystemMessage *)conv2.lastMessage).systemMessageType, ZMSystemMessageTypeNewConversation);
     }
     
     (void)token1;
@@ -586,8 +584,8 @@
     WaitForAllGroupsToBeEmpty(0.5);
     
     XCTAssertEqual(conversation.conversationType, ZMConversationTypeOneOnOne);
-    XCTAssertEqual(conversation.messages.count, 1u);
-    id<ZMConversationMessage> message = conversation.messages.lastObject;
+    XCTAssertEqual(conversation.allMessages.count, 1u);
+    id<ZMConversationMessage> message = conversation.lastMessage;
     XCTAssertEqualObjects([message class], [ZMSystemMessage class]);
     XCTAssertEqual(((ZMSystemMessage *)message).systemMessageType, ZMSystemMessageTypeUsingNewDevice);
 }
@@ -645,8 +643,8 @@
     // we should not see a system message in the conversation
     {
         XCTAssertEqual(conv1.conversationType, ZMConversationTypeOneOnOne);
-        XCTAssertEqual(conv1.messages.count, 1u, @"%@", conv1.messages);
-        ZMSystemMessage *message1 = conv1.messages[0];
+        XCTAssertEqual(conv1.allMessages.count, 1u, @"%@", [conv1 lastMessagesWithLimit:50]);
+        ZMSystemMessage *message1 = (ZMSystemMessage *)conv1.lastMessage;
         XCTAssertEqual(message1.systemMessageType, ZMSystemMessageTypeConnectionRequest);
         XCTAssertEqual(message1.text, @"Hola");
     }

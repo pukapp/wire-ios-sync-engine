@@ -1,6 +1,6 @@
-//
+////
 // Wire
-// Copyright (C) 2018 Wire Swiss GmbH
+// Copyright (C) 2019 Wire Swiss GmbH
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,11 +18,8 @@
 
 import Foundation
 
-extension String {
-
-    /// Escapes the notification text for display inside the notification body.
-    var escapingPercentageSymbols: String {
-        return self.replacingOccurrences(of: "%", with: "%%")
+extension UNNotification: SafeForLoggingStringConvertible {
+    public var safeForLoggingDescription: String {
+        return "date:\(date) request_id:\(request.identifier.readableHash)"
     }
-
 }

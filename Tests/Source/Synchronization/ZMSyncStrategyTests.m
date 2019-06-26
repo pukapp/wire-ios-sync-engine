@@ -105,9 +105,13 @@
     NOT_USED(taskIdentifier);
 }
 
-- (void)didStartSync { }
+- (void)didStartSlowSync { }
 
-- (void)didFinishSync { }
+- (void)didFinishSlowSync { }
+
+- (void)didStartQuickSync { }
+
+- (void)didFinishQuickSync { }
 
 - (void)didRegisterUserClient:(UserClient *)userClient
 {
@@ -140,8 +144,6 @@
     self.syncStatusMock = [OCMockObject mockForClass:SyncStatus.class];
     self.operationStatusMock = [OCMockObject mockForClass:OperationStatus.class];
     self.userProfileImageUpdateStatus = [OCMockObject mockForClass:UserProfileImageUpdateStatus.class];
-    (void)[(UserProfileImageUpdateStatus *)[[self.userProfileImageUpdateStatus stub] andReturn:nil] fetchRequestForTrackedObjects];
-    [(UserProfileImageUpdateStatus *)[self.userProfileImageUpdateStatus stub] objectsDidChange:OCMOCK_ANY];
     self.mockflowManager = [[FlowManagerMock alloc] init];
     
     self.applicationStatusDirectoryMock = [OCMockObject niceMockForClass:ApplicationStatusDirectory.class];
@@ -196,10 +198,12 @@
     
     self.storeProvider = [[MockLocalStoreProvider alloc] initWithSharedContainerDirectory:self.sharedContainerURL userIdentifier:self.userIdentifier contextDirectory:self.contextDirectory];
     self.applicationStatusDirectory = [[ApplicationStatusDirectory alloc] initWithManagedObjectContext:self.syncMOC cookieStorage:[[FakeCookieStorage alloc] init] requestCancellation:self application:self.application syncStateDelegate:self analytics:nil];
+    
     self.sut = [[ZMSyncStrategy alloc] initWithStoreProvider:self.storeProvider
                                                cookieStorage:nil
                                                  flowManager:self.mockflowManager
                                 localNotificationsDispatcher:self.mockDispatcher
+                                     notificationsDispatcher:[[NotificationDispatcher alloc] initWithManagedObjectContext:self.contextDirectory.uiContext]
                                   applicationStatusDirectory:self.applicationStatusDirectory
                                                  application:self.application];
     
@@ -851,7 +855,7 @@
     }
 }
 
-- (void)expectSyncObjectsToProcessEvents:(BOOL)process liveEvents:(BOOL)liveEvents decryptEvents:(BOOL)decyptEvents returnIDsForPrefetching:(BOOL)returnIDs withEvents:(id)events;
+- (void)expectSyncObjectsToProcessEvents:(BOOL)process liveEvents:(BOOL)liveEvents decryptEvents:(BOOL)decyptEvents returnIDsForPrefetching:(BOOL)returnIDs withEvents:(NSArray *)events;
 {
     NOT_USED(decyptEvents);
     
@@ -861,9 +865,9 @@
         }
         
         if (process) {
-            [[obj expect] processEvents:[OCMArg checkWithBlock:^BOOL(NSArray *receivedEvents) {
-                return [receivedEvents isEqualToArray:events];
-            }] liveEvents:liveEvents prefetchResult:OCMOCK_ANY];
+            for (id event in events) {
+                [[obj expect] processEvents:@[event] liveEvents:YES prefetchResult:OCMOCK_ANY];
+            }
         } else {
             [[obj reject] processEvents:OCMOCK_ANY liveEvents:liveEvents prefetchResult:OCMOCK_ANY];
         }

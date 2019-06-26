@@ -66,8 +66,8 @@
 
     // then
     ZMConversation *groupConversation = [self conversationForMockConversation:self.groupConversation];
-    id<ZMConversationMessage> message1 = groupConversation.messages[groupConversation.messages.count -2];
-    id<ZMConversationMessage> message2 = groupConversation.messages.lastObject;
+    id<ZMConversationMessage> message1 = [groupConversation lastMessagesWithLimit:50][1];
+    id<ZMConversationMessage> message2 = [groupConversation lastMessagesWithLimit:50][0];
     
     XCTAssertEqualObjects(message1.textMessageData.messageText, testMessage1);
     XCTAssertEqualObjects(message2.textMessageData.messageText, testMessage2);

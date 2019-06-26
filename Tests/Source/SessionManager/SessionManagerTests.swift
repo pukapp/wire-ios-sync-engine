@@ -33,11 +33,10 @@ class SessionManagerTests: IntegrationTest {
     
     func createManager() -> SessionManager? {
         guard let mediaManager = mediaManager, let application = application, let transportSession = transportSession else { return nil }
-        let environment = BackendEnvironment(wireEnvironment: .staging)
+        let environment = MockEnvironment()
         let reachability = TestReachability()
         let unauthenticatedSessionFactory = MockUnauthenticatedSessionFactory(transportSession: transportSession as! UnauthenticatedTransportSessionProtocol, environment: environment, reachability: reachability)
         let authenticatedSessionFactory = MockAuthenticatedSessionFactory(
-            apnsEnvironment: apnsEnvironment,
             application: application,
             mediaManager: mediaManager,
             flowManager: FlowManagerMock(),
@@ -138,12 +137,11 @@ class SessionManagerTests: IntegrationTest {
                               delegate: nil,
                               application: application,
                               environment: sessionManager!.environment,
-                              blacklistDownloadInterval : 60) { sessionManager in
+                              blacklistDownloadInterval : -1) { sessionManager in
                                 
-                                let environment = BackendEnvironment(wireEnvironment: .staging)
+                                let environment = MockEnvironment()
                                 let reachability = TestReachability()
                                 let authenticatedSessionFactory = MockAuthenticatedSessionFactory(
-                                    apnsEnvironment: self.apnsEnvironment!,
                                     application: application,
                                     mediaManager: mediaManager,
                                     flowManager: FlowManagerMock(),
@@ -201,12 +199,11 @@ class SessionManagerTests: IntegrationTest {
                               delegate: nil,
                               application: application,
                               environment: sessionManager!.environment,
-                              blacklistDownloadInterval : 60) { sessionManager in
+                              blacklistDownloadInterval : -1) { sessionManager in
                                 
-                                let environment = BackendEnvironment(wireEnvironment: .staging)
+                                let environment = MockEnvironment()
                                 let reachability = TestReachability()
                                 let authenticatedSessionFactory = MockAuthenticatedSessionFactory(
-                                    apnsEnvironment: self.apnsEnvironment!,
                                     application: application,
                                     mediaManager: mediaManager,
                                     flowManager: FlowManagerMock(),
@@ -264,12 +261,11 @@ class SessionManagerTests: IntegrationTest {
                               delegate: nil,
                               application: application,
                               environment: sessionManager!.environment,
-                              blacklistDownloadInterval : 60) { sessionManager in
+                              blacklistDownloadInterval : -1) { sessionManager in
                                 
-                                let environment = BackendEnvironment(wireEnvironment: .staging)
+                                let environment = MockEnvironment()
                                 let reachability = TestReachability()
                                 let authenticatedSessionFactory = MockAuthenticatedSessionFactory(
-                                    apnsEnvironment: self.apnsEnvironment!,
                                     application: application,
                                     mediaManager: mediaManager,
                                     flowManager: FlowManagerMock(),
@@ -308,29 +304,6 @@ class SessionManagerTests: IntegrationTest {
         XCTAssertEqual([account1.userIdentifier], observer.destroyedUserSessions)
     }
 
-    func testThatSessionManagerSetsUpAPNSEnvironmentOnLaunch() {
-        // GIVEN
-        guard let mediaManager = mediaManager, let application = application else { return XCTFail() }
-
-        let sessionManagerExpectation = self.expectation(description: "Session manager and session is loaded")
-
-        // WHEN
-        SessionManager.create(appVersion: "0.0.0",
-                              mediaManager: mediaManager,
-                              analytics: nil,
-                              delegate: nil,
-                              application: application,
-                              environment: sessionManager!.environment,
-                              blacklistDownloadInterval : 60) { _ in
-                                sessionManagerExpectation.fulfill()
-        }
-        XCTAssertTrue(self.waitForCustomExpectations(withTimeout: 0.5))
-
-
-        // THEN
-        let environment = ZMAPNSEnvironment()
-        XCTAssertNotNil(environment.appIdentifier)
-    }
 }
 
 extension IntegrationTest {
@@ -357,6 +330,54 @@ extension IntegrationTest {
         selfClient.user = ZMUser.selfUser(in: context)
         return selfClient
     }
+}
+
+class SessionManagertests_AccountDeletion: IntegrationTest {
+    
+    override func setUp() {
+        super.setUp()
+        createSelfUserAndConversation()
+    }
+    
+    func testThatItDeletesTheAccountFolder_WhenDeletingAccountWithoutActiveUserSession() throws {
+        // given
+        guard let sharedContainer = Bundle.main.appGroupIdentifier.map(FileManager.sharedContainerDirectory) else {
+            XCTFail()
+            return
+        }
+        let account = self.createAccount()
+        
+        let accountFolder = StorageStack.accountFolder(accountIdentifier: account.userIdentifier, applicationContainer: sharedContainer)
+        
+        try FileManager.default.createDirectory(at: accountFolder, withIntermediateDirectories: true, attributes: nil)
+        
+        // when
+        performIgnoringZMLogError {
+            self.sessionManager!.delete(account: account)
+        }
+        
+        // then
+        XCTAssertFalse(FileManager.default.fileExists(atPath: accountFolder.path))
+    }
+    
+    func testThatItDeletesTheAccountFolder_WhenDeletingActiveUserSessionAccount() throws {
+        // given
+        XCTAssert(login())
+        
+        guard let sharedContainer = Bundle.main.appGroupIdentifier.map(FileManager.sharedContainerDirectory) else { return XCTFail() }
+        
+        let account = sessionManager!.accountManager.selectedAccount!
+        let accountFolder = StorageStack.accountFolder(accountIdentifier: account.userIdentifier, applicationContainer: sharedContainer)
+        
+        // when
+        performIgnoringZMLogError {
+            self.sessionManager!.delete(account: account)
+        }
+        
+        // then
+        XCTAssertFalse(FileManager.default.fileExists(atPath: accountFolder.path))
+    }
+    
 }
 
 class SessionManagerTests_Teams: IntegrationTest {
@@ -476,27 +497,6 @@ class SessionManagerTests_Teams: IntegrationTest {
         XCTAssertEqual(account.userName, selfUser.name)
     }
     
-    func testThatItDeletesTheAccountFolder() throws {
-        // given
-        guard let sharedContainer = Bundle.main.appGroupIdentifier.map(FileManager.sharedContainerDirectory) else {
-            XCTFail()
-            return
-        }
-        let account = self.createAccount()
-        
-        let accountFolder = StorageStack.accountFolder(accountIdentifier: account.userIdentifier, applicationContainer: sharedContainer)
-        
-        try FileManager.default.createDirectory(at: accountFolder, withIntermediateDirectories: true, attributes: nil)
-        
-        // when
-        performIgnoringZMLogError {
-            self.sessionManager!.delete(account: account)
-        }
-        
-        // then
-        XCTAssertFalse(FileManager.default.fileExists(atPath: accountFolder.path))
-    }
-    
     func testThatItSendsAuthenticationErrorWhenAccountLimitIsReached() throws {
         // given
         let account1 = Account(userName: "Account 1", userIdentifier: UUID.create())
@@ -610,12 +610,11 @@ class SessionManagerTests_MultiUserSession: IntegrationTest {
                               delegate: nil,
                               application: application,
                               environment: sessionManager!.environment,
-                              blacklistDownloadInterval : 60) { sessionManager in
+                              blacklistDownloadInterval : -1) { sessionManager in
                                 
-                                let environment = BackendEnvironment(wireEnvironment: .staging)
+                                let environment = MockEnvironment()
                                 let reachability = TestReachability()
                                 let authenticatedSessionFactory = MockAuthenticatedSessionFactory(
-                                    apnsEnvironment: self.apnsEnvironment!,
                                     application: application,
                                     mediaManager: mediaManager,
                                     flowManager: FlowManagerMock(),
@@ -666,12 +665,11 @@ class SessionManagerTests_MultiUserSession: IntegrationTest {
                        delegate: nil,
                        application: application,
                        environment: sessionManager!.environment,
-                       blacklistDownloadInterval : 60) { sessionManager in
+                       blacklistDownloadInterval : -1) { sessionManager in
                         
-                        let environment = BackendEnvironment(wireEnvironment: .staging)
+                        let environment = MockEnvironment()
                         let reachability = TestReachability()
                         let authenticatedSessionFactory = MockAuthenticatedSessionFactory(
-                            apnsEnvironment: self.apnsEnvironment!,
                             application: application,
                             mediaManager: mediaManager,
                             flowManager: FlowManagerMock(),
@@ -1008,7 +1006,7 @@ class SessionManagerTests_MultiUserSession: IntegrationTest {
     // the background as soon as the SessionManager is created
     func testThatABackgroundTaskCanBeCreatedAfterCreatingSessionManager() {
         // WHEN
-        let activity = BackgroundActivityFactory.sharedInstance().backgroundActivity(withName: "PushActivity")
+        let activity = BackgroundActivityFactory.shared.startBackgroundActivity(withName: "PushActivity")
         
         // THEN
         XCTAssertNotNil(activity)
@@ -1063,8 +1061,8 @@ extension SessionManagerTests {
         XCTAssertTrue(self.waitForCustomExpectations(withTimeout: 0.5))
         XCTAssertEqual(conversations.count, 2)
         XCTAssertEqual(conversations.filter { $0.firstUnreadMessage != nil }.count, 2)
-        // when
         
+        // when
         let doneExpectation = self.expectation(description: "Conversations are marked as read")
 
         self.sessionManager?.markAllConversationsAsRead(completion: {
@@ -1081,11 +1079,57 @@ extension SessionManagerTests {
     }
 }
 
+final class MockSessionManagerURLHandlerDelegate: NSObject, SessionManagerURLHandlerDelegate  {
+
+    var allowedAction: URLAction?
+
+    func sessionManagerShouldExecuteURLAction(_ action: URLAction, callback: @escaping (Bool) -> Void) {
+        callback(action == allowedAction)
+    }
+
+}
+
+extension SessionManagerTests {
+
+    func testThatItLogsOutWithCompanyLoginURL() {
+        // GIVEN
+        let id = UUID(uuidString: "1E628B42-4C83-49B7-B2B4-EF27BFE503EF")!
+        let url = URL(string: "wire://start-sso/wire-\(id)")!
+
+        sut = createManager()
+
+        let urlDelegate = MockSessionManagerURLHandlerDelegate()
+        urlDelegate.allowedAction = URLAction.startCompanyLogin(code: id)
+        sut?.urlHandler.delegate = urlDelegate
+
+        // WHEN
+        let logoutExpectation = expectation(description: "The company login flow starts when the user adds .")
+
+        delegate.onLogout = { error in
+            let loginCode = error?.userInfo[SessionManager.companyLoginCodeKey]
+            XCTAssertEqual(loginCode as? UUID, id)
+            XCTAssertEqual(error?.userSessionErrorCode, .addAccountRequested)
+            logoutExpectation.fulfill()
+        }
+
+        sut?.urlHandler.openURL(url, options: [:])
+
+        // THEN
+        XCTAssertTrue(self.waitForCustomExpectations(withTimeout: 2))
+
+        // CLEANUP
+        self.sut!.tearDownAllBackgroundSessions()
+    }
+
+}
+
 // MARK: - Mocks
 class SessionManagerTestDelegate: SessionManagerDelegate {
-    
-    func sessionManagerWillLogout(error: Error?, userSessionCanBeTornDown: @escaping () -> Void) {
-        userSessionCanBeTornDown()
+
+    var onLogout: ((NSError?) -> Void)?
+    func sessionManagerWillLogout(error: Error?, userSessionCanBeTornDown: (() -> Void)?) {
+        onLogout?(error as NSError?)
+        userSessionCanBeTornDown?()
     }
     
     func sessionManagerDidFailToLogin(account: Account?, error: Error) {
@@ -1113,16 +1157,21 @@ class SessionManagerTestDelegate: SessionManagerDelegate {
     func sessionManagerWillMigrateLegacyAccount() {
         // no op
     }
-    
+
 }
 
 class SessionManagerObserverMock: SessionManagerCreatedSessionObserver, SessionManagerDestroyedSessionObserver {
     
     var createdUserSession: [ZMUserSession] = []
+    var createdUnauthenticatedSession: [UnauthenticatedSession] = []
     var destroyedUserSessions: [UUID] = []
     
     func sessionManagerCreated(userSession: ZMUserSession) {
         createdUserSession.append(userSession)
+    }
+
+    func sessionManagerCreated(unauthenticatedSession: UnauthenticatedSession) {
+        createdUnauthenticatedSession.append(unauthenticatedSession)
     }
     
     func sessionManagerDestroyedUserSession(for accountId: UUID) {

@@ -47,12 +47,13 @@ static NSString * const AppstoreURL = @"https://itunes.apple.com/us/app/zeta-cli
 
 
 @interface ZMUserSession ()
+@property (nonatomic) ZMSyncStrategy *syncStrategy;
 @property (nonatomic) ZMOperationLoop *operationLoop;
 @property (nonatomic) ZMTransportRequest *runningLoginRequest;
 @property (nonatomic) ZMTransportSession *transportSession;
 @property (atomic) ZMNetworkState networkState;
 @property (nonatomic) ZMBlacklistVerificator *blackList;
-@property (nonatomic) ZMAPNSEnvironment *apnsEnvironment;
+@property (nonatomic) NotificationDispatcher *notificationDispatcher;
 @property (nonatomic) LocalNotificationDispatcher *localNotificationDispatcher;
 @property (nonatomic) NSMutableArray* observersToken;
 @property (nonatomic) ApplicationStatusDirectory *applicationStatusDirectory;
@@ -91,16 +92,10 @@ ZM_EMPTY_ASSERTING_INIT()
                         flowManager:(id<FlowManagerType>)flowManager
                            analytics:(id<AnalyticsType>)analytics
                     transportSession:(ZMTransportSession *)transportSession
-                     apnsEnvironment:(ZMAPNSEnvironment *)apnsEnvironment
                          application:(id<ZMApplication>)application
                           appVersion:(NSString *)appVersion
                        storeProvider:(id<LocalStoreProviderProtocol>)storeProvider;
 {
-    if (apnsEnvironment == nil) {
-        apnsEnvironment = [[ZMAPNSEnvironment alloc] init];
-    }
-
-
     [storeProvider.contextDirectory.syncContext performBlockAndWait:^{
         storeProvider.contextDirectory.syncContext.analytics = analytics;
     }];
@@ -124,7 +119,6 @@ ZM_EMPTY_ASSERTING_INIT()
                              mediaManager:mediaManager
                               flowManager:flowManager
                                 analytics:analytics
-                          apnsEnvironment:apnsEnvironment
                             operationLoop:nil
                               application:application
                                appVersion:appVersion
@@ -136,7 +130,6 @@ ZM_EMPTY_ASSERTING_INIT()
                             mediaManager:(AVSMediaManager *)mediaManager
                              flowManager:(id<FlowManagerType>)flowManager
                                analytics:(id<AnalyticsType>)analytics
-                         apnsEnvironment:(ZMAPNSEnvironment *)apnsEnvironment
                            operationLoop:(ZMOperationLoop *)operationLoop
                              application:(id<ZMApplication>)application
                               appVersion:(NSString *)appVersion
@@ -149,7 +142,6 @@ ZM_EMPTY_ASSERTING_INIT()
         
         self.appVersion = appVersion;
         [ZMUserAgent setWireAppVersion:appVersion];
-        self.didStartInitialSync = NO;
         self.pushChannelIsOpen = NO;
 
         ZM_WEAK(self);
@@ -163,7 +155,6 @@ ZM_EMPTY_ASSERTING_INIT()
                                              [self pushChannelDidChange:note];
                                          }
         ]];
-        self.apnsEnvironment = apnsEnvironment;
         self.networkIsOnline = YES;
         self.managedObjectContext.isOffline = NO;
         
@@ -182,6 +173,8 @@ ZM_EMPTY_ASSERTING_INIT()
         self.managedObjectContext.zm_fileAssetCache = fileAssetCache;
         
         self.managedObjectContext.zm_searchUserCache = [[NSCache alloc] init];
+        
+        self.notificationDispatcher = [[NotificationDispatcher alloc] initWithManagedObjectContext:self.managedObjectContext];
         
         [self.syncManagedObjectContext performBlockAndWait:^{
             self.applicationStatusDirectory = [[ApplicationStatusDirectory alloc] initWithManagedObjectContext:self.syncManagedObjectContext
@@ -203,20 +196,27 @@ ZM_EMPTY_ASSERTING_INIT()
             self.transportSession.pushChannel.clientID = self.selfUserClient.remoteIdentifier;
             self.transportSession.networkStateDelegate = self;
             self.mediaManager = mediaManager;
+            self.hasCompletedInitialSync = !self.applicationStatusDirectory.syncStatus.isSlowSyncing;
         }];
 
         _application = application;
         self.topConversationsDirectory = [[TopConversationsDirectory alloc] initWithManagedObjectContext:self.managedObjectContext];
         
         [self.syncManagedObjectContext performBlockAndWait:^{
-    
+            
+            self.syncStrategy = [[ZMSyncStrategy alloc] initWithStoreProvider:storeProvider
+                                                                cookieStorage:session.cookieStorage
+                                                                  flowManager:flowManager
+                                                 localNotificationsDispatcher:self.localNotificationDispatcher
+                                                      notificationsDispatcher:self.notificationDispatcher
+                                                   applicationStatusDirectory:self.applicationStatusDirectory
+                                                                  application:application];
+            
             self.operationLoop = operationLoop ?: [[ZMOperationLoop alloc] initWithTransportSession:session
-                                                                                      cookieStorage:session.cookieStorage
-                                                                        localNotificationDispatcher:self.localNotificationDispatcher
-                                                                                        flowManager:flowManager
-                                                                                      storeProvider:storeProvider
+                                                                                       syncStrategy:self.syncStrategy
                                                                          applicationStatusDirectory:self.applicationStatusDirectory
-                                                                                        application:application];
+                                                                                              uiMOC:self.managedObjectContext
+                                                                                            syncMOC:self.syncManagedObjectContext];
             
             __weak id weakSelf = self;
             session.accessTokenRenewalFailureHandler = ^(ZMTransportResponse *response) {
@@ -238,14 +238,19 @@ ZM_EMPTY_ASSERTING_INIT()
         [self enableBackgroundFetch];
 
         self.storedDidSaveNotifications = [[ContextDidSaveNotificationPersistence alloc] initWithAccountContainer:self.storeProvider.accountContainer];
+        [self observeChangesOnShareExtension];
+        
         
         [self.syncManagedObjectContext performBlockAndWait:^{
             if (self.clientRegistrationStatus.currentPhase != ZMClientRegistrationPhaseRegistered) {
                 [self.clientRegistrationStatus prepareForClientRegistration];
             }
+            
+            [self.localNotificationDispatcher notifyAvailabilityBehaviourChangedIfNeeded];
         }];
         
         self.userExpirationObserver = [[UserExpirationObserver alloc] initWithManagedObjectContext:self.managedObjectContext];
+        [self startEphemeralTimers];
         
         [ZMRequestAvailableNotification notifyNewRequestsAvailable:self];
     }
@@ -258,6 +263,8 @@ ZM_EMPTY_ASSERTING_INIT()
     [self.application unregisterObserverForStateChange:self];
     self.mediaManager = nil;
     self.callStateObserver = nil;
+    [self.syncStrategy tearDown];
+    self.syncStrategy = nil;
     [self.operationLoop tearDown];
     self.operationLoop = nil;
     [self.transportSession tearDown];
@@ -373,9 +380,35 @@ ZM_EMPTY_ASSERTING_INIT()
         block();
         [self saveOrRollbackChanges];
         
-        if(completionHandler != nil) {
+        if (completionHandler != nil) {
             completionHandler();
         }
+    }];
+}
+
+- (void)enqueueDelayedChanges:(dispatch_block_t)block
+{
+    [self enqueueChanges:block completionHandler:nil];
+}
+
+- (void)enqueueDelayedChanges:(dispatch_block_t)block completionHandler:(dispatch_block_t)completionHandler;
+{
+    ZM_WEAK(self);
+    [self.managedObjectContext performGroupedBlock:^{
+        ZM_STRONG(self);
+        block();
+        
+        ZMSDispatchGroup *group = [ZMSDispatchGroup groupWithLabel:@"enqueueDelayedChanges"];
+        
+        [self.managedObjectContext enqueueDelayedSaveWithGroup:group];
+        
+        [group notifyOnQueue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0) block:^{
+            [self.managedObjectContext performGroupedBlock:^{
+                if (completionHandler != nil) {
+                    completionHandler();
+                }
+            }];
+        }];
     }];
 }
 
@@ -518,27 +551,47 @@ ZM_EMPTY_ASSERTING_INIT()
     }];
 }
 
-- (void)didStartSync
+- (void)didStartSlowSync
 {
     ZM_WEAK(self);
     [self.managedObjectContext performGroupedBlock:^{
         ZM_STRONG(self);
         self.isPerformingSync = YES;
-        self.didStartInitialSync = YES;
+        self.notificationDispatcher.isDisabled = YES;
         [self changeNetworkStateAndNotify];
         [self migrateOldAliasname];
     }];
 }
 
-- (void)didFinishSync
+- (void)didFinishSlowSync
 {
-    [self.operationLoop.syncStrategy didFinishSync];
+    ZM_WEAK(self);
+    [self.managedObjectContext performGroupedBlock:^{
+        ZM_STRONG(self);
+        self.hasCompletedInitialSync = YES;
+        self.notificationDispatcher.isDisabled = NO;
+        [ZMUserSession notifyInitialSyncCompletedWithContext:self.managedObjectContext];
+    }];
+}
+
+- (void)didStartQuickSync
+{
+    ZM_WEAK(self);
+    [self.managedObjectContext performGroupedBlock:^{
+        ZM_STRONG(self);
+        self.isPerformingSync = YES;
+        [self changeNetworkStateAndNotify];
+    }];
+}
+
+- (void)didFinishQuickSync
+{
+    [self.syncStrategy didFinishSync];
     
     ZM_WEAK(self);
     [self.managedObjectContext performGroupedBlock:^{
         ZM_STRONG(self);
         self.isPerformingSync = NO;
-        self.hasCompletedInitialSync = YES;
         [self changeNetworkStateAndNotify];
         [self notifyThirdPartyServices];
     }];

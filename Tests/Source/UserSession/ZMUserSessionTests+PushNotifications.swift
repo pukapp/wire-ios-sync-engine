@@ -91,8 +91,7 @@ class ZMUserSessionTests_PushNotifications: ZMUserSessionTestsBase {
         handle(conversationAction: .like, category: .conversation, userInfo: userInfo)
 
         // then
-        let lastMessage = conversation.messages.lastObject as? ZMMessage
-        XCTAssertEqual(lastMessage?.reactions.count, 1)
+        XCTAssertEqual(conversation.lastMessage?.reactions.count, 1)
     }
 
     func testThatItCallsShowConversation_ForPushNotificationCategoryConversation() {
@@ -188,10 +187,59 @@ class ZMUserSessionTests_PushNotifications: ZMUserSessionTestsBase {
         handle(conversationAction: .reply, category: .conversation, userInfo: userInfo, userText: "Hello World")
 
         // then
-        XCTAssertEqual(conversation.messages.count, 1);
+        XCTAssertEqual(conversation.allMessages.count, 1);
         XCTAssertNil(mockSessionManager.lastRequestToShowConversation)
     }
+    
+    func testThatItAppendsReadReceipt_ForPushNotificationCategoryConversationWithDirectReplyAction() {
+        // given
+        self.simulateLoggedInUser()
+        self.sut.operationStatus.isInBackground = true
+        
+        let userInfo = userInfoWithConversation(hasMessage: true)
+        let conversation = userInfo.conversation(in: self.uiMOC)!
+        
+        guard let originalMessage = conversation.lastMessages().last as? ZMClientMessage else { return XCTFail() }
+        ZMUser.selfUser(in: uiMOC).readReceiptsEnabled = true
+        originalMessage.genericMessage?.setExpectsReadConfirmation(true)?.data().apply(originalMessage.add)
+        
+        // when
+        self.handle(conversationAction: .reply, category: .conversation, userInfo: userInfo, userText: "Hello World")
+        
+        // then
+        let lastMessages = conversation.lastMessages()
+        guard let replyMessage = lastMessages[1] as? ZMClientMessage,
+        let confirmationMessage = lastMessages[0] as? ZMClientMessage else { return XCTFail() }
+        XCTAssertEqual(conversation.allMessages.count, 3)
+        XCTAssertTrue(originalMessage.isText)
+        XCTAssertTrue(replyMessage.isText)
+        XCTAssertFalse(confirmationMessage.isText)
+        XCTAssertTrue(confirmationMessage.genericMessage?.hasConfirmation() ?? false)
+    }
 
+    func testThatItAppendsReadReceipt_ForPushNotificationCategoryConversationWithLikeAction() {
+        // given
+        self.simulateLoggedInUser()
+        self.sut.operationStatus.isInBackground = true
+        
+        let userInfo = userInfoWithConversation(hasMessage: true)
+        let conversation = userInfo.conversation(in: self.uiMOC)!
+        
+        guard let originalMessage = conversation.lastMessages().last as? ZMClientMessage else { return XCTFail() }
+        ZMUser.selfUser(in: uiMOC).readReceiptsEnabled = true
+        originalMessage.genericMessage?.setExpectsReadConfirmation(true)?.data().apply(originalMessage.add)
+        
+        // when
+        handle(conversationAction: .like, category: .conversation, userInfo: userInfo)
+        
+        // then
+        guard let confirmationMessage = conversation.lastMessage as? ZMClientMessage else { return XCTFail() }
+        XCTAssertEqual(conversation.allMessages.count, 2)
+        XCTAssertFalse(confirmationMessage.isText)
+        XCTAssertEqual(originalMessage.reactions.count, 1)
+        XCTAssertTrue(confirmationMessage.genericMessage?.hasConfirmation() ?? false)
+    }
+    
     func testThatOnLaunchItCallsShowConversationList_ForPushNotificationCategoryConversationWithoutConversation() {
         // given
         simulateLoggedInUser()
@@ -232,7 +280,7 @@ extension ZMUserSessionTests_PushNotifications {
     func handle(action: String, category: String, userInfo: NotificationUserInfo, userText: String? = nil) {
         sut.handleNotificationResponse(actionIdentifier: action, categoryIdentifier: category, userInfo: userInfo, userText: userText) {}
         XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
-        sut.didFinishSync()
+        sut.didFinishQuickSync()
         XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
     }
     

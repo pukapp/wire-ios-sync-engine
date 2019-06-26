@@ -25,13 +25,11 @@ let PushChannelUserIDKey = "user"
 let PushChannelDataKey = "data"
 let PushChannelConvIDKey = "conv"
 
-private let log = ZMSLog(tag: "Push")
-
 extension Dictionary {
     
     internal func accountId() -> UUID? {
         guard let userInfoData = self[PushChannelDataKey as! Key] as? [String: Any] else {
-            log.debug("No data dictionary in notification userInfo payload");
+            Logging.push.safePublic("No data dictionary in notification userInfo payload");
             return nil
         }
     
@@ -46,17 +44,70 @@ extension Dictionary {
     internal func hugeGroupConversationId() -> UUID? {
         
         guard let userInfoData = self[PushChannelDataKey as! Key] as? [String: Any] else {
-            log.debug("No data dictionary in notification userInfo payload");
+//            log.debug("No data dictionary in notification userInfo payload");
             return nil
         }
         
         guard let cid = userInfoData[PushChannelConvIDKey] as? String else {
-            log.debug("No Conv ID in notification userInfo payload")
+//            log.debug("No Conv ID in notification userInfo payload")
             return nil
         }
         
         return UUID(uuidString: cid)
     }
+}
+
+struct PushTokenMetadata {
+    let isSandbox: Bool
+    
+    /*!
+     @brief There are 4 different application identifiers which map to each of the bundle id's used
+     @discussion
+     com.wearezeta.zclient.ios-development (dev) - <b>com.wire.dev.ent</b>
+     
+     com.wearezeta.zclient.ios-internal (internal) - <b>com.wire.int.ent</b>
+     
+     com.wearezeta.zclient-alpha - <b>com.wire.ent</b>
+     
+     com.wearezeta.zclient.ios (app store) - <b>com.wire</b>
+     
+     @sa https://github.com/zinfra/backend-wiki/wiki/Native-Push-Notifications
+     */
+    let appIdentifier: String
+
+    /*!
+     @brief There are 4 transport types which depend on the token type and the environment
+     @discussion <b>APNS</b> -> ZMAPNSTypeNormal (deprecated)
+     
+     <b>APNS_VOIP</b> -> ZMAPNSTypeVoIP
+     
+     <b>APNS_SANDBOX</b> -> ZMAPNSTypeNormal + Sandbox environment (deprecated)
+     
+     <b>APNS_VOIP_SANDBOX</b> -> ZMAPNSTypeVoIP + Sandbox environment
+     
+     The non-VoIP types are deprecated at the moment.
+     
+     @sa https://github.com/zinfra/backend-wiki/wiki/Native-Push-Notifications
+     */
+    var transportType: String {
+        if isSandbox {
+            return "APNS_VOIP_SANDBOX"
+        }
+        else {
+            return "APNS_VOIP"
+        }
+    }
+    
+    static var current: PushTokenMetadata = {
+        let appId = Bundle.main.bundleIdentifier ?? ""
+        let buildType = BuildType.init(bundleID: appId)
+        
+        let isSandbox = ZMMobileProvisionParser().apsEnvironment == .sandbox
+        let appIdentifier = buildType.certificateName
+        
+        let metadata = PushTokenMetadata(isSandbox: isSandbox, appIdentifier: appIdentifier)
+        return metadata
+    }()
 }
 
 extension ZMUserSession {
@@ -68,14 +119,16 @@ extension ZMUserSession {
     }
 
     func setPushKitToken(_ data: Data) {
-        guard let transportType = self.apnsEnvironment.transportType(forTokenType: .voIP) else { return }
-        guard let appIdentifier = self.apnsEnvironment.appIdentifier else { return }
+        let metadata = PushTokenMetadata.current
 
         let syncMOC = managedObjectContext.zm_sync!
         syncMOC.performGroupedBlock {
             guard let selfClient = ZMUser.selfUser(in: syncMOC).selfClient() else { return }
             if selfClient.pushToken?.deviceToken != data {
-                selfClient.pushToken = PushToken(deviceToken: data, appIdentifier: appIdentifier, transportType: transportType, isRegistered: false)
+                selfClient.pushToken = PushToken(deviceToken: data,
+                                                 appIdentifier: metadata.appIdentifier,
+                                                 transportType: metadata.transportType,
+                                                 isRegistered: false)
                 syncMOC.saveOrRollback()
             }
         }
@@ -129,7 +182,7 @@ extension ZMUserSession {
             let notAuthenticated = !self.isAuthenticated()
             
             if notAuthenticated {
-                log.debug("Not displaying notification because app is not authenticated")
+                Logging.push.safePublic("Not displaying notification because app is not authenticated")
                 completion()
                 return
             }
@@ -163,7 +216,7 @@ extension ZMUserSession: UNUserNotificationCenterDelegate {
                                        willPresent notification: UNNotification,
                                        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)
     {
-        log.debug("Notification center wants to present in-app notification: \(notification)")
+        Logging.push.safePublic("Notification center wants to present in-app notification: \(notification)")
         let categoryIdentifier = notification.request.content.categoryIdentifier
         
         handleInAppNotification(with: notification.userInfo,
@@ -176,7 +229,7 @@ extension ZMUserSession: UNUserNotificationCenterDelegate {
                                        didReceive response: UNNotificationResponse,
                                        withCompletionHandler completionHandler: @escaping () -> Void)
     {
-        log.debug("Did receive notification response: \(response)")
+        Logging.push.safePublic("Did receive notification response: \(response)")
         let userText = (response as? UNTextInputNotificationResponse)?.userText
         let note = response.notification
         
@@ -243,4 +296,10 @@ extension ZMUserSession: UNUserNotificationCenterDelegate {
         }
     }
     
+}
+
+fileprivate extension UNNotificationContent {
+    override open var description: String {
+        return "<\(type(of:self)); threadIdentifier: \(self.threadIdentifier); content: redacted>"
+    }
 }

@@ -37,7 +37,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 // Status flags.
 
-@property (nonatomic) BOOL didStartInitialSync;
 @property (nonatomic) BOOL networkIsOnline;
 @property (nonatomic) BOOL isPerformingSync;
 @property (nonatomic) BOOL pushChannelIsOpen;
@@ -52,12 +51,12 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) OperationStatus *operationStatus;
 @property (nonatomic, readonly) AccountStatus *accountStatus;
 @property (nonatomic, readonly) ApplicationStatusDirectory *applicationStatusDirectory;
+@property (nonatomic, readonly) NotificationDispatcher *notificationDispatcher;
 @property (nonatomic, readonly) LocalNotificationDispatcher *localNotificationDispatcher;
 @property (nonatomic, nullable) ManagedObjectContextChangeObserver *messageReplyObserver;
 @property (nonatomic, nullable) ManagedObjectContextChangeObserver *likeMesssageObserver;
 @property (nonatomic, nonnull)  UserExpirationObserver *userExpirationObserver;
 @property (nonatomic, readonly) AVSMediaManager *mediaManager;
-@property (nonatomic, readonly) ZMAPNSEnvironment *apnsEnvironment;
 
 - (void)tearDown;
 

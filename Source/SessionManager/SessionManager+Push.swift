@@ -33,6 +33,16 @@ protocol PushRegistry {
 
 extension PKPushRegistry: PushRegistry {}
 
+extension PKPushPayload {
+    fileprivate var stringIdentifier: String {
+        if let data = dictionaryPayload["data"] as? [AnyHashable : Any], let innerData = data["data"] as? [AnyHashable : Any], let id = innerData["id"] {
+            return "\(id)"
+        } else {
+            return self.description
+        }
+    }
+}
+
 
 // MARK: - PKPushRegistryDelegate
 
@@ -81,13 +91,14 @@ extension SessionManager: PKPushRegistryDelegate {
     private func pushNotification(to userId: UUID, payload: PKPushPayload, completion: @escaping () -> Void) {
         log.debug("Received push payload: \(payload.dictionaryPayload)")
         notificationsTracker?.registerReceivedPush()
-        guard
-            let account = accountManager.account(with: userId),
-            let activity = BackgroundActivityFactory.sharedInstance().backgroundActivity(withName: "Process PushKit payload", expirationHandler: { [weak self] in
-                log.debug("Processing push payload expired")
+        
+        guard let accountId = payload.dictionaryPayload.accountId(),
+            let account = self.accountManager.account(with: accountId),
+            let activity = BackgroundActivityFactory.shared.startBackgroundActivity(withName: "\(payload.stringIdentifier)", expirationHandler: { [weak self] in
+                Logging.push.safePublic("Processing push payload expired: \(payload)")
                 self?.notificationsTracker?.registerProcessingExpired()
             }) else {
-                log.debug("Aborted processing of payload: \(payload.dictionaryPayload)")
+                Logging.push.safePublic("Aborted processing of payload: \(payload)")
                 notificationsTracker?.registerProcessingAborted()
                 return completion()
         }
@@ -98,7 +109,7 @@ extension SessionManager: PKPushRegistryDelegate {
             userSession.receivedPushNotification(with: payload.dictionaryPayload) { [weak self] in
                 log.debug("Processing push payload completed")
                 self?.notificationsTracker?.registerNotificationProcessingCompleted()
-                activity.end()
+                BackgroundActivityFactory.shared.endBackgroundActivity(activity)
                 completion()
             }
         }
@@ -197,17 +208,18 @@ extension SessionManager: PKPushRegistryDelegate {
 // MARK: - ShowContentDelegate
 
 
-@objc
 public protocol ShowContentDelegate: class {
-    
     func showConversation(_ conversation: ZMConversation, at message: ZMConversationMessage?)
     func showConversationList()
-    
+    func showUserProfile(user: UserType)
+    func showConnectionRequest(userId: UUID)
 }
 
 extension SessionManager {
     
-    public func showConversation(_ conversation: ZMConversation, at message: ZMConversationMessage?, in session: ZMUserSession) {
+    public func showConversation(_ conversation: ZMConversation,
+                                 at message: ZMConversationMessage? = nil,
+                                 in session: ZMUserSession) {
         activateAccount(for: session) {
             self.showContentDelegate?.showConversation(conversation, at: message)
         }
@@ -217,6 +229,15 @@ extension SessionManager {
         activateAccount(for: session) {
             self.showContentDelegate?.showConversationList()
         }
+    }
+    
+    
+    public func showUserProfile(user: UserType) {
+        self.showContentDelegate?.showUserProfile(user: user)
+    }
+    
+    public func showConnectionRequest(userId: UUID) {
+        self.showContentDelegate?.showConnectionRequest(userId: userId)
     }
     
 }

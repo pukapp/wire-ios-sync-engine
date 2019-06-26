@@ -32,6 +32,7 @@ public enum ThirdLoginError: Error, Equatable {
 
 public enum URLAction: Equatable {
     case connectBot(serviceUser: ServiceUserData)
+    
     case companyLoginSuccess(userInfo: UserInfo)
     case companyLoginFailure(error: CompanyLoginError)
     case groupInvite(userIdentifier: String) //群邀请
@@ -42,9 +43,61 @@ public enum URLAction: Equatable {
     case authLoginError(error: AuthLoginError)
     case thirdLoginError(errror: ThirdLoginError)
 
+    case startCompanyLogin(code: UUID)
+    case warnInvalidCompanyLogin(error: ConmpanyLoginRequestError)
+
+    case openConversation(id: UUID, conversation: ZMConversation?)
+
+    // The UI search for the user ID and open the profile view for connection request if not connected
+    case openUserProfile(id: UUID)
+    case warnInvalidDeepLink(error: DeepLinkRequestError)
+    
+    // Switch to a custom backend
+    case accessBackend(configurationURL: URL)
+
+    /// Update self's associated value with given userSession
+    ///
+    /// - Parameter userSession: the active ZMUserSession
+    mutating func setUserSession(userSession: ZMUserSession) {
+        guard let moc = userSession.managedObjectContext else {
+            return
+        }
+
+        switch self {
+        case .openConversation(let id, _):
+            guard let conversation = ZMConversation(remoteID: id, createIfNeeded: false, in: moc) else {
+                self = .warnInvalidDeepLink(error: .invalidConversationLink)
+                return
+            }
+
+            self = .openConversation(id: id, conversation: conversation)
+        default:
+            break
+        }
+    }
+
+    var causesLogout: Bool {
+        switch self {
+        case .startCompanyLogin: return true
+        default: return false
+        }
+    }
+
     var requiresAuthentication: Bool {
         switch self {
         case .connectBot,.groupInvite,.authLogin: return true
+        case .openConversation,
+             .openUserProfile:
+             return true
+        default: return false
+        }
+    }
+
+    var opensDeepLink: Bool {
+        switch self {
+        case .openConversation,
+             .openUserProfile:
+            return true
         default: return false
         }
     }
@@ -59,20 +112,45 @@ extension URLComponents {
 extension URLAction {
     init?(url: URL, validatingIn defaults: UserDefaults = .shared()) {
         guard let components = URLComponents(string: url.absoluteString),
-            let host = components.host else {
+            let host = components.host,
+            let scheme = components.scheme,
+            scheme.starts(with: "wire") == true else {
             return nil
         }
         
         switch host {
+        case URL.DeepLink.user:
+            if let lastComponent = url.pathComponents.last,
+                let uuid = UUID(uuidString: lastComponent) {
+                self = .openUserProfile(id: uuid)
+            } else {
+                self = .warnInvalidDeepLink(error: .invalidUserLink)
+            }
+
+        case URL.DeepLink.conversation:
+            if let lastComponent = url.pathComponents.last,
+                let uuid = UUID(uuidString: lastComponent) {
+                self = .openConversation(id: uuid, conversation: nil)
+            } else {
+                self = .warnInvalidDeepLink(error: .invalidConversationLink)
+            }
+
+        case URL.Host.startSSO:
+            if let uuidCode = url.pathComponents.last.flatMap(CompanyLoginRequestDetector.requestCode) {
+                self = .startCompanyLogin(code: uuidCode)
+            } else {
+                self = .warnInvalidCompanyLogin(error: .invalidLink)
+            }
+
         case URL.Host.connect:
-            guard let service = components.query(for: "service"),
-                let provider = components.query(for: "provider"),
+            guard let service = components.query(for: URLQueryItem.Key.Connect.service),
+                let provider = components.query(for: URLQueryItem.Key.Connect.provider),
                 let serviceUUID = UUID(uuidString: service),
                 let providerUUID = UUID(uuidString: provider) else {
-                    return nil
+                    self = .warnInvalidDeepLink(error: .malformedLink)
+                    return
             }
             self = .connectBot(serviceUser: ServiceUserData(provider: providerUUID, service: serviceUUID))
-            
         case URL.Host.invite:
             guard let userIdentifier = components.query(for: URLQueryItem.Key.inviteId) else {
                 self = .groupInviteError(error: .invalidUrl(url: url))
@@ -93,12 +171,19 @@ extension URLAction {
                 return
             }
             self = .thirdLogin(fromid: fromid, email: email, userid: userid)
+        case URL.Host.accessBackend:
+            guard let config = components.query(for: URLQueryItem.Key.AccessBackend.config), let url = URL(string: config) else {
+                self = .warnInvalidDeepLink(error: .malformedLink)
+                return
+            }
+            self = .accessBackend(configurationURL: url)
 
         case URL.Host.login:
             let pathComponents = url.pathComponents
 
             guard url.pathComponents.count >= 2 else {
-                return nil
+                self = .warnInvalidCompanyLogin(error: .invalidLink)
+                return
             }
 
             switch pathComponents[1] {
@@ -139,11 +224,13 @@ extension URLAction {
                 let error = CompanyLoginError(label: label)
                 self = .companyLoginFailure(error: error)
             default:
-                return nil
+                self = .warnInvalidCompanyLogin(error: .invalidLink)
+                return
             }
 
         default:
-            return nil
+            self = .warnInvalidDeepLink(error: .malformedLink)
+            return
         }
     }
     
@@ -167,9 +254,10 @@ extension URLAction {
         switch self {
         case .companyLoginSuccess(let userInfo):
             unauthenticatedSession.authenticationStatus.loginSucceeded(with: userInfo)
-        case .companyLoginFailure:
+        case .startCompanyLogin(let code):
+            unauthenticatedSession.authenticationStatus.notifyCompanyLoginCodeDidBecomeAvailable(code)
+        case .companyLoginFailure, .warnInvalidCompanyLogin:
             break // no-op (error should be handled in UI)
-
         default:
             fatalError("This action cannot be executed with an unauthenticated session.")
         }
@@ -180,6 +268,12 @@ extension URLAction {
 }
 
 public protocol SessionManagerURLHandlerDelegate: class {
+
+    /// sessionManager executes a URLAction
+    ///
+    /// - Parameters:
+    ///   - action: the action to execute
+    ///   - callback: the callback with a bool shouldExecute, it should be called after the action is executed.
     func sessionManagerShouldExecuteURLAction(_ action: URLAction, callback: @escaping (Bool) -> Void)
 }
 
@@ -192,15 +286,30 @@ public final class SessionManagerURLHandler: NSObject {
     internal init(userSessionSource: UserSessionSource) {
         self.userSessionSource = userSessionSource
     }
-    
+
     @objc @discardableResult
     public func openURL(_ url: URL, options: [UIApplication.OpenURLOptionsKey: AnyObject]) -> Bool {
         guard let action = URLAction(url: url) else {
             return false
         }
 
-        if action.requiresAuthentication {
 
+        if action.opensDeepLink {
+            guard let userSessionSource = userSessionSource else {
+                pendingAction = action
+                return true
+            }
+
+            if let userSession = userSessionSource.activeUserSession {
+                handle(action: action, in: userSession)
+            } else if userSessionSource.isSelectedAccountAuthenticated {
+                pendingAction = action
+                return true
+            } else {
+                handle(action: .warnInvalidDeepLink(error: .notLoggedIn), in: userSessionSource.activeUnauthenticatedSession)
+            }
+
+        } else if action.requiresAuthentication {
             guard let userSession = userSessionSource?.activeUserSession else {
                 pendingAction = action
                 return true
@@ -209,7 +318,6 @@ public final class SessionManagerURLHandler: NSObject {
             handle(action: action, in: userSession)
 
         } else {
-            
             if case .thirdLogin = action {
                 delegate?.sessionManagerShouldExecuteURLAction(action, callback: { (_) in
                     
@@ -217,39 +325,48 @@ public final class SessionManagerURLHandler: NSObject {
                 return true
             }
  
-            guard let unauthenticatedSession = userSessionSource?.unauthenticatedSession else {
+            guard let unauthenticatedSession = userSessionSource?.activeUnauthenticatedSession else {
                 return false
             }
 
             handle(action: action, in: unauthenticatedSession)
-
         }
 
         return true
     }
 
     fileprivate func handle(action: URLAction, in userSession: ZMUserSession) {
-        delegate?.sessionManagerShouldExecuteURLAction(action) { shouldExecute in
+        let callback: (Bool) -> () = { shouldExecute in
             if shouldExecute {
                 action.execute(in: userSession)
             }
         }
+
+        ///update openUserProfile's associated value with session
+        var mutableAction = action
+        mutableAction.setUserSession(userSession: userSession)
+
+        delegate?.sessionManagerShouldExecuteURLAction(mutableAction, callback: callback)
     }
 
-    fileprivate func handle(action: URLAction, in unauthenticatedSessio: UnauthenticatedSession) {
+    fileprivate func handle(action: URLAction, in unauthenticatedSession: UnauthenticatedSession) {
         delegate?.sessionManagerShouldExecuteURLAction(action) { shouldExecute in
             if shouldExecute {
-                action.execute(in: unauthenticatedSessio)
+                action.execute(in: unauthenticatedSession)
             }
+        }
+    }
+    
+    private func executePendingAction(userSession: ZMUserSession) {
+        if let pendingAction = self.pendingAction {
+            handle(action: pendingAction, in: userSession)
+            self.pendingAction = nil
         }
     }
 }
 
 extension SessionManagerURLHandler: SessionActivationObserver {
     public func sessionManagerActivated(userSession: ZMUserSession) {
-        if let pendingAction = self.pendingAction {
-            self.handle(action: pendingAction, in: userSession)
-            self.pendingAction = nil
-        }
+        executePendingAction(userSession: userSession)
     }
 }

@@ -39,7 +39,7 @@ public typealias LaunchOptions = [UIApplication.LaunchOptionsKey : Any]
 
 @objc public protocol SessionManagerDelegate : SessionActivationObserver {
     func sessionManagerDidFailToLogin(account: Account?, error : Error)
-    func sessionManagerWillLogout(error : Error?, userSessionCanBeTornDown: @escaping () -> Void)
+    func sessionManagerWillLogout(error : Error?, userSessionCanBeTornDown: (() -> Void)?)
     func sessionManagerWillOpenAccount(_ account: Account, userSessionCanBeTornDown: @escaping () -> Void)
     func sessionManagerWillMigrateAccount(_ account: Account)
     func sessionManagerWillMigrateLegacyAccount()
@@ -49,8 +49,10 @@ public typealias LaunchOptions = [UIApplication.LaunchOptionsKey : Any]
 @objc
 public protocol UserSessionSource: class {
     var activeUserSession: ZMUserSession? { get }
-    var unauthenticatedSession: UnauthenticatedSession? { get }
+    var activeUnauthenticatedSession: UnauthenticatedSession { get }
+    var isSelectedAccountAuthenticated: Bool { get }
 }
+
 
 @objc
 public protocol SessionManagerType : class {
@@ -73,10 +75,23 @@ public protocol SessionManagerType : class {
     func configureUserNotifications()
     
     /// Switch account and and ask UI to to navigate to a message in a conversation
-    func showConversation(_ conversation: ZMConversation, at message: ZMConversationMessage?, in session: ZMUserSession)
+    ///
+    /// - Parameters:
+    ///   - conversation: the conversation to switch
+    ///   - message: the message to navigate
+    ///   - session: the session of the conversation
+    func showConversation(_ conversation: ZMConversation,
+                          at message: ZMConversationMessage?,
+                          in session: ZMUserSession)
     
     /// Switch account and and ask UI to navigate to the conversatio list
     func showConversationList(in session: ZMUserSession)
+
+    /// ask UI to open the profile of a user
+    func showUserProfile(user: UserType)
+
+    /// ask UI to open the connection request screen
+    func showConnectionRequest(userId: UUID)
 
     /// Needs to be called before we try to register another device because API requires password
     func update(credentials: ZMCredentials) -> Bool
@@ -158,7 +173,7 @@ public protocol ForegroundNotificationResponder: class {
 
 
 @objcMembers public class SessionManager : NSObject, SessionManagerType, UserSessionSource {
-
+    
     /// Maximum number of accounts which can be logged in simultanously
     public static let maxNumberAccounts = 3
     
@@ -170,7 +185,20 @@ public protocol ForegroundNotificationResponder: class {
     public var urlHandler: SessionManagerURLHandler!
 
     public fileprivate(set) var backgroundUserSessions: [UUID: ZMUserSession] = [:]
-    public fileprivate(set) var unauthenticatedSession: UnauthenticatedSession?
+    public internal(set) var unauthenticatedSession: UnauthenticatedSession? {
+        willSet {
+            self.unauthenticatedSession?.tearDown()
+        }
+        didSet {
+            if let session = self.unauthenticatedSession {
+                self.preLoginAuthenticationToken = session.addAuthenticationObserver(self)
+                NotificationInContext(name: sessionManagerCreatedUnauthenticatedSessionNotificationName, context: self, object: session).post()
+            } else {
+                self.preLoginAuthenticationToken = nil
+            }
+        }
+        
+    }
     public weak var showContentDelegate: ShowContentDelegate?
     public weak var foregroundNotificationResponder: ForegroundNotificationResponder?
     public weak var switchingDelegate: SessionManagerSwitchingDelegate?
@@ -192,21 +220,32 @@ public protocol ForegroundNotificationResponder: class {
     
     fileprivate let sessionLoadingQueue : DispatchQueue = DispatchQueue(label: "sessionLoadingQueue")
     
-    let environment: BackendEnvironmentProvider
+    var environment: BackendEnvironmentProvider {
+        didSet {
+            authenticatedSessionFactory.environment = environment
+            unauthenticatedSessionFactory.environment = environment
+        }
+    }
+    
     let sharedContainerURL: URL
     let dispatchGroup: ZMSDispatchGroup?
     fileprivate var accountTokens : [UUID : [Any]] = [:]
     fileprivate var memoryWarningObserver: NSObjectProtocol?
     fileprivate var isSelectingAccount : Bool = false
-    
-    private static var token: Any?
-    
+        
     public var callKitDelegate : CallKitDelegate?
-    
-    private static let runOnce: () -> Void = {
-        BuildType.setupBuildTypes()
-        return {}
-    }()
+
+    public var isSelectedAccountAuthenticated: Bool {
+        guard let selectedAccount = accountManager.selectedAccount else {
+            return false
+        }
+
+        return environment.isAuthenticated(selectedAccount)
+    }
+
+    public var activeUnauthenticatedSession: UnauthenticatedSession {
+        return unauthenticatedSession ?? createUnauthenticatedSession()
+    }
     
     /// The entry point for SessionManager; call this instead of the initializers.
     ///
@@ -221,8 +260,7 @@ public protocol ForegroundNotificationResponder: class {
         completion: @escaping (SessionManager) -> Void
         ) {
         
-        token = FileManager.default.executeWhenFileSystemIsAccessible {
-            runOnce()
+        application.executeWhenFileSystemIsAccessible {
             completion(SessionManager(
                 appVersion: appVersion,
                 mediaManager: mediaManager,
@@ -232,8 +270,6 @@ public protocol ForegroundNotificationResponder: class {
                 environment: environment,
                 blacklistDownloadInterval: blacklistDownloadInterval
             ))
-            
-            token = nil
         }
     }
     
@@ -259,7 +295,6 @@ public protocol ForegroundNotificationResponder: class {
         let unauthenticatedSessionFactory = UnauthenticatedSessionFactory(environment: environment, reachability: reachability)
         let authenticatedSessionFactory = AuthenticatedSessionFactory(
             appVersion: appVersion,
-            apnsEnvironment: nil,
             application: application,
             mediaManager: mediaManager,
             flowManager: flowManager,
@@ -280,20 +315,22 @@ public protocol ForegroundNotificationResponder: class {
             environment: environment
         )
         
-        self.blacklistVerificator = ZMBlacklistVerificator(checkInterval: blacklistDownloadInterval,
-                                                           version: appVersion,
-                                                           environment: environment,
-                                                           working: nil,
-                                                           application: application,
-                                                           blacklistCallback:
-            { [weak self] (blacklisted) in
-                guard let `self` = self, !self.isAppVersionBlacklisted else { return }
-                
-                if blacklisted {
-                    self.isAppVersionBlacklisted = true
-                    self.delegate?.sessionManagerDidBlacklistCurrentVersion()
-                }
-        })
+        if blacklistDownloadInterval > 0 {
+            self.blacklistVerificator = ZMBlacklistVerificator(checkInterval: blacklistDownloadInterval,
+                                                               version: appVersion,
+                                                               environment: environment,
+                                                               working: nil,
+                                                               application: application,
+                                                               blacklistCallback:
+                { [weak self] (blacklisted) in
+                    guard let `self` = self, !self.isAppVersionBlacklisted else { return }
+                    
+                    if blacklisted {
+                        self.isAppVersionBlacklisted = true
+                        self.delegate?.sessionManagerDidBlacklistCurrentVersion()
+                    }
+            })
+        }
      
         self.memoryWarningObserver = NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification,
                                                                             object: nil,
@@ -307,6 +344,7 @@ public protocol ForegroundNotificationResponder: class {
         })
         
         NotificationCenter.default.addObserver(self, selector: #selector(applicationWillEnterForeground(_:)), name: UIApplication.willEnterForegroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(applicationWillResignActive(_:)), name: UIApplication.willResignActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(applicationDidBecomeActive(_:)), name: UIApplication.didBecomeActiveNotification, object: nil)
     }
 
@@ -361,9 +399,8 @@ public protocol ForegroundNotificationResponder: class {
         // we must set these before initializing the PushDispatcher b/c if the app
         // received a push from terminated state, it requires these properties to be
         // non nil in order to process the notification
-        BackgroundActivityFactory.sharedInstance().application = UIApplication.shared
-        BackgroundActivityFactory.sharedInstance().mainGroupQueue = groupQueue
-        
+        BackgroundActivityFactory.shared.activityManager = UIApplication.shared
+
         if let analytics = analytics {
             self.notificationsTracker = NotificationsTracker(analytics: analytics)
         } else {
@@ -409,6 +446,13 @@ public protocol ForegroundNotificationResponder: class {
     }
 
     private func selectInitialAccount(_ account: Account?, launchOptions: LaunchOptions) {
+        if let url = launchOptions[UIApplication.LaunchOptionsKey.url] as? URL {
+            if URLAction(url: url)?.causesLogout == true {
+                // Do not log in if the launch URL action causes a logout
+                return
+            }
+        }
+        
         loadSession(for: account) { [weak self] session in
             guard let `self` = self, let session = session else { return }
             self.updateCurrentAccount(in: session.managedObjectContext)
@@ -441,26 +485,32 @@ public protocol ForegroundNotificationResponder: class {
         }
     }
     
-    public func addAccount() {
+    public func addAccount(userInfo: [String: Any]? = nil) {
         confirmSwitchingAccount { [weak self] in
-            self?.logoutCurrentSession(deleteCookie: false, error: NSError(code: .addAccountRequested, userInfo: nil))
+            let error = NSError(code: .addAccountRequested, userInfo: userInfo)
+            if self?.activeUserSession == nil {
+                // If the user is already unauthenticated, we dont need to log out the current session
+                self?.delegate?.sessionManagerWillLogout(error: error, userSessionCanBeTornDown: nil)
+            } else {
+                self?.logoutCurrentSession(deleteCookie: false, error: error)
+            }
         }
     }
     
     public func delete(account: Account) {
         log.debug("Deleting account \(account.userIdentifier)...")
-        if accountManager.selectedAccount != account {
-            // Deleted an account associated with a background session
-            self.tearDownBackgroundSession(for: account.userIdentifier)
-            self.deleteAccountData(for: account)
-        } else if let secondAccount = accountManager.accounts.first(where: { $0.userIdentifier != account.userIdentifier }) {
-            // Deleted the active account but we can switch to another account
+        if let secondAccount = accountManager.accounts.first(where: { $0.userIdentifier != account.userIdentifier }) {
+            // Deleted an account but we can switch to another account
             select(secondAccount, tearDownCompletion: { [weak self] in
                 self?.tearDownBackgroundSession(for: account.userIdentifier)
                 self?.deleteAccountData(for: account)
             })
+        } else if accountManager.selectedAccount != account {
+            // Deleted an inactive account, there's no need notify the UI
+            tearDownBackgroundSession(for: account.userIdentifier)
+            deleteAccountData(for: account)
         } else {
-            // Deleted the active account and there's not other account we can switch to
+            // Deleted the last account so we need to return to the logged out area
             logoutCurrentSession(deleteCookie: true, deleteAccount:true, error: NSError(code: .addAccountRequested, userInfo: nil))
         }
     }
@@ -470,7 +520,7 @@ public protocol ForegroundNotificationResponder: class {
     }
     
     fileprivate func logoutCurrentSession(deleteCookie: Bool = true, deleteAccount: Bool = false, error : Error?) {
-        guard let currentSession = activeUserSession, let account = accountManager.selectedAccount else {
+        guard let account = accountManager.selectedAccount else {
             return
         }
     
@@ -478,10 +528,10 @@ public protocol ForegroundNotificationResponder: class {
         tearDownObservers(account: account.userIdentifier)
         notifyUserSessionDestroyed(account.userIdentifier)
         
-        self.createUnauthenticatedSession()
+        self.createUnauthenticatedSession(accountId: deleteAccount ? nil : account.userIdentifier)
         
         delegate?.sessionManagerWillLogout(error: error, userSessionCanBeTornDown: { [weak self] in
-            currentSession.closeAndDeleteCookie(deleteCookie)
+            self?.activeUserSession?.closeAndDeleteCookie(deleteCookie)
             self?.activeUserSession = nil
             StorageStack.reset()
             
@@ -501,7 +551,7 @@ public protocol ForegroundNotificationResponder: class {
     internal func loadSession(for account: Account?, completion: @escaping (ZMUserSession?) -> Void) {
         guard let authenticatedAccount = account, environment.isAuthenticated(authenticatedAccount) else {
             completion(nil)
-            createUnauthenticatedSession()
+            createUnauthenticatedSession(accountId: account?.userIdentifier)
             delegate?.sessionManagerDidFailToLogin(account: account, error: NSError(code: .accessTokenExpired, userInfo: account?.loginCredentials?.dictionaryRepresentation))
             return
         }
@@ -559,13 +609,14 @@ public protocol ForegroundNotificationResponder: class {
                                                  unreadCountObserver
         ]
     }
-    
-    fileprivate func createUnauthenticatedSession() {
+
+    @discardableResult
+    fileprivate func createUnauthenticatedSession(accountId: UUID? = nil) -> UnauthenticatedSession {
         log.debug("Creating unauthenticated session")
-        self.unauthenticatedSession?.tearDown()
         let unauthenticatedSession = unauthenticatedSessionFactory.session(withDelegate: self)
+        unauthenticatedSession.accountId = accountId
         self.unauthenticatedSession = unauthenticatedSession
-        self.preLoginAuthenticationToken = unauthenticatedSession.addAuthenticationObserver(self)
+        return unauthenticatedSession
     }
     
     fileprivate func configure(session userSession: ZMUserSession, for account: Account) {
@@ -680,6 +731,10 @@ public protocol ForegroundNotificationResponder: class {
                 updateCallNotificationStyle()
             }
         }
+    }
+    
+    @objc public func updateCallKitConfiguration() {
+        callKitDelegate?.updateConfiguration()
     }
     
     private func updateCallNotificationStyle() {
@@ -824,7 +879,7 @@ extension SessionManager: PostLoginAuthenticationObserver {
     
     public func clientRegistrationDidFail(_ error: NSError, accountId: UUID) {
         if unauthenticatedSession == nil {
-            createUnauthenticatedSession()
+            createUnauthenticatedSession(accountId: accountId)
         }
         
         delegate?.sessionManagerDidFailToLogin(account: accountManager.account(with: accountId), error: error)
@@ -852,7 +907,7 @@ extension SessionManager: PostLoginAuthenticationObserver {
             
         default:
             if unauthenticatedSession == nil {
-                createUnauthenticatedSession()
+                createUnauthenticatedSession(accountId: accountId)
             }
             
             delegate?.sessionManagerDidFailToLogin(account: accountManager.account(with: accountId), error: error)
@@ -862,21 +917,33 @@ extension SessionManager: PostLoginAuthenticationObserver {
 }
 
 extension SessionManager {
-    @objc dynamic fileprivate func applicationDidBecomeActive(_ note: Notification) {
-        notificationsTracker?.dispatchEvent()
-    }
 }
 
-// MARK: - Unread Conversation Count
+// MARK: - Application lifetime notifications
 
-extension SessionManager: ZMConversationListObserver {
-    
+extension SessionManager {
     @objc fileprivate func applicationWillEnterForeground(_ note: Notification) {
+        BackgroundActivityFactory.shared.resume()
+        
         updateAllUnreadCounts()
         
         // Delete expired url scheme verification tokens
         CompanyLoginVerificationToken.flushIfNeeded()
     }
+    
+    @objc fileprivate func applicationWillResignActive(_ note: Notification) {
+        updateAllUnreadCounts()
+    }
+    
+    @objc fileprivate func applicationDidBecomeActive(_ note: Notification) {
+        notificationsTracker?.dispatchEvent()
+    }
+
+}
+
+// MARK: - Unread Conversation Count
+
+extension SessionManager: ZMConversationListObserver {
     
     public func conversationListDidChange(_ changeInfo: ConversationListChangeInfo) {
         
@@ -931,6 +998,20 @@ extension SessionManager : WireCallCenterCallStateObserver {
     
 }
 
+extension SessionManager {
+
+    /// The SSO code provided by the user when clicking their company link. Points to a UUID object.
+    public static var companyLoginCodeKey: String {
+        return "WireCompanyLoginCode"
+    }
+
+    /// The timestamp when the user initiated the request.
+    public static var companyLoginRequestTimestampKey: String {
+        return "WireCompanyLoginTimesta;p"
+    }
+
+}
+
 extension SessionManager : PreLoginAuthenticationObserver {
     
     @objc public func authenticationDidSucceed() {
@@ -946,6 +1027,11 @@ extension SessionManager : PreLoginAuthenticationObserver {
         
         delegate?.sessionManagerDidFailToLogin(account: nil, error: error)
     }
+
+    public func companyLoginCodeDidBecomeAvailable(_ code: UUID) {
+        addAccount(userInfo: [SessionManager.companyLoginCodeKey: code,
+                              SessionManager.companyLoginRequestTimestampKey: Date()])
+    }
 }
 
 // MARK: - Session manager observer
@@ -955,6 +1041,9 @@ extension SessionManager : PreLoginAuthenticationObserver {
     /// activating one or creating one in the background. No assumption should
     /// be made that the session is active.
     func sessionManagerCreated(userSession : ZMUserSession)
+
+    /// Invoked when the SessionManager creates a new unauthenticated session.
+    func sessionManagerCreated(unauthenticatedSession: UnauthenticatedSession)
 }
 
 @objc public protocol SessionManagerDestroyedSessionObserver: class {
@@ -963,11 +1052,19 @@ extension SessionManager : PreLoginAuthenticationObserver {
     func sessionManagerDestroyedUserSession(for accountId : UUID)
 }
 
+private let sessionManagerCreatedUnauthenticatedSessionNotificationName = Notification.Name(rawValue: "ZMSessionManagerCreatedUnauthenticatedSessionNotification")
 private let sessionManagerCreatedSessionNotificationName = Notification.Name(rawValue: "ZMSessionManagerCreatedSessionNotification")
 private let sessionManagerDestroyedSessionNotificationName = Notification.Name(rawValue: "ZMSessionManagerDestroyedSessionNotification")
 
 extension SessionManager: NotificationContext {
-    
+
+    @objc public func addUnauthenticatedSessionManagerCreatedSessionObserver(_ observer: SessionManagerCreatedSessionObserver) -> Any {
+        return NotificationInContext.addObserver(
+            name: sessionManagerCreatedUnauthenticatedSessionNotificationName,
+            context: self)
+        { [weak observer] note in observer?.sessionManagerCreated(unauthenticatedSession: note.object as! UnauthenticatedSession) }
+    }
+
     @objc public func addSessionManagerCreatedSessionObserver(_ observer: SessionManagerCreatedSessionObserver) -> Any {
         return NotificationInContext.addObserver(
             name: sessionManagerCreatedSessionNotificationName,
