@@ -1,5 +1,5 @@
 
-github "pukapp/wire-ios-request-strategy" "mergewire"
+github "pukapp/wire-ios-request-strategy" "secret"
 
 github "wireapp/avs-ios-binaries" "4.8.168"
 github "wireapp/ZipArchive" "v2.1.3"
