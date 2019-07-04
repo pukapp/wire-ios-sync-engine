@@ -22,6 +22,7 @@ import avs
 /**
  * General error codes for calls
  */
+let WCALL_ERROR_UNKNOWN_PROTOCOL: Int32 = 1000
 
 public enum CallError : Int32 {
     
