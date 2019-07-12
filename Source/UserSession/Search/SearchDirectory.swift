@@ -74,6 +74,10 @@ extension SearchDirectory: TearDownCapable {
     ///
     /// NOTE: this must be called before releasing the instance
     public func tearDown() {
+        guard userSession.managedObjectContext != nil else {
+            isTornDown = true
+            return
+        }
         // Evict all cached search users
         userSession.managedObjectContext.zm_searchUserCache?.removeAllObjects()
 

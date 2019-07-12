@@ -3187,7 +3187,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 0994E1F01B835C4900A51721 /* WireSyncEngine.xcconfig */;
 			buildSettings = {
-				CLANG_WARN_UNREACHABLE_CODE = YES;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/Source/WireSyncEngine-iOS.pch";
 				GCC_WARN_UNKNOWN_PRAGMAS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
@@ -3205,7 +3204,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 0994E1F01B835C4900A51721 /* WireSyncEngine.xcconfig */;
 			buildSettings = {
-				CLANG_WARN_UNREACHABLE_CODE = YES;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/Source/WireSyncEngine-iOS.pch";
 				GCC_WARN_UNKNOWN_PRAGMAS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
