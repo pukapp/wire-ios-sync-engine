@@ -867,7 +867,7 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
     //演讲者
     if ([dataPayload.allKeys containsObject:ZMConversationInfoOratorKey]) {
         NSArray *orator = [dataPayload optionalArrayForKey:ZMConversationInfoOratorKey];
-        if (!orator || orator.count == 0) {
+        if (!orator) {/// orator个数为0 则说明演讲者被全部删除了
             return;
         }
         [orator enumerateObjectsUsingBlock:^(NSString*  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
