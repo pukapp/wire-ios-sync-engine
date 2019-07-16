@@ -780,6 +780,10 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
         
         ZMUser *user = [ZMUser userWithRemoteID:[NSUUID uuidWithTransportString:dataPayload[@"new_creator"]] createIfNeeded:false inContext:self.managedObjectContext];
         conversation.creator = user;
+        if (conversation.creator.isSelfUser) {
+            ///群主为自己，则拼接一条系统消息
+            [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
+        }
     }
     
     // 邀请人列表是否可见 更新
