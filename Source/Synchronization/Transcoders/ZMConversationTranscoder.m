@@ -780,6 +780,7 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
         
         ZMUser *user = [ZMUser userWithRemoteID:[NSUUID uuidWithTransportString:dataPayload[@"new_creator"]] createIfNeeded:false inContext:self.managedObjectContext];
         conversation.creator = user;
+        conversation.creatorChangeTimestamp = [NSDate date];
         if (conversation.creator.isSelfUser) {
             ///群主为自己，则拼接一条系统消息
             [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
