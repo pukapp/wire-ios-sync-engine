@@ -168,7 +168,7 @@ extension SessionManager {
 
 fileprivate extension BackupMetadata {
     
-    fileprivate static let nameAppName = "Wire"
+    fileprivate static let nameAppName = "Secret"
     fileprivate static let nameFileName = "Backup"
     fileprivate static let fileExtension = "ios_wbu"
 
