@@ -830,8 +830,8 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
         NSArray *apps = [dataPayload optionalArrayForKey:@"apps"];
         conversation.apps = [apps componentsJoinedByString:@","];
     }
-    if ([dataPayload.allKeys containsObject:ZMConversationInfoTopAppsKey]) {
-        NSArray *topApps = [dataPayload optionalArrayForKey:ZMConversationInfoTopAppsKey];
+    if ([dataPayload.allKeys containsObject:ZMConversationInfoTopWebAppsKey]) {
+        NSArray *topApps = [dataPayload optionalArrayForKey:ZMConversationInfoTopWebAppsKey];
         NSMutableOrderedSet<ZMWebApp *> *topWebApps = [NSMutableOrderedSet orderedSet];
         
         for (NSDictionary *appDict in [topApps asDictionaries]) {
@@ -1260,7 +1260,11 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
         payload[@"name"] = insertedConversation.userDefinedName;
     }
     ///新增应用参数
-    payload[@"top_apps"] = [insertedConversation.topapps componentsSeparatedByString: @","];
+    NSMutableArray * topapps = [@[] mutableCopy];
+    for (ZMWebApp * app in insertedConversation.topWebApps) {
+        [topapps addObject:app.appId];
+    }
+    payload[@"top_apps"] = topapps;
 
     // 万人群type=5, 其他群不传type
     if (insertedConversation.conversationType == ZMConversationTypeHugeGroup) {
