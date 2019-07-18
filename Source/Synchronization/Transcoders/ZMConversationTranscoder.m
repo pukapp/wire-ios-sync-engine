@@ -932,7 +932,7 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
     [request addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:self.managedObjectContext block:^(ZMTransportResponse * response) {
         complete(response.rawData);
     }]];
-    [((SessionManager *)[(NSObject *)UIApplication.sharedApplication.delegate valueForKey:@"sessionManager"]).activeUserSession.transportSession enqueueOneTimeRequest:request];
+    [((SessionManager *)[(NSObject *)UIApplication.sharedApplication.delegate valueForKeyPath:@"rootViewController.sessionManager"]).activeUserSession.transportSession enqueueOneTimeRequest:request];
 }
 
 - (void)processMemberUpdateEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation previousLastServerTimeStamp:(NSDate *)previousLastServerTimestamp
