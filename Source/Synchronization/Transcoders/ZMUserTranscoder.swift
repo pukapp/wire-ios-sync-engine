@@ -27,6 +27,8 @@ extension ZMUserTranscoder {
             processUserUpdate(updateEvent)
         case .userDelete:
             processUserDeletion(updateEvent)
+        case .userMomentUpdate:
+            processUserMomentUpdate(updateEvent)
         default:
             break
         }
@@ -65,4 +67,22 @@ extension ZMUserTranscoder {
         PostLoginAuthenticationNotification.notifyAccountDeleted(context: managedObjectContext)
     }
     
+    private func processUserMomentUpdate(_ updateEvent: ZMUpdateEvent) {
+        guard updateEvent.type == .userMomentUpdate else { return }
+        
+        guard let msg_body = updateEvent.payload["msg_body"] as? [String: Any],
+            let type = msg_body["type"] as? Int
+            else {
+                return Logging.eventProcessing.error("Malformed user.update update event, skipping...")
+        }
+        switch type {
+        case 1,2:
+            NotificationCenter.default.post(name: NSNotification.Name(UserMomentUpdate), object: nil)
+        case 3:
+            NotificationCenter.default.post(name: NSNotification.Name(UserMomentAdd), object: nil)
+        default:
+            break
+        }
+        
+    }
 }

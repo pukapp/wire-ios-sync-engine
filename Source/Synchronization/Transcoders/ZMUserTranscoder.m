@@ -174,55 +174,6 @@ NSString *const UserMomentAdd = @"UserMomentAdd";
     }
 }
 
-- (void)processUpdateEvent:(ZMUpdateEvent *)event;
-{
-// expected type
-//    @{
-//      @"type" : @"user.update",
-//      @"user" : @{
-//              @"id" : "4324324234234234234234234234",
-//              @"name" : @"Mario"
-//              }
-//      };
-    if(event.type != ZMUpdateEventTypeUserUpdate && event.type != ZMUpdateEventTypeUserMomentUpdate) {
-        return;
-    }
-    
-    if (event.type == ZMUpdateEventTypeUserMomentUpdate) {
-        NSString *uid = event.payload[@"msg_body"][@"uid"];
-        NSInteger type = [event.payload[@"msg_body"][@"type"] integerValue];
-        NSInteger count = 0;
-        if (type == 1) {
-            count =  [[NSUserDefaults standardUserDefaults]integerForKey:uid.lowercaseString] + 1;
-            [[NSUserDefaults standardUserDefaults] setInteger:count forKey:uid.lowercaseString];
-            [[NSNotificationCenter defaultCenter] postNotificationName:UserMomentUpdate object:@{@"count":[NSString stringWithFormat:@"%ld",(long)count]}];
-        } else if (type == 2) {
-            [[NSUserDefaults standardUserDefaults] setInteger:count forKey:uid.lowercaseString];
-            [[NSNotificationCenter defaultCenter] postNotificationName:UserMomentUpdate object:@{@"count":[NSString stringWithFormat:@"%ld",(long)count]}];
-        } else if (type == 3) {
-            [[NSNotificationCenter defaultCenter] postNotificationName:UserMomentAdd object:nil];
-        }
-    }
-    
-    NSDictionary *userData = [event.payload dictionaryForKey:@"user"];
-    if(userData == nil) {
-        ZMLogError(@"User update event missing user: %@", event.payload);
-        return;
-    }
-    
-    NSUUID *userId = [userData uuidForKey:@"id"];
-    if(userId == nil) {
-        ZMLogError(@"User update event missing id: %@", userData);
-        return;
-    }
-    
-    ZMUser *user = [ZMUser fetchAndMergeWith:userId createIfNeeded:YES in:self.managedObjectContext];
-    [user updateWithTransportData:userData authoritative:NO];
-    
-    return;
-}
-
-
 - (NSArray *)fetchConnectedUsersInContext:(NSManagedObjectContext *)context
 {
     NSFetchRequest *req = [ZMConnection sortedFetchRequest];
