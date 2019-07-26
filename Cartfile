@@ -1,6 +1,6 @@
 
 github "pukapp/wire-ios-request-strategy" "secret"
 
-github "pukapp/avs-ios-binaries" "1.0"
+github "pukapp/avs-ios-binaries" "1.1"
 github "wireapp/ZipArchive" "v2.1.3"
 github "wireapp/libPhoneNumber-iOS" "0.9.3"
