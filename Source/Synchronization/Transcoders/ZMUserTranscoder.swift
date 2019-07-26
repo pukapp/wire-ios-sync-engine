@@ -76,9 +76,11 @@ extension ZMUserTranscoder {
                 return Logging.eventProcessing.error("Malformed user.update update event, skipping...")
         }
         switch type {
-        case 1,2:
+        case 1:///朋友圈点赞，评论，转发消息通知
             NotificationCenter.default.post(name: NSNotification.Name(UserMomentUpdate), object: nil)
-        case 3:
+        case 2:///多端同步，清除消息通知
+            NotificationCenter.default.post(name: NSNotification.Name(UserMomentSync), object: nil)
+        case 3:///好友发布了朋友圈消息通知
             NotificationCenter.default.post(name: NSNotification.Name(UserMomentAdd), object: nil)
         default:
             break

@@ -29,6 +29,7 @@
 static NSString *UsersPath = @"/users";
 NSUInteger const ZMUserTranscoderNumberOfUUIDsPerRequest = 1600 / 25; // UUID as string is 24 + 1 for the comma
 
+NSString *const UserMomentSync = @"UserMomentSync";
 NSString *const UserMomentUpdate = @"UserMomentUpdate";
 NSString *const UserMomentAdd = @"UserMomentAdd";
 
