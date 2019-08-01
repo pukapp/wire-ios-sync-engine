@@ -26,6 +26,7 @@
 
 extern NSUInteger const ZMUserTranscoderNumberOfUUIDsPerRequest;
 
+extern NSString * _Nullable const UserMomentMetionMeSaveKey;
 extern NSString * _Nullable const UserMomentSync;
 extern NSString * _Nullable const UserMomentUpdate;
 extern NSString * _Nullable const UserMomentAdd;
