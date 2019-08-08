@@ -77,11 +77,12 @@ extension ZMUserTranscoder {
         }
         switch type {
         case 1:///朋友圈点赞，评论，转发消息通知
+            let saveKey = UserMomentMetionMeSaveKey + "-account-\(ZMUser.selfUser(in: self.managedObjectContext).remoteIdentifier.transportString())"
             var count: Int = 1
-            if let oldCount = UserDefaults.standard.value(forKey: UserMomentMetionMeSaveKey) as? Int {
+            if let oldCount = UserDefaults.standard.value(forKey: saveKey) as? Int {
                 count = oldCount + 1
             }
-            UserDefaults.standard.set(count, forKey: UserMomentMetionMeSaveKey)
+            UserDefaults.standard.set(count, forKey: saveKey)
             NotificationCenter.default.post(name: NSNotification.Name(UserMomentUpdate), object: nil)
         case 2:///多端同步，清除消息通知
             UserDefaults.standard.removeObject(forKey: UserMomentMetionMeSaveKey)
