@@ -71,12 +71,25 @@ extension ZMUserTranscoder {
         guard updateEvent.type == .userMomentUpdate else { return }
         
         guard let msg_body = updateEvent.payload["msg_body"] as? [String: Any],
-            let type = msg_body["type"] as? Int
+            let type = msg_body["type"] as? Int,
+            let nid = msg_body["nid"] as? Int
             else {
                 return Logging.eventProcessing.error("Malformed user.update update event, skipping...")
         }
         switch type {
         case 1:///朋友圈点赞，评论，转发消息通知
+            
+            ///这里由于每次推送了两条消息，所以采用本地去重处理，筛选nid
+            let saveNidsKey = "UserMomentMetionMeSaveKeyNids"
+            if var nids = UserDefaults.standard.value(forKey: saveNidsKey) as? [Int] {
+                if nids.contains(nid) { return }
+                if nids.count > 30 { nids = nids.dropLast() }
+                nids.append(nid)
+                UserDefaults.standard.setValue(nids, forKey: saveNidsKey)
+            } else {
+                UserDefaults.standard.setValue([nid], forKey: saveNidsKey)
+            }
+            
             let saveKey = UserMomentMetionMeSaveKey + "-account-\(ZMUser.selfUser(in: self.managedObjectContext).remoteIdentifier.transportString())"
             var count: Int = 1
             if let oldCount = UserDefaults.standard.value(forKey: saveKey) as? Int {
