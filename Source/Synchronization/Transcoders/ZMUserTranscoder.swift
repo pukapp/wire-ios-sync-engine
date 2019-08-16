@@ -77,7 +77,10 @@ extension ZMUserTranscoder {
                 return Logging.eventProcessing.error("Malformed user.update update event, skipping...")
         }
         switch type {
-        case 1:///朋友圈点赞，评论，转发消息通知
+        case 1:
+            ///过滤私密社区
+            guard let notify_type = msg_body["notify_type"] as? Int, notify_type != 3 else { return }
+            ///朋友圈,公共社区，点赞，评论，转发消息通知
             
             ///这里由于每次推送了两条消息，所以采用本地去重处理，筛选nid
             let saveNidsKey = "UserMomentMetionMeSaveKeyNids"
