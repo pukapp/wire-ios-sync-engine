@@ -800,6 +800,7 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
     // 群公告更新
     if ([dataPayload.allKeys containsObject:ZMConversationInfoAnnouncementKey]) {
         conversation.announcement = [dataPayload optionalStringForKey:ZMConversationInfoAnnouncementKey];
+        conversation.isReadAnnouncement = NO;
     }
     
     /// 群头像更新
