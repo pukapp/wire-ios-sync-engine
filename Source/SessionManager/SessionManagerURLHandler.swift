@@ -114,7 +114,7 @@ extension URLAction {
         guard let components = URLComponents(string: url.absoluteString),
             let host = components.host,
             let scheme = components.scheme,
-            scheme.starts(with: "wire") == true else {
+            scheme.starts(with: "secret") == true else {
             return nil
         }
         
