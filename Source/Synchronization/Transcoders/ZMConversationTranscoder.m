@@ -696,7 +696,11 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
     if (![users isSubsetOfSet:conversation.activeParticipants] || (selfUser && [users intersectsSet:[NSSet setWithObject:selfUser]])) {
         [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
     }
-    // 群成员数量
+    
+    for (ZMUser *user in users) {
+        [conversation internalAddParticipants:@[user]];
+    }
+    // 群成员数量---普通群的成员数量必须等上面代码改变activeParticipants的值之后才能进行g赋值
     NSDictionary *data = [event.payload dictionaryForKey:@"data"];
     NSNumber *membersCountNumber = [data optionalNumberForKey:@"memsum"];
     if (membersCountNumber != nil) {
@@ -704,10 +708,6 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
         conversation.membersCount = conversation.conversationType == ZMConversationTypeHugeGroup
         ? membersCountNumber.integerValue
         : (NSInteger)conversation.activeParticipants.count;
-    }
-    
-    for (ZMUser *user in users) {
-        [conversation internalAddParticipants:@[user]];
     }
 }
 
@@ -725,7 +725,11 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
     if ([users intersectsSet:conversation.activeParticipants]) {
         [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
     }
-    // 群成员数量
+
+    for (ZMUser *user in users) {
+        [conversation internalRemoveParticipants:@[user] sender:sender];
+    }
+    // 群成员数量---普通群的成员数量必须等上面代码改变activeParticipants的值之后才能进行g赋值
     NSDictionary *data = [event.payload dictionaryForKey:@"data"];
     NSNumber *membersCountNumber = [data optionalNumberForKey:@"memsum"];
     if (membersCountNumber != nil) {
@@ -733,10 +737,6 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
         conversation.membersCount = conversation.conversationType == ZMConversationTypeHugeGroup
         ? membersCountNumber.integerValue
         : (NSInteger)conversation.activeParticipants.count;
-    }
-
-    for (ZMUser *user in users) {
-        [conversation internalRemoveParticipants:@[user] sender:sender];
     }
 }
 
