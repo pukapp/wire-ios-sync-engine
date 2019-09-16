@@ -61,6 +61,7 @@ extension ZMSingleRequestSync : ZMRequestGenerator {}
         if let analytics = analytics {
             self.notificationsTracker = NotificationsTracker(analytics: analytics)
         }
+        log.safePublic("secret:ios===")
     }
 
     public override func nextRequestIfAllowed() -> ZMTransportRequest? {
@@ -86,28 +87,28 @@ extension PushTokenStrategy: ZMContextChangeTrackerSource {
 extension PushTokenStrategy : ZMUpstreamTranscoder {
 
     public func request(forUpdating managedObject: ZMManagedObject, forKeys keys: Set<String>) -> ZMUpstreamRequest? {
-        log.info("secret:ios===\(keys)")
+        log.safePublic("secret:ios===\(keys)")
         guard let client = managedObject as? UserClient else { return nil }
         guard client.isSelfClient() else { return nil }
-        log.info("secret:ios===client.isSelfClient")
+        log.safePublic("secret:ios===client.isSelfClient")
         guard let clientIdentifier = client.remoteIdentifier else { return nil }
-        log.info("secret:ios===client.remoteIdentifier\(client)")
+        log.safePublic("secret:ios===client.remoteIdentifier\(client)")
         guard let pushToken = client.pushToken else { return nil }
-        log.info("secret:ios===client.pushToken")
+        log.safePublic("secret:ios===client.pushToken")
         
         let request: ZMTransportRequest
         let requestType: RequestType
 
         if pushToken.isMarkedForDeletion {
-            log.info("secret:ios===isMarkedForDeletion")
+            log.safePublic("secret:ios===isMarkedForDeletion")
             request = ZMTransportRequest(path: "\(PushTokenPath)/\(pushToken.deviceTokenString)", method: .methodDELETE, payload: nil)
             requestType = .deleteToken
         } else if pushToken.isMarkedForDownload {
-            log.info("secret:ios===isMarkedForDownload")
+            log.safePublic("secret:ios===isMarkedForDownload")
             request = ZMTransportRequest(path: "\(PushTokenPath)", method: .methodGET, payload: nil)
             requestType = .getToken
         } else if !pushToken.isRegistered {
-            log.info("secret:ios===isRegistered")
+            log.safePublic("secret:ios===isRegistered")
             let tokenPayload = PushTokenPayload(pushToken: pushToken, clientIdentifier: clientIdentifier)
             let payloadData = try! JSONEncoder().encode(tokenPayload)
 
@@ -116,7 +117,7 @@ extension PushTokenStrategy : ZMUpstreamTranscoder {
             request = ZMTransportRequest(path: "\(PushTokenPath)", method: .methodPOST, payload: payload)
             requestType = .postToken
         } else {
-            log.info("secret:ios===nil")
+            log.safePublic("secret:ios===nil")
             return nil
         }
 
@@ -140,17 +141,20 @@ extension PushTokenStrategy : ZMUpstreamTranscoder {
 
         switch requestType {
         case .postToken:
+            log.safePublic("secret:ios===postToken")
             var token = pushToken.resetFlags()
             token.isRegistered = true
             client.pushToken = token
             return false
         case .deleteToken:
+            log.safePublic("secret:ios===deleteToken")
             // The token might have changed in the meantime, check if it's still up for deletion
             if let token = client.pushToken, token.isMarkedForDeletion {
                 client.pushToken = nil
             }
             return false
         case .getToken:
+            log.safePublic("secret:ios===getToken")
             guard let responseData = response.rawData else { return false }
             guard let payload = try? JSONDecoder().decode([String : [PushTokenPayload]].self, from: responseData) else { return false }
             guard let tokens = payload["tokens"] else { return false }
