@@ -23,6 +23,7 @@ let VoIPIdentifierSuffix = "-voip"
 let TokenKey = "token"
 let PushTokenPath = "/push/tokens"
 
+private let log = ZMSLog(tag: "Network")
 
 extension ZMSingleRequestSync : ZMRequestGenerator {}
 
@@ -85,21 +86,28 @@ extension PushTokenStrategy: ZMContextChangeTrackerSource {
 extension PushTokenStrategy : ZMUpstreamTranscoder {
 
     public func request(forUpdating managedObject: ZMManagedObject, forKeys keys: Set<String>) -> ZMUpstreamRequest? {
+        log.info("secret:ios===\(keys)")
         guard let client = managedObject as? UserClient else { return nil }
         guard client.isSelfClient() else { return nil }
+        log.info("secret:ios===client.isSelfClient")
         guard let clientIdentifier = client.remoteIdentifier else { return nil }
+        log.info("secret:ios===client.remoteIdentifier\(client)")
         guard let pushToken = client.pushToken else { return nil }
-
+        log.info("secret:ios===client.pushToken")
+        
         let request: ZMTransportRequest
         let requestType: RequestType
 
         if pushToken.isMarkedForDeletion {
+            log.info("secret:ios===isMarkedForDeletion")
             request = ZMTransportRequest(path: "\(PushTokenPath)/\(pushToken.deviceTokenString)", method: .methodDELETE, payload: nil)
             requestType = .deleteToken
         } else if pushToken.isMarkedForDownload {
+            log.info("secret:ios===isMarkedForDownload")
             request = ZMTransportRequest(path: "\(PushTokenPath)", method: .methodGET, payload: nil)
             requestType = .getToken
         } else if !pushToken.isRegistered {
+            log.info("secret:ios===isRegistered")
             let tokenPayload = PushTokenPayload(pushToken: pushToken, clientIdentifier: clientIdentifier)
             let payloadData = try! JSONEncoder().encode(tokenPayload)
 
@@ -108,6 +116,7 @@ extension PushTokenStrategy : ZMUpstreamTranscoder {
             request = ZMTransportRequest(path: "\(PushTokenPath)", method: .methodPOST, payload: payload)
             requestType = .postToken
         } else {
+            log.info("secret:ios===nil")
             return nil
         }
 
