@@ -855,6 +855,7 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
     // 成员是否可以互相添加好友
     if ([dataPayload.allKeys containsObject:ZMConversationInfoIsAllowMemberAddEachOtherKey]) {
         conversation.isAllowMemberAddEachOther = [dataPayload[ZMConversationInfoIsAllowMemberAddEachOtherKey] boolValue];
+        [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
     }
     
     // 成员变动其他群成员是否可见
