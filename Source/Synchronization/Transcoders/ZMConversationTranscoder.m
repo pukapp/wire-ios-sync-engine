@@ -590,9 +590,9 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
         case ZMUpdateEventTypeConversationUpdateAutoreply:
             [self processConversationAutoReplyEvent:event forConversation:conversation];
             break;
-//        case ZMUpdateEventTypeConversationChangeType:
-//            [self processConversationChangeTypeEvent:event forConversation:conversation];
-//            break;
+        case ZMUpdateEventTypeConversationChangeType:
+            [self processConversationChangeTypeEvent:event forConversation:conversation];
+            break;
         case ZMUpdateEventTypeConversationChangeCreater:
             [self processConversationChangecreatorEvent:event forConversation:conversation];
             break;
@@ -615,14 +615,14 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
 }
 
 // 将群升级为万人群
-//- (void)processConversationChangeTypeEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
-//{
-//    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
-//    NSNumber *type = data[@"type"];
-//    if ([type isEqualToNumber: [NSNumber numberWithInt:5]]) {
-//        conversation.conversationType = ZMConversationTypeHugeGroup;
-//    }
-//}
+- (void)processConversationChangeTypeEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
+{
+    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
+    NSNumber *type = data[@"type"];
+    if ([type isEqualToNumber: [NSNumber numberWithInt:5]]) {
+        conversation.conversationType = ZMConversationTypeHugeGroup;
+    }
+}
 
 // 将群主更改
 - (void)processConversationChangecreatorEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation {
