@@ -621,6 +621,8 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
     NSNumber *type = data[@"type"];
     if ([type isEqualToNumber: [NSNumber numberWithInt:5]]) {
         conversation.conversationType = ZMConversationTypeHugeGroup;
+        conversation.localMessageDestructionTimeout = 0;
+        conversation.syncedMessageDestructionTimeout = 0;
     }
 }
 
