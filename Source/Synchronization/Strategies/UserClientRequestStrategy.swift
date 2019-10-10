@@ -26,6 +26,8 @@ import WireDataModel
 
 private let zmLog = ZMSLog(tag: "userClientRS")
 
+//new add
+public let NewClientAddChange = Notification.Name("NewClientAddChangeNotification")
 
 // Register new client, update it with new keys, deletes clients.
 @objcMembers
@@ -396,7 +398,7 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
         case .userClientAdd:
             if let client = UserClient.createOrUpdateSelfUserClient(clientInfo, context: moc) {
                 selfUser.selfClient()?.addNewClientToIgnored(client)
-                selfUser.selfClient()?.updateSecurityLevelAfterDiscovering(Set(arrayLiteral: client))
+                NotificationCenter.default.post(name: NewClientAddChange, object: nil); selfUser.selfClient()?.updateSecurityLevelAfterDiscovering(Set(arrayLiteral: client))
             }
         case .userClientRemove:
             let selfClientId = selfUser.selfClient()?.remoteIdentifier
