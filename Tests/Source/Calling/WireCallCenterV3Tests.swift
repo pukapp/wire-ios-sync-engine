@@ -397,7 +397,7 @@ class WireCallCenterV3Tests: MessagingTest {
             _ = sut.answerCall(conversation: oneOnOneConversation, video: true)
             
             // then
-            XCTAssertEqual(mockAVSWrapper.answerCallArguments?.callType, AVSCallType.normal)
+            XCTAssertEqual(mockAVSWrapper.answerCallArguments?.callType, AVSCallType.video)
             XCTAssertNil(mockAVSWrapper.setVideoStateArguments)
         }
     }
@@ -752,6 +752,35 @@ extension WireCallCenterV3Tests {
     }
 }
 
+// Mark: - Muted state
+extension WireCallCenterV3Tests {
+    func testThatMutedStateHandlerUpdatesTheState() {
+        class MuteObserver: MuteStateObserver {
+            var muted: Bool? = nil
+            func callCenterDidChange(muted: Bool) { self.muted = muted }
+        }
+        
+        // given
+        sut.handleIncomingCall(conversationId: oneOnOneConversationID, messageTime: Date(), userId: otherUserID, isVideoCall: false, shouldRing: true)
+        XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
+        sut.handleEstablishedCall(conversationId: oneOnOneConversationID, userId: otherUserID)
+        XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
+        let observer = MuteObserver()
+        
+        let token = WireCallCenterV3.addMuteStateObserver(observer: observer, userSession: mockUserSession)
+        
+        // when
+        mockAVSWrapper.muted = true
+        sut.handleMuteChange(muted: true)
+        XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
+        
+        // then
+        withExtendedLifetime(token) {
+            XCTAssertEqual(true, observer.muted)
+        }
+    }
+}
+
 // MARK: - Ignoring Calls
 
 extension WireCallCenterV3Tests {
@@ -820,35 +849,50 @@ extension WireCallCenterV3Tests {
     }
 
     func callBackMemberHandler(conversationId: UUID, userId: UUID, audioEstablished: Bool) {
-        mockAVSWrapper.mockMembers = [AVSCallMember(userId: userId, audioEstablished: audioEstablished)]
-        sut.handleGroupMemberChange(conversationId: conversationId)
+        let member = AVSParticipantsChange.Member(userid: userId, clientid: "123", aestab: audioEstablished ? 1 : 0, vrecv: 0)
+        let change = AVSParticipantsChange(convid: conversationId, members: [member])
+        
+        let encoded = try! JSONEncoder().encode(change)
+        let string = String(data: encoded, encoding: .utf8)!
+        
+        sut.handleParticipantChange(conversationId: conversationId, data: string)
     }
-
-    func testThatItUpdatesTheParticipantsWhenGroupHandlerIsCalled() {
+    
+    func testThatItIgnoresIt_WhenGroupHandlerIsCalledForOneToOne() {
         // when
         _ = sut.startCall(conversation: oneOnOneConversation, video: false)
         callBackMemberHandler(conversationId: oneOnOneConversationID, userId: otherUserID, audioEstablished: false)
         XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
+        
+        // then
+        XCTAssertTrue(sut.callParticipants(conversationId: oneOnOneConversationID).isEmpty)
+    }
+
+    func testThatItUpdatesTheParticipantsWhenGroupHandlerIsCalled() {
+        // when
+        _ = sut.startCall(conversation: groupConversation, video: false)
+        callBackMemberHandler(conversationId: groupConversationID, userId: otherUserID, audioEstablished: false)
+        XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
 
         // then
-        XCTAssertEqual(sut.callParticipants(conversationId: oneOnOneConversationID), [otherUserID])
+        XCTAssertEqual(sut.callParticipants(conversationId: groupConversationID), [otherUserID])
     }
 
     func testThatItUpdatesTheStateForParticipant() {
         // when
-        sut.handleIncomingCall(conversationId: oneOnOneConversationID, messageTime: Date(), userId: otherUserID, isVideoCall: false, shouldRing: true)
+        sut.handleIncomingCall(conversationId: groupConversationID, messageTime: Date(), userId: otherUserID, isVideoCall: false, shouldRing: true)
         XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
 
         // then
-        let connectingState = sut.state(forUser: otherUserID, in: oneOnOneConversationID)
+        let connectingState = sut.state(forUser: otherUserID, in: groupConversationID)
         XCTAssertEqual(connectingState, CallParticipantState.connecting)
 
         // when
-        callBackMemberHandler(conversationId: oneOnOneConversationID, userId: otherUserID, audioEstablished: true)
+        callBackMemberHandler(conversationId: groupConversationID, userId: otherUserID, audioEstablished: true)
         XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
 
         // then
-        let connectedState = sut.state(forUser: otherUserID, in: oneOnOneConversationID)
+        let connectedState = sut.state(forUser: otherUserID, in: groupConversationID)
         XCTAssertEqual(connectedState, CallParticipantState.connected(videoState: .stopped))
     }
 }

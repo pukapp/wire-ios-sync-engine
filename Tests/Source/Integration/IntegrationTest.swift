@@ -58,9 +58,9 @@ class AuthenticationObserver : NSObject, PreLoginAuthenticationObserver, PostLog
 
 final class MockAuthenticatedSessionFactory: AuthenticatedSessionFactory {
 
-    let transportSession: ZMTransportSession
+    let transportSession: TransportSessionType
 
-    init(application: ZMApplication, mediaManager: AVSMediaManager, flowManager: FlowManagerType, transportSession: ZMTransportSession, environment: BackendEnvironmentProvider, reachability: ReachabilityProvider & TearDownCapable) {
+    init(application: ZMApplication, mediaManager: MediaManagerType, flowManager: FlowManagerType, transportSession: TransportSessionType, environment: BackendEnvironmentProvider, reachability: ReachabilityProvider & TearDownCapable) {
         self.transportSession = transportSession
         super.init(
             appVersion: "0.0.0",
@@ -108,6 +108,10 @@ extension IntegrationTest {
     static let SelfUserEmail = "myself@user.example.com"
     static let SelfUserPassword = "fgf0934';$@#%"
     
+    var jailbreakDetector: JailbreakDetectorProtocol {
+        return MockJailbreakDetector()
+    }
+    
     @objc
     func _setUp() {
         sharedContainerDirectory = Bundle.main.appGroupIdentifier.map(FileManager.sharedContainerDirectory)
@@ -119,7 +123,7 @@ extension IntegrationTest {
         application = ApplicationMock()
         notificationCenter = UserNotificationCenterMock()
         mockTransportSession = MockTransportSession(dispatchGroup: self.dispatchGroup)
-        mockTransportSession.cookieStorage = ZMPersistentCookieStorage(forServerName: "ztest.example.com", userIdentifier: currentUserIdentifier)
+        mockTransportSession.cookieStorage = ZMPersistentCookieStorage(forServerName: mockEnvironment.backendURL.host!, userIdentifier: currentUserIdentifier)
         WireCallCenterV3Factory.wireCallCenterClass = WireCallCenterV3IntegrationMock.self
         mockTransportSession.cookieStorage.deleteKeychainItems()
                 
@@ -221,17 +225,16 @@ extension IntegrationTest {
     
     @objc
     func createSessionManager() {
-        guard let mediaManager = mediaManager, let application = application, let transportSession = transportSession else { return XCTFail() }
+        guard let application = application, let transportSession = mockTransportSession else { return XCTFail() }
         StorageStack.shared.createStorageAsInMemory = useInMemoryStore
-        let environment = MockEnvironment()
         let reachability = TestReachability()
-        let unauthenticatedSessionFactory = MockUnauthenticatedSessionFactory(transportSession: transportSession as! UnauthenticatedTransportSessionProtocol, environment: environment, reachability: reachability)
+        let unauthenticatedSessionFactory = MockUnauthenticatedSessionFactory(transportSession: transportSession, environment: mockEnvironment, reachability: reachability)
         let authenticatedSessionFactory = MockAuthenticatedSessionFactory(
             application: application,
-            mediaManager: mediaManager,
+            mediaManager: mockMediaManager,
             flowManager: FlowManagerMock(),
             transportSession: transportSession,
-            environment: environment,
+            environment: mockEnvironment,
             reachability: reachability
         )
 
@@ -244,7 +247,9 @@ extension IntegrationTest {
             application: application,
             pushRegistry: pushRegistry,
             dispatchGroup: self.dispatchGroup,
-            environment: environment
+            environment: mockEnvironment,
+            configuration: sessionManagerConfiguration,
+            detector: jailbreakDetector
         )
         
         sessionManager?.start(launchOptions: [:])
@@ -382,6 +387,7 @@ extension IntegrationTest {
             self.teamUser2 = user2
 
             let team = session.insertTeam(withName: "A Team", isBound: true, users: [user1, user2])
+            self.team = team
 
             let bot = session.insertUser(withName: "Botty the Bot")
             bot.accentID = 3
@@ -397,9 +403,9 @@ extension IntegrationTest {
 
             let teamConversation = session.insertGroupConversation(withSelfUser:self.selfUser, otherUsers: [self.teamUser1, self.teamUser2])
             teamConversation.team = team
-            teamConversation.creator = user2
+            teamConversation.creator = self.selfUser
             teamConversation.changeName(by:self.selfUser, name:"Team Group conversation")
-            self.groupConversationWithWholeTeam = groupConversation
+            self.groupConversationWithWholeTeam = teamConversation
         })
     }
     
@@ -555,22 +561,17 @@ extension IntegrationTest {
     @objc(performRemoteChangesExludedFromNotificationStream:)
     func performRemoteChangesExludedFromNotificationStream(_ changes: @escaping (_ session: MockTransportSessionObjectCreation) -> Void) {
         mockTransportSession.performRemoteChanges { session in
-            session.simulatePushChannelClosed()
             changes(session)
-        }
-        
-        mockTransportSession.responseGeneratorBlock = { (request) in
-            guard request.path.contains("/notifications") else { return nil }
-
-            self.mockTransportSession.responseGeneratorBlock = nil
-            return ZMTransportResponse(payload: nil, httpStatus: 200, transportSessionError: nil)
-        }
-        
-        mockTransportSession.performRemoteChanges { session in
-            session.clearNotifications()
-            session.simulatePushChannelOpened()
+            self.mockTransportSession.saveAndCreatePushChannelEvents()
         }
     }
+    
+    func performSlowSync() {
+        userSession?.applicationStatusDirectory.syncStatus.forceSlowSync()
+        RequestAvailableNotification.notifyNewRequestsAvailable(nil)
+        XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
+    }
+    
 }
 
 extension IntegrationTest {
@@ -628,6 +629,10 @@ extension IntegrationTest : SessionManagerDelegate {
         // no-op
     }
     
+    public func sessionManagerDidBlacklistJailbrokenDevice() {
+        // no-op
+    }
+        
     public func sessionManagerWillOpenAccount(_ account: Account, userSessionCanBeTornDown: @escaping () -> Void) {
         self.userSession = nil
         userSessionCanBeTornDown()

@@ -23,11 +23,14 @@
 
 @class OperationStatus;
 @class ManagedObjectContextChangeObserver;
+@class NotificationDispatcher;
 @class LocalNotificationDispatcher;
 @class AccountStatus;
 @class ApplicationStatusDirectory;
 @class UserExpirationObserver;
-@class AVSMediaManager;
+
+@protocol MediaManagerType;
+@protocol TransportSessionType;
 
 #import "ZMUserSession.h"
 
@@ -46,7 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface ZMUserSession (Private)
 
-@property (nonatomic, readonly) ZMTransportSession *transportSession;
+@property (nonatomic, readonly) id<TransportSessionType> transportSession;
 @property (nonatomic, readonly) NSManagedObjectContext *searchManagedObjectContext;
 @property (nonatomic, readonly) OperationStatus *operationStatus;
 @property (nonatomic, readonly) AccountStatus *accountStatus;
@@ -56,7 +59,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, nullable) ManagedObjectContextChangeObserver *messageReplyObserver;
 @property (nonatomic, nullable) ManagedObjectContextChangeObserver *likeMesssageObserver;
 @property (nonatomic, nonnull)  UserExpirationObserver *userExpirationObserver;
-@property (nonatomic, readonly) AVSMediaManager *mediaManager;
+@property (nonatomic, readonly) id<MediaManagerType> mediaManager;
 
 - (void)tearDown;
 
