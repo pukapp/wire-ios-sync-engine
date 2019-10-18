@@ -632,7 +632,7 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
     //    NSString *type = data[@"creator"];
     NSUUID *creatorId = [data uuidForKey:@"creator"];
     if(creatorId != nil) {
-        conversation.creator = [ZMUser userWithRemoteID:creatorId createIfNeeded:YES inContext:self.managedObjectContext];
+        conversation.creator = [ZMUser userWithRemoteID:creatorId createIfNeeded:YES inConversation:conversation inContext:self.managedObjectContext];
     }
 }
 
@@ -691,7 +691,7 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
 
 - (void)processMemberJoinEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
 {
-    NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext createIfNeeded:YES];
+    NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext inConversation:conversation createIfNeeded:YES];
     
     ZMUser *selfUser = [ZMUser selfUserInContext:self.managedObjectContext];
     
@@ -716,8 +716,8 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
 - (void)processMemberLeaveEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
 {
     NSUUID *senderUUID = event.senderUUID;
-    ZMUser *sender = [ZMUser userWithRemoteID:senderUUID createIfNeeded:YES inContext:self.managedObjectContext];
-    NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext createIfNeeded:YES];
+    ZMUser *sender = [ZMUser userWithRemoteID:senderUUID createIfNeeded:YES inConversation:conversation inContext:self.managedObjectContext];
+    NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext inConversation:conversation createIfNeeded:YES];
     
     if (!conversation.remoteIdentifier.transportString || users.count == 0) {///没有此群，或者没有此用户
         return;
