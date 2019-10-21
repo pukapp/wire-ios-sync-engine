@@ -218,6 +218,10 @@ extension TypingStrategy : ZMEventConsumer {
     }
     
     func process(event: ZMUpdateEvent, conversationsByID: [UUID: ZMConversation]?)  {
+        guard applicationStatus?.synchronizationState != .synchronizing  else {
+            ///如果是正在拉取消息的时候，则TypingStrategy不处理事件，减少无意义的代码执行。由于Typing事件管理那边有定时器用来计时，所以不用担心用户处于一直输入的状态中
+            return
+        }
         guard
             event.type == .conversationTyping ||
                 event.type == .conversationOtrMessageAdd ||
@@ -227,7 +231,7 @@ extension TypingStrategy : ZMEventConsumer {
         guard let userID = event.senderUUID(),
               let conversationID = event.conversationUUID(),
             let conversation = conversationsByID?[conversationID] ?? ZMConversation(remoteID: conversationID, createIfNeeded: true, in: managedObjectContext),
-              let user = ZMUser(remoteID: userID, createIfNeeded: true, in: managedObjectContext)
+            let user = ZMUser(remoteID: userID, createIfNeeded: true, in: conversation, in: managedObjectContext)
         else { return }
         
         if event.type == .conversationTyping {
