@@ -828,7 +828,17 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
     //群应用更新
     if ([dataPayload.allKeys containsObject:ZMConversationInfoAppsKey]) {
         NSArray *apps = [dataPayload optionalArrayForKey:ZMConversationInfoAppsKey];
-        conversation.apps = [apps componentsJoinedByString:@","];
+        NSString *appsString = [apps componentsJoinedByString:@","];
+        if (![appsString isEqualToString:conversation.apps]) {
+            conversation.apps = appsString;
+        }
+    }
+    if ([dataPayload.allKeys containsObject:ZMConversationInfoTopAppsKey]) {
+        NSArray *apps = [dataPayload optionalArrayForKey:ZMConversationInfoTopAppsKey];
+        NSString *appsString = [apps componentsJoinedByString:@","];
+        if (![appsString isEqualToString:conversation.topApps]) {
+            conversation.topApps = appsString;
+        }
     }
     if ([dataPayload.allKeys containsObject:ZMConversationInfoTopWebAppsKey]) {
         NSArray *topApps = [dataPayload optionalArrayForKey:ZMConversationInfoTopWebAppsKey];
