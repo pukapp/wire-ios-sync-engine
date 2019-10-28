@@ -68,6 +68,15 @@ private let zmLog = ZMSLog(tag: "calling")
      */
 
     var useConstantBitRateAudio: Bool = false
+    
+    var muted: Bool {
+        get {
+            return avsWrapper.muted
+        }
+        set {
+            avsWrapper.muted = newValue
+        }
+    }
 
     /// The snaphot of the call state for each non-idle conversation.
     var callSnapshots : [UUID : CallSnapshot] = [:]
@@ -301,6 +310,7 @@ extension WireCallCenterV3 {
 
     /// Call this method when the callParticipants changed and avs calls the handler `wcall_group_changed_h`
     func callParticipantsChanged(conversationId: UUID, participants: [AVSCallMember]) {
+        guard callSnapshots[conversationId]?.isGroup == true else { return }
         callSnapshots[conversationId]?.callParticipants.callParticipantsChanged(participants: participants)
     }
 
@@ -337,7 +347,12 @@ extension WireCallCenterV3 {
         
         endAllCalls(exluding: conversationId)
         
-        let callType: AVSCallType = conversation.activeParticipants.count > videoParticipantsLimit ? .audioOnly : .normal
+        let callType: AVSCallType
+        if conversation.activeParticipants.count > videoParticipantsLimit {
+            callType = .audioOnly
+        } else {
+            callType = video ? .video : .normal
+        }
         
         if !video {
             setVideoState(conversationId: conversationId, videoState: VideoState.stopped)

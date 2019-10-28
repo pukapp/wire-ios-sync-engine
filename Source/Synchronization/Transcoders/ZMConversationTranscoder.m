@@ -55,11 +55,6 @@ static NSString *const ConversationAccessRoleKey = @"access_role";
 static NSString *const ConversationTeamIdKey = @"teamid";
 static NSString *const ConversationTeamManagedKey = @"managed";
 
-typedef NS_ENUM(NSUInteger, ZMConversationSource) {
-    ZMConversationSourceUpdateEvent,
-    ZMConversationSourceSlowSync
-};
-
 @interface ZMConversationTranscoder () <ZMSimpleListRequestPaginatorSync>
 
 @property (nonatomic) ZMUpstreamModifiedObjectSync *modifiedSync;
@@ -202,21 +197,20 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
 - (void)finishSyncIfCompleted
 {
     if (!self.listPaginator.hasMoreToFetch && self.remoteIDSync.isDone && self.isSyncing) {
-        [self updateSelfUserActiveConversations:self.lastSyncedActiveConversations];
+        [self updateInactiveConversations:self.lastSyncedActiveConversations];
         [self.lastSyncedActiveConversations removeAllObjects];
         [self.syncStatus finishCurrentSyncPhaseWithPhase:self.expectedSyncPhase];
     }
 }
 
-- (void)updateSelfUserActiveConversations:(NSOrderedSet<ZMConversation *> *)activeConversations
+- (void)updateInactiveConversations:(NSOrderedSet<ZMConversation *> *)activeConversations
 {
-    ZMUser *selfUser = [ZMUser selfUserInContext:self.managedObjectContext];
     NSMutableOrderedSet *inactiveConversations = [NSMutableOrderedSet orderedSetWithArray:[self.managedObjectContext executeFetchRequestOrAssert:[ZMConversation sortedFetchRequest]]];
     [inactiveConversations minusOrderedSet:activeConversations];
     
     for (ZMConversation *inactiveConversation in inactiveConversations) {
         if (inactiveConversation.conversationType == ZMConversationTypeGroup) {
-            [inactiveConversation internalRemoveParticipants:@[selfUser] sender:selfUser];
+            inactiveConversation.needsToBeUpdatedFromBackend = YES;
         }
     }
 }
@@ -273,31 +267,6 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
     } else {
         return [self createOneOnOneConversationFromTransportData:transportData type:type serverTimeStamp:serverTimeStamp];
     }
-}
-
-- (ZMConversation *)createGroupOrSelfConversationFromTransportData:(NSDictionary *)transportData
-                                                   serverTimeStamp:(NSDate *)serverTimeStamp
-                                                            source:(ZMConversationSource)source
-{
-    NSUUID * const convRemoteID = [transportData uuidForKey:@"id"];
-    if(convRemoteID == nil) {
-        ZMLogError(@"Missing ID in conversation payload");
-        return nil;
-    }
-    BOOL conversationCreated = NO;
-    ZMConversation *conversation = [ZMConversation conversationWithRemoteID:convRemoteID createIfNeeded:YES inContext:self.managedObjectContext created:&conversationCreated];
-    [conversation updateWithTransportData:transportData serverTimeStamp:serverTimeStamp];
-    
-    if (conversation.conversationType != ZMConversationTypeSelf && conversationCreated) {
-        // we just got a new conversation, we display new conversation header
-        [conversation appendNewConversationSystemMessageAtTimestamp:serverTimeStamp users:conversation.activeParticipants];
-        
-        if (source == ZMConversationSourceSlowSync) {
-             // Slow synced conversations should be considered read from the start
-            conversation.lastReadServerTimeStamp = conversation.lastModifiedDate;
-        }
-    }
-    return conversation;
 }
 
 - (ZMConversation *)createOneOnOneConversationFromTransportData:(NSDictionary *)transportData
@@ -371,6 +340,7 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
         case ZMUpdateEventTypeConversationRename:
         case ZMUpdateEventTypeConversationMemberUpdate:
         case ZMUpdateEventTypeConversationCreate:
+        case ZMUpdateEventTypeConversationDelete:
         case ZMUpdateEventTypeConversationConnectRequest:
         case ZMUpdateEventTypeConversationAccessModeUpdate:
         case ZMUpdateEventTypeConversationMessageTimerUpdate:
@@ -424,7 +394,7 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
         ZMLogError(@"Missing conversation payload in ZMUpdateEventConversationCreate");
         return;
     }
-    NSDate *serverTimestamp = [event.payload dateForKey:@"time"];
+    NSDate *serverTimestamp = [event.payload dateFor:@"time"];
     [self createConversationFromTransportData:payloadData serverTimeStamp:serverTimestamp source:ZMConversationSourceUpdateEvent];
 }
 
@@ -434,7 +404,7 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
         ZMLogError(@"Missing conversation payload in ZMUpdateEventTypeConversationWalletNotify");
         return nil;
     }
-    NSDate *serverTimestamp = [event.payload dateForKey:@"time"];
+    NSDate *serverTimestamp = [event.payload dateFor:@"time"];
     NSUUID * const convRemoteID = [payloadData uuidForKey:@"conversation"];
     if(convRemoteID == nil) {
         ZMLogError(@"Missing ID in conversation payload");
@@ -459,11 +429,27 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
 }
 
 
+- (void)deleteConversationFromEvent:(ZMUpdateEvent *)event
+{
+    NSUUID *conversationId = event.conversationUUID;
+    
+    if (conversationId == nil) {
+        ZMLogError(@"Missing conversation payload in ZMupdateEventConversatinDelete");
+        return;
+    }
+    
+    ZMConversation *conversation = [ZMConversation conversationWithRemoteID:conversationId createIfNeeded:NO inContext:self.managedObjectContext];
+    
+    if (conversation != nil) {
+        [self.managedObjectContext deleteObject:conversation];
+    }
+}
+
 - (void)processEvents:(NSArray<ZMUpdateEvent *> *)events
            liveEvents:(BOOL)liveEvents
        prefetchResult:(ZMFetchRequestBatchResult *)prefetchResult;
 {
-    for(ZMUpdateEvent *event in events) {
+    for (ZMUpdateEvent *event in events) {
         
         if (event.type == ZMUpdateEventTypeConversationWalletNotify) {
             [[NSNotificationCenter defaultCenter]postNotificationName:ConversationWalletNotify object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
@@ -478,6 +464,11 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
         
         if (event.type == ZMUpdateEventTypeConversationCreate) {
             [self createConversationFromEvent:event];
+            continue;
+        }
+        
+        if (event.type == ZMUpdateEventTypeConversationDelete) {
+            [self deleteConversationFromEvent:event];
             continue;
         }
         
@@ -1455,9 +1446,14 @@ typedef NS_ENUM(NSUInteger, ZMConversationSource) {
 - (void)deleteObject:(ZMConversation *)conversation withResponse:(ZMTransportResponse *)response downstreamSync:(id<ZMObjectSync>)downstreamSync;
 {
     // Self user has been removed from the group conversation but missed the conversation.member-leave event.
-    if (response.HTTPStatus == 404 && conversation.conversationType == ZMConversationTypeGroup && conversation.isSelfAnActiveMember) {
+    if (response.HTTPStatus == 403 && conversation.conversationType == ZMConversationTypeGroup && conversation.isSelfAnActiveMember) {
         ZMUser *selfUser = [ZMUser selfUserInContext:self.managedObjectContext];
         [conversation internalRemoveParticipants:@[selfUser] sender:selfUser];
+    }
+    
+    // Conversation has been permanently deleted
+    if (response.HTTPStatus == 404 && conversation.conversationType == ZMConversationTypeGroup) {
+        [self.managedObjectContext deleteObject:conversation];
     }
     
     if (response.isPermanentylUnavailableError) {

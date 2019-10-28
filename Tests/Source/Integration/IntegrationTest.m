@@ -23,14 +23,7 @@
 
 #import "IntegrationTest.h"
 #import "WireSyncEngine_iOS_Tests-Swift.h"
-
-
-@interface IntegrationTest ()
-
-@property (nonatomic, nullable) id mockMediaManager;
-
-@end
-
+#import <WireSyncEngine/WireSyncEngine.h>
 
 @implementation IntegrationTest
 
@@ -39,7 +32,8 @@
     BackgroundActivityFactory.sharedFactory.activityManager = UIApplication.sharedApplication;
     [BackgroundActivityFactory.sharedFactory resume];
 
-    self.mockMediaManager = [OCMockObject niceMockForClass:AVSMediaManager.class];
+    self.mockMediaManager = [[MockMediaManager alloc] init];
+    self.mockEnvironment = [[MockEnvironment alloc] init];
  
     self.currentUserIdentifier = [NSUUID createUUID];
     [self _setUp];
@@ -49,14 +43,19 @@
     [self _tearDown];
     BackgroundActivityFactory.sharedFactory.activityManager = nil;
     
-    [self.mockMediaManager stopMocking];
     self.mockMediaManager = nil;
     self.currentUserIdentifier = nil;
+    self.mockEnvironment = nil;
     
     WaitForAllGroupsToBeEmpty(0.5);
     [NSFileManager.defaultManager removeItemAtURL:[MockUserClient mockEncryptionSessionDirectory] error:nil];
     
     [super tearDown];
+}
+
+
+- (SessionManagerConfiguration *)sessionManagerConfiguration {
+    return [SessionManagerConfiguration defaultConfiguration];
 }
 
 - (BOOL)useInMemoryStore
@@ -72,11 +71,6 @@
 - (ZMTransportSession *)transportSession
 {
     return (ZMTransportSession *)self.mockTransportSession;
-}
-
-- (AVSMediaManager *)mediaManager
-{
-    return self.mockMediaManager;
 }
 
 @end

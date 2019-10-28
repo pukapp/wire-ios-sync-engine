@@ -1,2 +1,2 @@
-github "pukapp/wire-ios-mocktransport" "secret"
+github "pukapp/wire-ios-mocktransport" "mergewire"
 github "wireapp/wire-ios-testing" ~> 20.0

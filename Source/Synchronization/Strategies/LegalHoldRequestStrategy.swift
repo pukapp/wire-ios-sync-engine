@@ -107,8 +107,10 @@ extension LegalHoldRequestStrategy: ZMEventConsumer {
     
     fileprivate func processUpdateEvent(_ event: ZMUpdateEvent) {
         switch event.type {
-        case .userClientLegalHoldRequest:
+        case .userLegalHoldRequest:
             processLegalHoldRequestEvent(event)
+        case .userLegalHoldDisable:
+            deleteLegalHoldRequest()
         default:
             break
         }

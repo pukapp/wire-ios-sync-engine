@@ -54,8 +54,6 @@ extension TeamDownloadRequestStrategy: ZMEventConsumer {
         case .teamMemberJoin: processAddedMember(with: event)
         case .teamMemberLeave: processRemovedMember(with: event)
         case .teamMemberUpdate: processUpdatedMember(with: event)
-        // Note: "conversation-delete" is not handled yet, 
-        // cf. disabled_testThatItDeletesALocalTeamConversationInWhichSelfIsAGuest in TeamDownloadRequestStrategy_EventsTests
         default: break
         }
     }
@@ -113,7 +111,7 @@ extension TeamDownloadRequestStrategy: ZMEventConsumer {
         guard let member = Member.fetch(withRemoteIdentifier: userId, in: managedObjectContext) else { return }
         member.needsToBeUpdatedFromBackend = true
     }
-
+    
     private func deleteTeamAndConversations(_ team: Team) {
         team.conversations.forEach(managedObjectContext.delete)
         managedObjectContext.delete(team)
