@@ -51,7 +51,7 @@ public class VoiceChannelV3 : NSObject, VoiceChannel {
         else { return NSOrderedSet() }
         
         let userIds = callCenter.callParticipants(conversationId: conversationId)
-        let users = userIds.compactMap { ZMUser(remoteID: $0, createIfNeeded: false, in:context) }
+        let users = userIds.compactMap { ZMUser(remoteID: $0, createIfNeeded: false, in: conversation!, in:context) }
         return NSOrderedSet(array: users)
     }
     
