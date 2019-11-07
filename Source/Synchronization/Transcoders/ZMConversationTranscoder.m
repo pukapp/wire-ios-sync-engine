@@ -798,6 +798,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         NSArray *asstes = dataPayload[@"assets"];
         for (NSDictionary *imgDic in asstes) {
             if ([imgDic[@"size"] isEqualToString:@"complete"]) {
+                conversation.groupImageMediumKey = imgDic[@"key"];
                 dispatch_async(dispatch_get_main_queue(), ^{
                     [self fetchImageData:imgDic[@"key"] complete:^(NSData *data) {
                         conversation.imageMediumData = data;
