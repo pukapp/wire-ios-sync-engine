@@ -73,6 +73,7 @@ extension Notification.Name {
 
     public static let ForceSlowSync = Notification.Name("restartSlowSyncNotificationName")
     
+    public static let TrackSyncPhase = Notification.Name("trackSyncPhase")
 }
 
 
@@ -83,6 +84,7 @@ extension Notification.Name {
             if currentSyncPhase != oldValue {
                 zmLog.debug("did change sync phase: \(currentSyncPhase)")
                 notifySyncPhaseDidStart()
+                NotificationCenter.default.post(name: .TrackSyncPhase, object: nil, userInfo: ["trackSyncPhase" : currentSyncPhase])
             }
         }
     }
