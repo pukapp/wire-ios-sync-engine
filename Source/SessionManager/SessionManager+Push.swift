@@ -20,8 +20,6 @@ import Foundation
 import PushKit
 import UserNotifications
 
-private let log = ZMSLog(tag: "Push")
-
 protocol PushRegistry {
     
     var delegate: PKPushRegistryDelegate? { get set }
@@ -51,7 +49,7 @@ extension SessionManager: PKPushRegistryDelegate {
     public func pushRegistry(_ registry: PKPushRegistry, didUpdate pushCredentials: PKPushCredentials, for type: PKPushType) {
         guard type == .voIP else { return }
         
-        log.debug("PushKit token was updated: \(pushCredentials.token)")
+        Logging.push.safePublic("PushKit token was updated: \(pushCredentials)")
         
         // give new push token to all running sessions
         backgroundUserSessions.values.forEach({ userSession in
@@ -62,7 +60,7 @@ extension SessionManager: PKPushRegistryDelegate {
     public func pushRegistry(_ registry: PKPushRegistry, didInvalidatePushTokenFor type: PKPushType) {
         guard type == .voIP else { return }
         
-        log.debug("PushKit token was invalidated")
+        Logging.push.safePublic("PushKit token was invalidated")
         
         // delete push token from all running sessions
         backgroundUserSessions.values.forEach({ userSession in
@@ -78,6 +76,10 @@ extension SessionManager: PKPushRegistryDelegate {
         // We only care about voIP pushes, other types are not related to push notifications (watch complications and files)
         guard type == .voIP else { return completion() }
         
+        Logging.push.safePublic("Received push payload: \(payload)")
+        // We were given some time to run, resume background task creation.
+        BackgroundActivityFactory.shared.resume()
+        
         if let cid = payload.dictionaryPayload.hugeGroupConversationId() {
             pushNotificationIfUserIn(conversation: cid) { [weak self] accountNeedBeNoticed in
                 self?.pushNotification(to: accountNeedBeNoticed.userIdentifier, payload: payload, completion: completion)
@@ -89,7 +91,7 @@ extension SessionManager: PKPushRegistryDelegate {
     }
     
     private func pushNotification(to userId: UUID, payload: PKPushPayload, completion: @escaping () -> Void) {
-        log.debug("Received push payload: \(payload.dictionaryPayload)")
+        
         notificationsTracker?.registerReceivedPush()
         
         guard let accountId = payload.dictionaryPayload.accountId(),
@@ -104,10 +106,10 @@ extension SessionManager: PKPushRegistryDelegate {
         }
         
         withSession(for: account) { userSession in
-            log.debug("Forwarding push payload to user session with account \(account.userIdentifier)")
+            Logging.push.safePublic("Forwarding push payload to user session with account \(account.userIdentifier)")
             
             userSession.receivedPushNotification(with: payload.dictionaryPayload) { [weak self] in
-                log.debug("Processing push payload completed")
+                Logging.push.safePublic("Processing push payload completed")
                 self?.notificationsTracker?.registerNotificationProcessingCompleted()
                 BackgroundActivityFactory.shared.endBackgroundActivity(activity)
                 completion()
@@ -149,6 +151,8 @@ extension SessionManager: PKPushRegistryDelegate {
                                        didReceive response: UNNotificationResponse,
                                        withCompletionHandler completionHandler: @escaping () -> Void)
     {
+        // Resume background task creation.
+        BackgroundActivityFactory.shared.resume()
         // route to user session
         handleNotification(with: response.notification.userInfo) { userSession in
             userSession.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
@@ -207,13 +211,13 @@ extension SessionManager: PKPushRegistryDelegate {
 
 // MARK: - ShowContentDelegate
 
-
 public protocol ShowContentDelegate: class {
     func showConversation(_ conversation: ZMConversation, at message: ZMConversationMessage?)
     func showConversationList()
     func showUserProfile(user: UserType)
     func showConnectionRequest(userId: UUID)
 }
+
 
 extension SessionManager {
     
@@ -230,14 +234,14 @@ extension SessionManager {
             self.showContentDelegate?.showConversationList()
         }
     }
-    
-    
+
+
     public func showUserProfile(user: UserType) {
         self.showContentDelegate?.showUserProfile(user: user)
     }
-    
+
     public func showConnectionRequest(userId: UUID) {
         self.showContentDelegate?.showConnectionRequest(userId: userId)
     }
-    
+
 }
