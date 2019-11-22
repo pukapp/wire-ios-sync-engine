@@ -713,16 +713,30 @@ public protocol ForegroundNotificationResponder: class {
         })
     }
     
-    public func withSession(forLoginedAccount account: Account, perform completion: @escaping (ZMUserSession?) -> Void) {
+    public func withSession(forLoginedAccount account: Account, perform completion: @escaping (ZMUserSession) -> Void) {
         log.debug("Request to load session for \(account)")
         let group = self.dispatchGroup
         group?.enter()
         sessionLoadingQueue.serialAsync { onWorkDone in
-            let session = self.backgroundUserSessions[account.userIdentifier]
-            log.debug("Session for \(account) is already loaded")
-            completion(session)
-            onWorkDone()
-            group?.leave()
+            if let session = self.backgroundUserSessions[account.userIdentifier] {
+                log.debug("Session for \(account) is already loaded")
+                completion(session)
+                onWorkDone()
+                group?.leave()
+            }
+            else {
+                LocalStoreProvider.createStack(
+                    applicationContainer: self.sharedContainerURL,
+                    userIdentifier: account.userIdentifier,
+                    dispatchGroup: self.dispatchGroup,
+                    migration: { [weak self] in self?.delegate?.sessionManagerWillMigrateAccount(account) },
+                    completion: { provider in
+                        let userSession = self.startBackgroundSession(for: account, with: provider)
+                        completion(userSession)
+                        onWorkDone()
+                        group?.leave()
+                })
+            }
         }
     }
     

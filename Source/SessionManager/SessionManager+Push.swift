@@ -80,8 +80,8 @@ extension SessionManager: PKPushRegistryDelegate {
         // We were given some time to run, resume background task creation.
         BackgroundActivityFactory.shared.resume()
         
-        if let cid = payload.dictionaryPayload.hugeGroupConversationId() {
-            pushNotificationIfUserIn(conversation: cid) { [weak self] accountNeedBeNoticed in
+        if let _ = payload.dictionaryPayload.hugeGroupConversationId() {
+            pushNotificationToAllAccount{ [weak self] accountNeedBeNoticed in
                 self?.pushNotification(to: accountNeedBeNoticed.userIdentifier, payload: payload, completion: completion)
             }
         } else {
@@ -117,14 +117,10 @@ extension SessionManager: PKPushRegistryDelegate {
         }
     }
     
-    private func pushNotificationIfUserIn(conversation cid: UUID, needBeNoticedAccount: @escaping (Account) -> Void) {
+    private func pushNotificationToAllAccount(needBeNoticedAccount: @escaping (Account) -> Void) {
         accountManager.accounts.forEach { account in
             withSession(forLoginedAccount: account) { userSession in
-                if  let userSession = userSession,
-                    let conversations = ZMConversation.hugeGroupConversations(in: userSession.managedObjectContext) as? [ZMConversation],
-                    !conversations.filter({ $0.remoteIdentifier == cid }).isEmpty {
-                    needBeNoticedAccount(account)
-                }
+                needBeNoticedAccount(account)
             }
         }
     }
