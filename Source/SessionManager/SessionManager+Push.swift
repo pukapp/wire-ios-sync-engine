@@ -80,13 +80,46 @@ extension SessionManager: PKPushRegistryDelegate {
         // We were given some time to run, resume background task creation.
         BackgroundActivityFactory.shared.resume()
         
+        // 万人群消息推送
         if let _ = payload.dictionaryPayload.hugeGroupConversationId() {
             pushNotificationToAllAccount{ [weak self] accountNeedBeNoticed in
                 self?.pushNotification(to: accountNeedBeNoticed.userIdentifier, payload: payload, completion: completion)
             }
-        } else {
+        }
+            // 沙盒环境下的万人群推送
+        else if let _ = payload.dictionaryPayload.sadboxHugeGroupConversationId(),
+            let payloadDictionary = payload.dictionaryPayload.hugeGroupConversationPayloadDictionary() {
+            pushNotificationToAllAccount{ [weak self] accountNeedBeNoticed in
+                self?.pushSadboxNotification(to: accountNeedBeNoticed.userIdentifier, payloadDictionary: payloadDictionary, completion: completion)
+            }
+        } else { // 普通推送
             guard let userId = payload.dictionaryPayload.accountId() else { return }
             pushNotification(to: userId, payload: payload, completion: completion)
+        }
+    }
+    
+    // 新增沙盒环境万人群推送兼容适配
+    private func pushSadboxNotification(to userId: UUID, payloadDictionary: [AnyHashable : Any], completion: @escaping () -> Void) {
+
+        notificationsTracker?.registerReceivedPush()
+
+        guard let account = accountManager.account(with: userId),
+            let activity = BackgroundActivityFactory.shared.startBackgroundActivity(withName: payloadDictionary.stringIdentifier(), expirationHandler: { [weak self] in
+                self?.notificationsTracker?.registerProcessingExpired()
+            }) else {
+                notificationsTracker?.registerProcessingAborted()
+                return completion()
+        }
+
+        withSession(for: account) { userSession in
+            Logging.push.safePublic("Forwarding sadbox push payload to user session with account \(account.userIdentifier)")
+
+            userSession.receivedPushNotification(with: payloadDictionary) { [weak self] in
+                Logging.push.safePublic("Processing sadbox push payload completed")
+                self?.notificationsTracker?.registerNotificationProcessingCompleted()
+                BackgroundActivityFactory.shared.endBackgroundActivity(activity)
+                completion()
+            }
         }
     }
     
@@ -94,8 +127,7 @@ extension SessionManager: PKPushRegistryDelegate {
         
         notificationsTracker?.registerReceivedPush()
         
-        guard let accountId = payload.dictionaryPayload.accountId(),
-            let account = self.accountManager.account(with: accountId),
+        guard let account = accountManager.account(with: userId),
             let activity = BackgroundActivityFactory.shared.startBackgroundActivity(withName: "\(payload.stringIdentifier)", expirationHandler: { [weak self] in
                 Logging.push.safePublic("Processing push payload expired: \(payload)")
                 self?.notificationsTracker?.registerProcessingExpired()

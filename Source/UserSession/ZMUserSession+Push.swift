@@ -55,6 +55,53 @@ extension Dictionary {
         
         return UUID(uuidString: cid)
     }
+    
+    internal func stringIdentifier() -> String {
+        if let data = self[PushChannelDataKey as! Key] as? [AnyHashable : Any],
+            let innerData = data["data"] as? [AnyHashable : Any],
+            let id = innerData["id"] {
+            return "\(id)"
+        } else {
+            return self.description
+        }
+    }
+    
+    /// 沙盒环境下万人群ID
+    internal func sadboxHugeGroupConversationId() -> UUID? {
+        
+        guard let apsData = self["aps" as! Key] as? [String: Any],
+            let userInfoString = apsData["alert"] as? String else {
+            return nil
+        }
+        guard let jsonOblect = userInfoString.data(using: .utf8),
+            let userInfoData = try? JSONSerialization.jsonObject(with: jsonOblect, options: []) as? [String: Any] else {
+            return nil
+        }
+        
+        guard let conversationId = userInfoData[PushChannelConvIDKey] as? String else {
+            return nil
+        }
+        
+        return UUID(uuidString: conversationId)
+    }
+    
+    /// 沙盒环境下万人群推送信息数据格式重组以兼容
+    internal func hugeGroupConversationPayloadDictionary() -> [AnyHashable : Any]? {
+        
+        guard let apsData = self["aps" as! Key] as? [String: Any] else {
+            return nil
+        }
+        
+        guard let userInfoString = apsData["alert"] as? String else {
+            return nil
+        }
+        guard let jsonOblect = userInfoString.data(using: .utf8),
+            let userInfoData = try? JSONSerialization.jsonObject(with: jsonOblect, options: []) as? [AnyHashable : Any] else {
+                return nil
+        }
+        
+        return ["data": userInfoData]
+    }
 }
 
 struct PushTokenMetadata {
