@@ -28,6 +28,7 @@ fileprivate enum PushNotificationType: String {
     case plain = "plain"
     case cipher = "cipher"
     case notice = "notice"
+    case sieNotice = "notice-sie"
 }
 
 @objc
@@ -59,7 +60,7 @@ public extension ZMOperationLoop {
         }
         
         switch notificationType {
-        case .plain, .notice:
+        case .plain, .notice, .sieNotice:
             if let data = notificationData[PushChannelKeys.data.rawValue] as? [AnyHashable : Any], let rawUUID = data[PushChannelKeys.identifier.rawValue] as? String {
                 return UUID(uuidString: rawUUID)
             }
