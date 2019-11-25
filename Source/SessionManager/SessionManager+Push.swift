@@ -81,16 +81,32 @@ extension SessionManager: PKPushRegistryDelegate {
         BackgroundActivityFactory.shared.resume()
         
         // 万人群消息推送
-        if let _ = payload.dictionaryPayload.hugeGroupConversationId() {
-            pushNotificationToAllAccount{ [weak self] accountNeedBeNoticed in
-                self?.pushNotification(to: accountNeedBeNoticed.userIdentifier, payload: payload, completion: completion)
+        if let hugeGroupConversationId = payload.dictionaryPayload.hugeGroupConversationId() {
+            if let pushType = payload.dictionaryPayload.hugeGroupPushType(),
+                pushType == "notice-sie" { // 糖果推送无法判断哪个账号，所有账号都要请求
+                accountManager.accounts.forEach { account in
+                    self.pushNotification(to: account.userIdentifier, payload: payload, completion: completion)
+                }
+            } else {
+                pushNotificationToAccount(conversation: hugeGroupConversationId, needBeNoticedAccount: { [weak self] accountNeedBeNoticed in
+                    self?.pushNotification(to: accountNeedBeNoticed.userIdentifier, payload: payload, completion: completion)
+                })
             }
         }
-            // 沙盒环境下的万人群推送
-        else if let _ = payload.dictionaryPayload.sadboxHugeGroupConversationId(),
-            let payloadDictionary = payload.dictionaryPayload.hugeGroupConversationPayloadDictionary() {
-            pushNotificationToAllAccount{ [weak self] accountNeedBeNoticed in
-                self?.pushSadboxNotification(to: accountNeedBeNoticed.userIdentifier, payloadDictionary: payloadDictionary, completion: completion)
+        // 沙盒环境下的万人群推送
+        else if
+            let payloadDictionary = payload.dictionaryPayload.hugeGroupConversationPayloadDictionary(),
+            let hugeGroupConversationId = payloadDictionary.hugeGroupConversationId() {
+            
+            if let pushType = payloadDictionary.hugeGroupPushType(),
+                pushType == "notice-sie" { // 糖果推送无法判断哪个账号，所有账号都要请求
+                accountManager.accounts.forEach { account in
+                    self.pushSadboxNotification(to: account.userIdentifier, payloadDictionary: payloadDictionary, completion: completion)
+                }
+            } else {
+                pushNotificationToAccount(conversation: hugeGroupConversationId, needBeNoticedAccount: { [weak self] accountNeedBeNoticed in
+                    self?.pushSadboxNotification(to: accountNeedBeNoticed.userIdentifier, payloadDictionary: payloadDictionary, completion: completion)
+                })
             }
         } else { // 普通推送
             guard let userId = payload.dictionaryPayload.accountId() else { return }
@@ -149,10 +165,13 @@ extension SessionManager: PKPushRegistryDelegate {
         }
     }
     
-    private func pushNotificationToAllAccount(needBeNoticedAccount: @escaping (Account) -> Void) {
+    private func pushNotificationToAccount(conversation cid: UUID, needBeNoticedAccount: @escaping (Account) -> Void) {
         accountManager.accounts.forEach { account in
-            withSession(forLoginedAccount: account) { userSession in
-                needBeNoticedAccount(account)
+            withSession(for: account) { userSession in
+                if let conversations = ZMConversation.hugeGroupConversations(in: userSession.managedObjectContext) as? [ZMConversation],
+                    !conversations.filter({$0.mutedMessageTypes == .none && $0.remoteIdentifier == cid }).isEmpty {
+                    needBeNoticedAccount(account)
+                }
             }
         }
     }

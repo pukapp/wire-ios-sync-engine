@@ -724,19 +724,6 @@ public protocol ForegroundNotificationResponder: class {
                 onWorkDone()
                 group?.leave()
             }
-            else {
-                LocalStoreProvider.createStack(
-                    applicationContainer: self.sharedContainerURL,
-                    userIdentifier: account.userIdentifier,
-                    dispatchGroup: self.dispatchGroup,
-                    migration: { [weak self] in self?.delegate?.sessionManagerWillMigrateAccount(account) },
-                    completion: { provider in
-                        let userSession = self.startBackgroundSession(for: account, with: provider)
-                        completion(userSession)
-                        onWorkDone()
-                        group?.leave()
-                })
-            }
         }
     }
     

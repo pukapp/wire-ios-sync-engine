@@ -24,6 +24,7 @@ import UserNotifications
 let PushChannelUserIDKey = "user"
 let PushChannelDataKey = "data"
 let PushChannelConvIDKey = "conv"
+let PushChannelTypeKey = "type"
 
 extension Dictionary {
     
@@ -38,6 +39,22 @@ extension Dictionary {
         }
     
         return UUID(uuidString: userIdString)
+    }
+    
+    /// 万人群推送类型
+    internal func hugeGroupPushType() -> String? {
+        
+        guard let userInfoData = self[PushChannelDataKey as! Key] as? [String: Any] else {
+            //            log.debug("No data dictionary in notification userInfo payload");
+            return nil
+        }
+        
+        guard let pushChannelType = userInfoData[PushChannelTypeKey] as? String else {
+            //            log.debug("No Conv ID in notification userInfo payload")
+            return nil
+        }
+        
+        return pushChannelType
     }
     
     /// 万人群ID
@@ -66,24 +83,43 @@ extension Dictionary {
         }
     }
     
-    /// 沙盒环境下万人群ID
-    internal func sadboxHugeGroupConversationId() -> UUID? {
-        
-        guard let apsData = self["aps" as! Key] as? [String: Any],
-            let userInfoString = apsData["alert"] as? String else {
-            return nil
-        }
-        guard let jsonOblect = userInfoString.data(using: .utf8),
-            let userInfoData = try? JSONSerialization.jsonObject(with: jsonOblect, options: []) as? [String: Any] else {
-            return nil
-        }
-        
-        guard let conversationId = userInfoData[PushChannelConvIDKey] as? String else {
-            return nil
-        }
-        
-        return UUID(uuidString: conversationId)
-    }
+//    /// 沙盒环境下万人群推送类型
+//    internal func sadboxhugeGroupPushType() -> String? {
+//        
+//        guard let apsData = self["aps" as! Key] as? [String: Any],
+//            let userInfoString = apsData["alert"] as? String else {
+//                return nil
+//        }
+//        guard let jsonOblect = userInfoString.data(using: .utf8),
+//            let userInfoData = try? JSONSerialization.jsonObject(with: jsonOblect, options: []) as? [String: Any] else {
+//                return nil
+//        }
+//        
+//        guard let pushChannelType = userInfoData[PushChannelTypeKey] as? String else {
+//            return nil
+//        }
+//        
+//        return pushChannelType
+//    }
+//    
+//    /// 沙盒环境下万人群ID
+//    internal func sadboxHugeGroupConversationId() -> UUID? {
+//        
+//        guard let apsData = self["aps" as! Key] as? [String: Any],
+//            let userInfoString = apsData["alert"] as? String else {
+//            return nil
+//        }
+//        guard let jsonOblect = userInfoString.data(using: .utf8),
+//            let userInfoData = try? JSONSerialization.jsonObject(with: jsonOblect, options: []) as? [String: Any] else {
+//            return nil
+//        }
+//        
+//        guard let conversationId = userInfoData[PushChannelConvIDKey] as? String else {
+//            return nil
+//        }
+//        
+//        return UUID(uuidString: conversationId)
+//    }
     
     /// 沙盒环境下万人群推送信息数据格式重组以兼容
     internal func hugeGroupConversationPayloadDictionary() -> [AnyHashable : Any]? {
