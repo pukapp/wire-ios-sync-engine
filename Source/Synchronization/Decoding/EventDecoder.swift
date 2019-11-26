@@ -47,7 +47,14 @@ private let previouslyReceivedEventIDsKey = "zm_previouslyReceivedEventIDsKey"
     
     /// Set this for testing purposes only
     static var testingBatchSize : Int?
-    
+    /*
+     1.这里由于eventMOC是被unowned修饰，所以当sessionManager中memoryWarningObserver监听到了内存告急
+     会去释放所有的backgroundSession
+     2.当session被释放的是否会将syncSta中的eventMOC置为nil，
+     3.这时如果异步线程收到了事件，那么在调用processEvents的时候读取eventMOC的是否就会造成野指针访问
+     4.所以这里新增weak修饰的weakEventMOC来判断eventMOC是否已经为释放
+     */
+    weak var weakEventMOC: NSManagedObjectContext?
     unowned let eventMOC : NSManagedObjectContext
     unowned let syncMOC: NSManagedObjectContext
     
@@ -55,6 +62,7 @@ private let previouslyReceivedEventIDsKey = "zm_previouslyReceivedEventIDsKey"
     
     public init(eventMOC: NSManagedObjectContext, syncMOC: NSManagedObjectContext) {
         self.eventMOC = eventMOC
+        self.weakEventMOC = eventMOC
         self.syncMOC = syncMOC
         super.init()
         self.eventMOC.performGroupedBlockAndWait {
@@ -70,6 +78,9 @@ extension EventDecoder {
     /// It then calls the passed in block (multiple times if necessary), returning the decrypted events
     /// If the app crashes while processing the events, they can be recovered from the database
     @objc public func processEvents(_ events: [ZMUpdateEvent], block: ConsumeBlock) {
+        if weakEventMOC == nil {
+            return
+        }
         var lastIndex: Int64?
         
         eventMOC.performGroupedBlockAndWait {
