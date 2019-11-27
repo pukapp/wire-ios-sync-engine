@@ -246,7 +246,7 @@ extension TypingStrategy : ZMEventConsumer {
                 typing.setIs(false, for: user, in: conversation)
             }
         } else if event.type == .conversationMemberLeave {
-            let users = event.usersFromUserIDs(in: managedObjectContext, in: conversation, createIfNeeded: false).compactMap { $0 as? ZMUser }
+            let users = event.usersFromUserIDs(in: managedObjectContext, createIfNeeded: false).compactMap { $0 as? ZMUser }
             users.forEach { user in
                 typing.setIs(false, for: user, in: conversation)
             }

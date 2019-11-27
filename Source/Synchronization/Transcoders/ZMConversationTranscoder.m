@@ -682,7 +682,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
 - (void)processMemberJoinEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
 {
-    NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext inConversation:conversation createIfNeeded:YES];
+    NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext createIfNeeded:conversation.conversationType != ZMConversationTypeHugeGroup];
     
     ZMUser *selfUser = [ZMUser selfUserInContext:self.managedObjectContext];
     
@@ -693,7 +693,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     for (ZMUser *user in users) {
         [conversation internalAddParticipants:@[user]];
     }
-    // 群成员数量---普通群的成员数量必须等上面代码改变activeParticipants的值之后才能进行g赋值
+    // 群成员数量---普通群的成员数量必须等上面代码改变activeParticipants的值之后才能进行赋值
     NSDictionary *data = [event.payload dictionaryForKey:@"data"];
     NSNumber *membersCountNumber = [data optionalNumberForKey:@"memsum"];
     if (membersCountNumber != nil) {
@@ -708,7 +708,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 {
     NSUUID *senderUUID = event.senderUUID;
     ZMUser *sender = [ZMUser userWithRemoteID:senderUUID createIfNeeded:YES inConversation:conversation inContext:self.managedObjectContext];
-    NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext inConversation:conversation createIfNeeded:YES];
+    NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext createIfNeeded:YES];
     
     if (!conversation.remoteIdentifier.transportString || users.count == 0) {///没有此群，或者没有此用户
         return;
