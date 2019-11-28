@@ -165,6 +165,7 @@ ZM_EMPTY_ASSERTING_INIT()
                                    [[PushTokenStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory analytics:applicationStatusDirectory.analytics],
                                    [[TypingStrategy alloc] initWithApplicationStatus:applicationStatusDirectory managedObjectContext:self.syncMOC],
                                    [[SearchUserImageStrategy alloc] initWithApplicationStatus:applicationStatusDirectory managedObjectContext:self.syncMOC],
+                                   [[BGPMemberImageStrategy alloc] initWithApplicationStatus:applicationStatusDirectory managedObjectContext:self.syncMOC],
                                    self.connectionTranscoder,
                                    self.conversationTranscoder,
                                    self.clientMessageTranscoder,

@@ -173,6 +173,7 @@ ZM_EMPTY_ASSERTING_INIT()
         self.managedObjectContext.zm_fileAssetCache = fileAssetCache;
         
         self.managedObjectContext.zm_searchUserCache = [[NSCache alloc] init];
+        self.managedObjectContext.zm_BGPMemberAssetCache = [[NSCache alloc] init];
         
         self.notificationDispatcher = [[NotificationDispatcher alloc] initWithManagedObjectContext:self.managedObjectContext];
         
