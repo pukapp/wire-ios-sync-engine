@@ -273,7 +273,6 @@ public class BGPMemberImageStrategy : AbstractRequestStrategy {
                 return key == uuid
             })
             else { return }
-        print("secret:bgp--uuid:\(uuid)")
         requestedPreviewAssets[uuid] = SearchUserAssetKeys(previewKey: assetKey)
         RequestAvailableNotification.notifyNewRequestsAvailable(nil)
     }
