@@ -560,10 +560,18 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             [self processConversationRenameEvent:event forConversation:conversation];
             break;
         case ZMUpdateEventTypeConversationMemberJoin:
-            [self processMemberJoinEvent:event forConversation:conversation];
+            if (conversation.conversationType == ZMConversationTypeHugeGroup) {
+                [self processMemberJoinEvent:event forHugeConversation:conversation];
+            } else {
+                [self processMemberJoinEvent:event forConversation:conversation];
+            }
             break;
         case ZMUpdateEventTypeConversationMemberLeave:
-            [self processMemberLeaveEvent:event forConversation:conversation];
+            if (conversation.conversationType == ZMConversationTypeHugeGroup) {
+                [self processMemberLeaveEvent:event forHugeConversation:conversation];
+            } else {
+                [self processMemberLeaveEvent:event forConversation:conversation];
+            }
             [self shouldDeleteConversation:conversation ifSelfUserLeftWithEvent:event];
             break;
         case ZMUpdateEventTypeConversationMemberUpdate:
@@ -680,9 +688,20 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     conversation.userDefinedName = newName;
 }
 
+//万人群加人时，只生成谁+谁这条系统消息，不在把加的人生成user入库
+- (void)processMemberJoinEvent:(ZMUpdateEvent *)event forHugeConversation:(ZMConversation *)hugeConversation
+{
+    if (!hugeConversation.remoteIdentifier.transportString) {
+        return;
+    }
+    [self appendSystemMessageForUpdateEvent:event inConversation:hugeConversation];
+    
+    [self assignMembersCountWithEvent:event forConversation:hugeConversation];
+}
+    
 - (void)processMemberJoinEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
 {
-    NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext createIfNeeded:conversation.conversationType != ZMConversationTypeHugeGroup];
+    NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext createIfNeeded:YES];
     
     ZMUser *selfUser = [ZMUser selfUserInContext:self.managedObjectContext];
     
@@ -693,15 +712,22 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     for (ZMUser *user in users) {
         [conversation internalAddParticipants:@[user]];
     }
-    // 群成员数量---普通群的成员数量必须等上面代码改变activeParticipants的值之后才能进行赋值
-    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
-    NSNumber *membersCountNumber = [data optionalNumberForKey:@"memsum"];
-    if (membersCountNumber != nil) {
-        // Backend is sending the miliseconds, we need to convert to seconds.
-        conversation.membersCount = conversation.conversationType == ZMConversationTypeHugeGroup
-        ? membersCountNumber.integerValue
-        : (NSInteger)conversation.activeParticipants.count;
+    
+    [self assignMembersCountWithEvent:event forConversation:conversation];
+}
+
+//万人群删人时，只生成谁-谁这条系统消息，如果本地有这个用户则删除
+- (void)processMemberLeaveEvent:(ZMUpdateEvent *)event forHugeConversation:(ZMConversation *)hugeConversation
+{
+    [self appendSystemMessageForUpdateEvent:event inConversation:hugeConversation];
+    NSUUID *senderUUID = event.senderUUID;
+    ZMUser *sender = [ZMUser userWithRemoteID:senderUUID createIfNeeded:YES inConversation:hugeConversation inContext:self.managedObjectContext];
+    NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext createIfNeeded:NO];
+    for (ZMUser *user in users) {
+        [hugeConversation internalRemoveParticipants:@[user] sender:sender];
     }
+    
+    [self assignMembersCountWithEvent:event forConversation:hugeConversation];
 }
 
 - (void)processMemberLeaveEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
@@ -722,14 +748,20 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     for (ZMUser *user in users) {
         [conversation internalRemoveParticipants:@[user] sender:sender];
     }
-    // 群成员数量---普通群的成员数量必须等上面代码改变activeParticipants的值之后才能进行g赋值
-    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
-    NSNumber *membersCountNumber = [data optionalNumberForKey:@"memsum"];
-    if (membersCountNumber != nil) {
-        // Backend is sending the miliseconds, we need to convert to seconds.
-        conversation.membersCount = conversation.conversationType == ZMConversationTypeHugeGroup
-        ? membersCountNumber.integerValue
-        : (NSInteger)conversation.activeParticipants.count;
+    
+    [self assignMembersCountWithEvent:event forConversation:conversation];
+}
+    
+// 计算群成员数量--普通群的成员数量为activeParticipants的集合count，万人群的成员数量则为服务端返回的值
+- (void)assignMembersCountWithEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation {
+    if (conversation.conversationType == ZMConversationTypeHugeGroup) {
+        NSDictionary *data = [event.payload dictionaryForKey:@"data"];
+        NSNumber *membersCountNumber = [data optionalNumberForKey:@"memsum"];
+        if (membersCountNumber != nil) {
+            conversation.membersCount = membersCountNumber.integerValue;
+        }
+    } else {
+        conversation.membersCount = (NSInteger)conversation.activeParticipants.count;
     }
 }
 
