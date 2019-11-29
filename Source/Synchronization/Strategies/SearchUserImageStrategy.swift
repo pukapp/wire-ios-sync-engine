@@ -273,7 +273,7 @@ public class BGPMemberImageStrategy : AbstractRequestStrategy {
                 return key == uuid
             })
             else { return }
-        requestedPreviewAssets[uuid] = SearchUserAssetKeys(previewKey: assetKey)
+        requestedPreviewAssets[uuid] = SearchUserAssetKeys(previewKey: assetKey, completeKey: nil)
         RequestAvailableNotification.notifyNewRequestsAvailable(nil)
     }
     
@@ -322,7 +322,7 @@ public class BGPMemberImageStrategy : AbstractRequestStrategy {
             if response.result == .success {
                 if let imageData = response.imageData ?? response.rawData {
                     self.uiContext.zm_BGPMemberAssetCache?.setObject(imageData as NSData, forKey: user as NSUUID)
-                    NotificationCenter.default.post(name: .requestBGPMemberPreviewAssetSuccess, object: nil)
+                    NotificationCenter.default.post(name: .requestBGPMemberPreviewAssetSuccess, object: nil, userInfo: ["userID": user])
                 }
             }
         }
