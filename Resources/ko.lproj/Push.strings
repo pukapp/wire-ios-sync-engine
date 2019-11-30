@@ -55,7 +55,7 @@
 "push.notification.add.unknown.group.nousername.noconversationname" = "새 메시지";
 "push.notification.add.unknown.group.noconversationname" = "%1$@님이 메시지를 보냈습니다";
 
-"push.notification.add.unknown.oneonone" = "새 메시지;
+"push.notification.add.unknown.oneonone" = "새 메시지";
 "push.notification.add.unknown.oneonone.nousername" = "새 메시지";
 
 // Message with mention
