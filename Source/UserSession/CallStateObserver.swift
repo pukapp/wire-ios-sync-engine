@@ -173,10 +173,14 @@ extension CallStateObserver : WireCallCenterCallStateObserver, WireCallCenterMis
             if let timestamp = timestamp {
                 conversation.updateLastModified(timestamp)
             }
-            
-            self.syncManagedObjectContext.enqueueDelayedSave()
+        case .terminating:
+            ///电话挂断时，更新会话时间戳lastModifiedData,来更新会话列表的排序
+            if let timestamp = timestamp {
+                conversation.updateLastModified(timestamp)
+            }
         default: break
         }
+        self.syncManagedObjectContext.enqueueDelayedSave()
     }
 
 }
