@@ -145,7 +145,7 @@
 	<key>push.notification.knock.oneonone</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
-		<string>曾呼叫%1$#@new_knocks@</string>
+		<string>曾打招呼%1$#@new_knocks@</string>
 		<key>new_knocks</key>
 		<dict>
 			<key>NSStringFormatSpecTypeKey</key>
