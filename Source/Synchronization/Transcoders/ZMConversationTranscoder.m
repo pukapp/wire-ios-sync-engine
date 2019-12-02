@@ -817,6 +817,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     // 消息可见性 更新
     if ([dataPayload.allKeys containsObject:ZMConversationInfoIsMessageVisibleOnlyManagerAndCreatorKey]) {
         conversation.isMessageVisibleOnlyManagerAndCreator = [dataPayload[ZMConversationInfoIsMessageVisibleOnlyManagerAndCreatorKey] boolValue];
+        [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
     }
     
     // 群公告更新
