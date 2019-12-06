@@ -168,6 +168,8 @@ extension SessionManager: PKPushRegistryDelegate {
     private func pushNotificationToAccount(conversation cid: UUID, needBeNoticedAccount: @escaping (Account) -> Void) {
         accountManager.accounts.forEach { account in
             withSession(for: account) { userSession in
+                ///managedObjectContext由于为强解类型
+                if userSession.managedObjectContext == nil { return }
                 if let conversations = ZMConversation.hugeGroupConversations(in: userSession.managedObjectContext) as? [ZMConversation],
                     !conversations.filter({$0.mutedMessageTypes == .none && $0.remoteIdentifier == cid }).isEmpty {
                     needBeNoticedAccount(account)
