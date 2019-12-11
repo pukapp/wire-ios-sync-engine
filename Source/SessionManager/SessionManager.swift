@@ -339,16 +339,17 @@ public protocol ForegroundNotificationResponder: class {
             })
         }
         
-        self.memoryWarningObserver = NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification,
-                                                                            object: nil,
-                                                                            queue: nil,
-                                                                            using: {[weak self] _ in
-            guard let `self` = self else {
-                return
-            }
-            log.debug("Received memory warning, tearing down background user sessions.")
-            self.tearDownAllBackgroundSessions()
-        })
+        //暂时去除内存警告的监听，防止闪退
+//        self.memoryWarningObserver = NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification,
+//                                                                            object: nil,
+//                                                                            queue: nil,
+//                                                                            using: {[weak self] _ in
+//            guard let `self` = self else {
+//                return
+//            }
+//            log.debug("Received memory warning, tearing down background user sessions.")
+//            self.tearDownAllBackgroundSessions()
+//        })
         
         NotificationCenter.default.addObserver(self, selector: #selector(applicationWillEnterForeground(_:)), name: UIApplication.willEnterForegroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(applicationWillResignActive(_:)), name: UIApplication.willResignActiveNotification, object: nil)
