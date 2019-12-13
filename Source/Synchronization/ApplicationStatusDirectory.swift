@@ -25,7 +25,7 @@ public final class ApplicationStatusDirectory : NSObject, ApplicationStatus {
 
     public let apnsConfirmationStatus : BackgroundAPNSConfirmationStatus
     public let userProfileImageUpdateStatus : UserProfileImageUpdateStatus
-    public let imageUpdateStatus : ImageUpdateStatus
+    public let converastionAvatarUpdateStatus : ConversationAvatarUpdateStatus
     public let userProfileUpdateStatus : UserProfileUpdateStatus
     public let clientRegistrationStatus : ZMClientRegistrationStatus
     public let clientUpdateStatus : ClientUpdateStatus
@@ -61,7 +61,7 @@ public final class ApplicationStatusDirectory : NSObject, ApplicationStatus {
         self.proxiedRequestStatus = ProxiedRequestsStatus(requestCancellation: requestCancellation)
         self.userProfileImageUpdateStatus = UserProfileImageUpdateStatus(managedObjectContext: managedObjectContext)
         self.assetDeletionStatus = AssetDeletionStatus(provider: managedObjectContext, queue: managedObjectContext)
-        self.imageUpdateStatus = ImageUpdateStatus(managedObjectContext: managedObjectContext)
+        self.converastionAvatarUpdateStatus = ConversationAvatarUpdateStatus(managedObjectContext: managedObjectContext)
         super.init()
         
         callInProgressObserverToken = NotificationInContext.addObserver(name: CallStateObserver.CallInProgressNotification, context: managedObjectContext.notificationContext) { [weak self] (note) in

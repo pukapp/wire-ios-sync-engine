@@ -318,6 +318,8 @@
 		5EFE9C15212AB138007932A6 /* UnregisteredUser+Payload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EFE9C14212AB138007932A6 /* UnregisteredUser+Payload.swift */; };
 		5EFE9C17212AB945007932A6 /* RegistrationPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EFE9C16212AB945007932A6 /* RegistrationPhase.swift */; };
 		7369402E2390C222001A6C44 /* BGPMemberImageStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */; };
+		7399F57123A10556002DA207 /* ConversationAvatarUpdateStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */; };
+		7399F57323A1E1F9002DA207 /* ConversationAvatarUpdateStategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */; };
 		7C1F4BF5203C4F67000537A8 /* Analytics+Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1F4BF4203C4F67000537A8 /* Analytics+Push.swift */; };
 		7C26879D21F7193800570AA9 /* EventProcessingTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C26879C21F7193800570AA9 /* EventProcessingTracker.swift */; };
 		7C419ED821F8D81D00B95770 /* EventProcessingTrackerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C419ED621F8D7EB00B95770 /* EventProcessingTrackerTests.swift */; };
@@ -370,8 +372,6 @@
 		87D003FF1BB5810D00472E06 /* APSSignalingKeyStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87D003FE1BB5810D00472E06 /* APSSignalingKeyStoreTests.swift */; };
 		87D2555921D6275800D03789 /* BuildTypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87D2555821D6275800D03789 /* BuildTypeTests.swift */; };
 		87D4625D1C3D526D00433469 /* DeleteAccountRequestStrategyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87D4625C1C3D526D00433469 /* DeleteAccountRequestStrategyTests.swift */; };
-		A02CF779221BF9620049B5BE /* ImageUpdateStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = A02CF778221BF9620049B5BE /* ImageUpdateStatus.swift */; };
-		A02CF77B221BF9F70049B5BE /* ImageAssetUpdateStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A02CF77A221BF9F70049B5BE /* ImageAssetUpdateStrategy.swift */; };
 		A0EDE7222272B0D100B2D4E2 /* UserDisableSendMsgStatusStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0EDE7212272B0D100B2D4E2 /* UserDisableSendMsgStatusStrategy.swift */; };
 		A907771A192E33A500141F13 /* SlowSyncTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 85D85D997334755E841D13EA /* SlowSyncTests.m */; };
 		A9692F8A1986476900849241 /* NSString_NormalizationTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A9692F881986476900849241 /* NSString_NormalizationTests.m */; };
@@ -935,6 +935,8 @@
 		5EFE9C14212AB138007932A6 /* UnregisteredUser+Payload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UnregisteredUser+Payload.swift"; sourceTree = "<group>"; };
 		5EFE9C16212AB945007932A6 /* RegistrationPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegistrationPhase.swift; sourceTree = "<group>"; };
 		7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BGPMemberImageStrategy.swift; sourceTree = "<group>"; };
+		7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStatus.swift; sourceTree = "<group>"; };
+		7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStategy.swift; sourceTree = "<group>"; };
 		7C1F4BF4203C4F67000537A8 /* Analytics+Push.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Analytics+Push.swift"; sourceTree = "<group>"; };
 		7C26879C21F7193800570AA9 /* EventProcessingTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventProcessingTracker.swift; sourceTree = "<group>"; };
 		7C419ED621F8D7EB00B95770 /* EventProcessingTrackerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventProcessingTrackerTests.swift; sourceTree = "<group>"; };
@@ -993,8 +995,6 @@
 		87D2555821D6275800D03789 /* BuildTypeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildTypeTests.swift; sourceTree = "<group>"; };
 		87D4625C1C3D526D00433469 /* DeleteAccountRequestStrategyTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DeleteAccountRequestStrategyTests.swift; sourceTree = "<group>"; };
 		87DF28C61F680495007E1702 /* PushDispatcherTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PushDispatcherTests.swift; sourceTree = "<group>"; };
-		A02CF778221BF9620049B5BE /* ImageUpdateStatus.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImageUpdateStatus.swift; sourceTree = "<group>"; };
-		A02CF77A221BF9F70049B5BE /* ImageAssetUpdateStrategy.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImageAssetUpdateStrategy.swift; sourceTree = "<group>"; };
 		A0EDE7212272B0D100B2D4E2 /* UserDisableSendMsgStatusStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDisableSendMsgStatusStrategy.swift; sourceTree = "<group>"; };
 		A9692F881986476900849241 /* NSString_NormalizationTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NSString_NormalizationTests.m; sourceTree = "<group>"; };
 		AF6415A01C9C151700A535F5 /* EncryptedBase64EncondedExternalMessageTestFixture.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = EncryptedBase64EncondedExternalMessageTestFixture.txt; sourceTree = "<group>"; };
@@ -1696,7 +1696,6 @@
 		54A170621B30068B001B41A5 /* Strategies */ = {
 			isa = PBXGroup;
 			children = (
-				A02CF77A221BF9F70049B5BE /* ImageAssetUpdateStrategy.swift */,
 				F9ABE84A1EFD568B00D83214 /* MemberDownloadRequestStrategy.swift */,
 				BF491CD01F03D7CF0055EE44 /* PermissionsDownloadRequestStrategy.swift */,
 				F9ABE8A91F02A45700D83214 /* TeamSyncRequestStrategy.swift */,
@@ -1716,6 +1715,7 @@
 				16DABFAD1DCF98D3001973E3 /* CallingRequestStrategy.swift */,
 				547E5B591DDB67390038D936 /* UserProfileUpdateRequestStrategy.swift */,
 				F19F4F3B1E604AA700F4D8FF /* UserImageAssetUpdateStrategy.swift */,
+				7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */,
 				EF2CB12622D5E58B00350B0A /* TeamImageAssetUpdateStrategy.swift */,
 				F1C51FE81FB4A9C7009C2269 /* RegistrationStrategy.swift */,
 				EFC8281B1FB343B600E27E21 /* RegistationCredentialVerificationStrategy.swift */,
@@ -1771,7 +1771,6 @@
 		54BAF1BB19212EBA008042FB /* UserSession */ = {
 			isa = PBXGroup;
 			children = (
-				A02CF778221BF9620049B5BE /* ImageUpdateStatus.swift */,
 				874A168E2052BE32001C6760 /* OpenConversationObserver */,
 				F9FD798019EE73C500D70FCD /* VersionBlacklist */,
 				A9BABE5E19BA1EF300E9E5A3 /* Search */,
@@ -1816,6 +1815,7 @@
 				F19F4F4E1E6575F700F4D8FF /* UserProfileImageOwner.swift */,
 				F19F4F391E5F1AE400F4D8FF /* UserProfileImageUpdateStatus.swift */,
 				547E5B571DDB4B800038D936 /* UserProfileUpdateStatus.swift */,
+				7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */,
 				168CF42620077C54009FCB89 /* TeamInvitationStatus.swift */,
 				5478A1401DEC4048006F7268 /* UserProfile.swift */,
 				5467F1C31E0AE2EF008C1745 /* KeyValueStore.swift */,
@@ -2899,7 +2899,6 @@
 				164EAF9C1F4455FA00B628C4 /* ZMUserSession+Actions.swift in Sources */,
 				5EFE9C17212AB945007932A6 /* RegistrationPhase.swift in Sources */,
 				BF2ADA001F41A3DF000980E8 /* SessionFactories.swift in Sources */,
-				A02CF77B221BF9F70049B5BE /* ImageAssetUpdateStrategy.swift in Sources */,
 				F9410F651DE49C13007451FF /* PushTokenStrategy.swift in Sources */,
 				54A2C9F31DAFBA3300FFD2A0 /* NSManagedObjectContext+EventDecoder.swift in Sources */,
 				F130BF282062C05600DBE261 /* SessionManager+Backup.swift in Sources */,
@@ -2939,6 +2938,7 @@
 				16FF474C1F0D54B20044C491 /* SessionManager+Logs.swift in Sources */,
 				F19F1D281EFBC34E00275E27 /* ZMUserSessionRegistrationNotification.m in Sources */,
 				5EC2C5912137F80E00C6CE35 /* CallState.swift in Sources */,
+				7399F57123A10556002DA207 /* ConversationAvatarUpdateStatus.swift in Sources */,
 				5478A1411DEC4048006F7268 /* UserProfile.swift in Sources */,
 				5E8BB89E2147E9DF00EEA64B /* AVSWrapper+Handlers.swift in Sources */,
 				F16C8BE82044129700677D31 /* ZMConversationTranscoder.swift in Sources */,
@@ -3085,10 +3085,10 @@
 				549815D91A432BC700A7CE2E /* ZMUserSession.m in Sources */,
 				16085B331F71811A000B9F22 /* UserChangeInfo+UserSession.swift in Sources */,
 				161D3ACB213417C90053D39A /* ZMSyncStrategy+EventProcessing.swift in Sources */,
-				A02CF779221BF9620049B5BE /* ImageUpdateStatus.swift in Sources */,
 				549816321A432BC800A7CE2E /* ZMUserTranscoder.m in Sources */,
 				54257C081DF1C94200107FE7 /* TopConversationsDirectory.swift in Sources */,
 				16962EE220286A4C0069D88D /* LocalNotificationType+Localization.swift in Sources */,
+				7399F57323A1E1F9002DA207 /* ConversationAvatarUpdateStategy.swift in Sources */,
 				EEEA75FD1F8A6142006D1070 /* ZMLocalNotification.swift in Sources */,
 				F9ABE8511EFD568B00D83214 /* TeamRequestFactory.swift in Sources */,
 				F16558D1225F3F2A00EA2F2A /* SessionManager+SwitchBackend.swift in Sources */,

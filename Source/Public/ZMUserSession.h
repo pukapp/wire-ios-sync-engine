@@ -179,10 +179,10 @@ typedef NS_ENUM (NSInteger, ProxiedRequestType) {
 @end
 
 
-@protocol ImageUpdateProtocol;
+@protocol ConversationAvatarUpdateProtocol;
 
-@interface ZMUserSession (PictureUpdate)
+@interface ZMUserSession (ConversationAvatarUpdate)
 
-@property (nonatomic, readonly) id<ImageUpdateProtocol> imageUpdate;
+@property (nonatomic, readonly) id<ConversationAvatarUpdateProtocol> converastionAvatarUpdate;
 
 @end

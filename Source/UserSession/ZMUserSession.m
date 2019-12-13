@@ -169,6 +169,9 @@ ZM_EMPTY_ASSERTING_INIT()
         UserImageLocalCache *userImageCache = [[UserImageLocalCache alloc] initWithLocation:cacheLocation];
         self.managedObjectContext.zm_userImageCache = userImageCache;
         
+        ConversationAvatarLocalCache *conversationAvatarCache = [[ConversationAvatarLocalCache alloc] initWithLocation:cacheLocation];
+        self.managedObjectContext.zm_conversationAvatarCache = conversationAvatarCache;
+        
         FileAssetCache *fileAssetCache = [[FileAssetCache alloc] initWithLocation:cacheLocation];
         self.managedObjectContext.zm_fileAssetCache = fileAssetCache;
         
@@ -186,6 +189,7 @@ ZM_EMPTY_ASSERTING_INIT()
                                                                                                        analytics:analytics];
             
             self.syncManagedObjectContext.zm_userImageCache = userImageCache;
+            self.syncManagedObjectContext.zm_conversationAvatarCache = conversationAvatarCache;
             self.syncManagedObjectContext.zm_fileAssetCache = fileAssetCache;
             
             self.localNotificationDispatcher = [[LocalNotificationDispatcher alloc] initWithManagedObjectContext:self.syncManagedObjectContext];
@@ -705,11 +709,11 @@ static NSString * const IsOfflineKey = @"IsOfflineKey";
 
 @end
 
-@implementation ZMUserSession (PictureUpdate)
+@implementation ZMUserSession (ConversationAvatarUpdate)
 
-- (id<ImageUpdateProtocol>)imageUpdate
+- (id<ConversationAvatarUpdateProtocol>)converastionAvatarUpdate
 {
-    return self.operationLoop.syncStrategy.applicationStatusDirectory.imageUpdateStatus;
+    return self.operationLoop.syncStrategy.applicationStatusDirectory.converastionAvatarUpdateStatus;
 }
 
 @end

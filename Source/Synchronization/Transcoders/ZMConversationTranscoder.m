@@ -168,7 +168,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationIsPlacedTopKey,
              ZMConversationIsVisitorsVisibleKey,
              ZMConversationIsMessageVisibleOnlyManagerAndCreatorKey,
-             ZMConversationAnnouncementKey
+             ZMConversationAnnouncementKey,
+             ZMConversationPreviewAvatarKey,
+             ZMConversationCompleteAvatarKey
              ];
 }
 
@@ -832,24 +834,13 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         for (NSDictionary *imgDic in asstes) {
             if ([imgDic[@"size"] isEqualToString:@"complete"]) {
                 conversation.groupImageMediumKey = imgDic[@"key"];
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [self fetchImageData:imgDic[@"key"] complete:^(NSData *data) {
-                        conversation.imageMediumData = data;
-                        [conversation.managedObjectContext saveOrRollback];
-                    }];
-                });
             }
             if ([imgDic[@"size"] isEqualToString:@"preview"]) {
                 conversation.groupImageSmallKey = imgDic[@"key"];
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [self fetchImageData:imgDic[@"key"] complete:^(NSData *data) {
-                        conversation.imageSmallProfileData = data;
-                         [conversation.managedObjectContext saveOrRollback];
-                    }];
-                });
             }
         }
     }
+    
     //群应用更新
     if ([dataPayload.allKeys containsObject:ZMConversationInfoAppsKey]) {
         NSArray *apps = [dataPayload optionalArrayForKey:ZMConversationInfoAppsKey];
@@ -1074,6 +1065,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if ([keys containsObject:ZMConversationAnnouncementKey]) {
         request = [self requestForUpdatingAnnouncementInConversation:updatedConversation];
     }
+    if ([keys containsObject:ZMConversationPreviewAvatarKey] && [keys containsObject:ZMConversationCompleteAvatarKey]) {
+        request = [self requestForBindAvatarKeyInConversation:updatedConversation];
+    }
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationSilencedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationIsPlacedTopKey])) {
@@ -1279,6 +1273,35 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     [request expireAfterInterval:ZMTransportRequestDefaultExpirationInterval];
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:ZMConversationAnnouncementKey] transportRequest:request];
 }
+
+/// 群头像上传之后的绑定
+- (ZMUpstreamRequest *)requestForBindAvatarKeyInConversation:(ZMConversation *)conversation
+{
+    NSString *remoteIdComponent = conversation.remoteIdentifier.transportString;
+    Require(remoteIdComponent != nil);
+    
+    NSMutableDictionary *payload = [NSMutableDictionary dictionary];
+    payload[@"assets"] = [self avatarPictureAssetsPayloadForConversation:conversation];
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, remoteIdComponent, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    [request expireAfterInterval:ZMTransportRequestDefaultExpirationInterval];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObjects:ZMConversationPreviewAvatarKey, ZMConversationCompleteAvatarKey, nil] transportRequest:request];
+}
+- (NSArray *)avatarPictureAssetsPayloadForConversation:(ZMConversation *)conversation {
+    return @[
+             @{
+                 @"size" : @"preview",
+                 @"key"  : conversation.groupImageSmallKey,
+                 @"type" : @"image"
+                 },
+             @{
+                 @"size" : @"complete",
+                 @"key"  : conversation.groupImageMediumKey,
+                 @"type" : @"image"
+                 },
+             ];
+}
+
 
 - (ZMUpstreamRequest *)requestForInsertingObject:(ZMManagedObject *)managedObject forKeys:(NSSet *)keys;
 {
