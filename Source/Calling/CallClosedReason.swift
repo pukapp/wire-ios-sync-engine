@@ -68,6 +68,8 @@ public enum CallClosedReason : Int32 {
             self = .rejectedElsewhere
         case WCALL_REASON_TIMEOUT:
             self = .timeout
+        case WCALL_REASON_TIMEOUT_ECONN:///有的未接电话是此类错误，未处理会导致不创建未接来电的系统消息
+            self = .timeout
         case WCALL_REASON_LOST_MEDIA:
             self = .lostMedia
         case WCALL_REASON_ERROR:
