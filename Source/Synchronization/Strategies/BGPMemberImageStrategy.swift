@@ -29,8 +29,25 @@ extension NSManagedObjectContext
 public extension Notification.Name {
     static let bgpMemberDidRequestPreviewAsset = Notification.Name("bgpMemberDidRequestPreviewAsset")
     static let requestBGPMemberPreviewAssetSuccess = Notification.Name("requestBGPMemberPreviewAssetSuccess")
+    static let bgpMemberDidCancelAllRequest = Notification.Name("bgpMemberDidCancelAllRequest")
 }
 
+public struct BGPMemberImageDownloadModel {
+    
+    let userId:     String
+    let assetKey:   String
+    let isCancel:   Bool ///是否取消下载
+    
+    public init(userId: String, assetKey: String, isCancel: Bool = false) {
+        self.userId = userId
+        self.assetKey = assetKey
+        self.isCancel = isCancel
+    }
+    
+}
+
+///此策略是针对于万人群成员列表页面，为了避免一直生成user，新增一个下载头像的功能，且下载完的头像只会存储在内存中。
+///在页面滑动时，划过去的cell中取消下载待发的请求，当该列表页面注销，则所有待发请求被取消
 public class BGPMemberImageStrategy : AbstractRequestStrategy {
     fileprivate unowned var uiContext: NSManagedObjectContext
     fileprivate unowned var syncContext: NSManagedObjectContext
@@ -39,6 +56,15 @@ public class BGPMemberImageStrategy : AbstractRequestStrategy {
     fileprivate var requestedPreviewAssetsInProgress: Set<UUID> = Set()
     
     fileprivate var observers: [Any] = []
+    
+    ///由于这是下载万人群里用户的头像存在内存中，当用户退出万人群页面就不需要加载请求了。
+    private var cancelAllProcess: Bool = false {
+        didSet {
+            if cancelAllProcess {
+                self.requestedPreviewAssets.removeAll()
+            }
+        }
+    }
     
     @available (*, unavailable)
     public override init(withManagedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
@@ -59,22 +85,36 @@ public class BGPMemberImageStrategy : AbstractRequestStrategy {
                 self?.requestBgpMemberAsset(with: $0)
         })
         )
+        
+        observers.append(NotificationInContext.addObserver(
+            name: .bgpMemberDidCancelAllRequest,
+            context: managedObjectContext.notificationContext,
+            using: { [weak self] in
+                if let number = $0.object as? NSNumber {
+                    let isCancelAll = Bool(truncating: number)
+                    self?.cancelAllProcess = isCancelAll
+                }
+        })
+        )
     }
     
     private func requestBgpMemberAsset(with note: NotificationInContext) {
-        guard let smallProfileImageCacheKey = note.object as? String,
-            let userId = smallProfileImageCacheKey.components(separatedBy: "&&").first,
-            let assetKey = smallProfileImageCacheKey.components(separatedBy: "&&").last,
-            let uuid = UUID(uuidString: userId),
+        guard let downloadModel = note.object as? BGPMemberImageDownloadModel,
+            let uuid = UUID(uuidString: downloadModel.userId),
             !requestedPreviewAssets.contains(where: { (key, _) -> Bool in
                 return key == uuid
             })
             else { return }
-        requestedPreviewAssets[uuid] = SearchUserAssetKeys(previewKey: assetKey, completeKey: nil)
-        RequestAvailableNotification.notifyNewRequestsAvailable(nil)
+        if !downloadModel.isCancel {
+             requestedPreviewAssets[uuid] = SearchUserAssetKeys(previewKey: downloadModel.assetKey, completeKey: nil)
+            RequestAvailableNotification.notifyNewRequestsAvailable(nil)
+        } else {
+            requestedPreviewAssets[uuid] = nil
+        }
     }
     
     public override func nextRequestIfAllowed() -> ZMTransportRequest? {
+        if cancelAllProcess { return nil }
         let request = fetchAssetRequest()
         request?.setDebugInformationTranscoder(self)
         return request
@@ -104,6 +144,7 @@ public class BGPMemberImageStrategy : AbstractRequestStrategy {
     }
     
     func processAsset(response: ZMTransportResponse, for user: UUID, size: ProfileImageSize) {
+        if cancelAllProcess { return }
         let tryAgain = response.result != .permanentError && response.result != .success
         
         switch size {
