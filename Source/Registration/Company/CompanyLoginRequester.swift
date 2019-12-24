@@ -25,6 +25,7 @@ extension URL {
         static let authlogin = "auth-login"
         static let invite = "invite"
         static let thirdlogin = "third-login"
+        static let h5Login = "h5-login"
         static let startSSO = "start-sso"
         static let accessBackend = "access" // Used for connecting to custom backend
     }

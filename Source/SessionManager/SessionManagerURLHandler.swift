@@ -30,6 +30,10 @@ public enum ThirdLoginError: Error, Equatable {
     case invalidUrl(url: URL)
 }
 
+public enum H5LoginError: Error, Equatable {
+    case invalidUrl(url: URL)
+}
+
 public enum URLAction: Equatable {
     case connectBot(serviceUser: ServiceUserData)
     
@@ -42,6 +46,9 @@ public enum URLAction: Equatable {
     case groupInviteError(error: GroupInviteError)
     case authLoginError(error: AuthLoginError)
     case thirdLoginError(errror: ThirdLoginError)
+    
+    case h5Login(code: String)
+    case h5LoginError(error: H5LoginError)
 
     case startCompanyLogin(code: UUID)
     case warnInvalidCompanyLogin(error: ConmpanyLoginRequestError)
@@ -111,12 +118,12 @@ extension URLComponents {
 
 extension URLAction {
     init?(url: URL, validatingIn defaults: UserDefaults = .shared()) {
-        guard let components = URLComponents(string: url.absoluteString),
+        guard
+            let components = URLComponents(string: url.absoluteString),
             let host = components.host,
             let scheme = components.scheme,
-            scheme.starts(with: "secret") == true else {
-            return nil
-        }
+            scheme.starts(with: "secret")
+            else { return nil }
         
         switch host {
         case URL.DeepLink.user:
@@ -171,6 +178,14 @@ extension URLAction {
                 return
             }
             self = .thirdLogin(fromid: fromid, email: email, userid: userid)
+            
+        case URL.Host.h5Login:
+            if let code = components.query(for: "code") {
+                self = .h5Login(code: code)
+            } else {
+                self = .h5LoginError(error: .invalidUrl(url: url))
+            }
+            
         case URL.Host.accessBackend:
             guard let config = components.query(for: URLQueryItem.Key.AccessBackend.config), let url = URL(string: config) else {
                 self = .warnInvalidDeepLink(error: .malformedLink)
@@ -318,7 +333,7 @@ public final class SessionManagerURLHandler: NSObject {
             handle(action: action, in: userSession)
 
         } else {
-            if case .thirdLogin = action {
+            if case .thirdLogin = action, case .h5Login = action {
                 delegate?.sessionManagerShouldExecuteURLAction(action, callback: { (_) in
                     
                 })
