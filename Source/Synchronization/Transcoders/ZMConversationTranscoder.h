@@ -23,7 +23,7 @@
 
 extern NSString * _Nullable const ConversationsPath;
 
-extern NSString * _Nullable const ConversationWalletNotify;
+extern NSString * _Nullable const ConversationServiceMessageAdd;
 extern NSString * _Nullable const ConversationOtrMessageAdd;
 extern NSString * _Nullable const ConversationUserConnection;
 
