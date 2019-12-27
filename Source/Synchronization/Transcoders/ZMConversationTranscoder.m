@@ -350,7 +350,6 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationChangeType:
         case ZMUpdateEventTypeConversationChangeCreater:
         case ZMUpdateEventTypeConversationUpdateAliasname:
-        case ZMUpdateEventTypeConversationWalletNotify:
         case ZMUpdateEventTypeConversationBgpMessageAdd:
         case ZMUpdateEventTypeConversationServiceMessageAdd:
         case ZMUpdateEventTypeConversationUpdate:
@@ -403,7 +402,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 - (ZMConversation *)createConversationAndJoinMemberFromEvent:(ZMUpdateEvent *)event {
     NSDictionary *payloadData = event.payload;
     if(payloadData == nil) {
-        ZMLogError(@"Missing conversation payload in ZMUpdateEventTypeConversationWalletNotify");
+        ZMLogError(@"Missing conversation payload in ZMUpdateEventTypeConversationServiceMessageAdd");
         return nil;
     }
     NSDate *serverTimestamp = [event.payload dateFor:@"time"];
