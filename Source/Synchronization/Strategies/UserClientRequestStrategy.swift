@@ -383,11 +383,19 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
         switch event.type {
         case .userClientAdd, .userClientRemove:
             processClientListUpdateEvent(event)
+        case .userPasswordReset:
+            detectCurrentClientDeletion()
         default:
             break
         }
     }
-
+    
+    // 自动退出
+    fileprivate func detectCurrentClientDeletion() {
+        clientRegistrationStatus?.didDetectCurrentClientDeletion()
+        clientUpdateStatus?.didDetectCurrentClientDeletion()
+    }
+    
     fileprivate func processClientListUpdateEvent(_ event: ZMUpdateEvent) {
         guard let clientInfo = event.payload["client"] as? [String: AnyObject] else {
             zmLog.error("Client info has unexpected payload")
