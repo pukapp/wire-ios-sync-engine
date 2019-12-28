@@ -260,6 +260,9 @@ ZM_EMPTY_ASSERTING_INIT()
 
 - (void)tearDown
 {
+    ///userSession被删除时，保存一下万人群数据
+    [self saveHugeGroup];
+    
     [self.observersToken removeAllObjects];
     [self.application unregisterObserverForStateChange:self];
     self.mediaManager = nil;

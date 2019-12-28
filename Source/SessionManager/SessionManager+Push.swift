@@ -167,6 +167,10 @@ extension SessionManager: PKPushRegistryDelegate {
     
     private func pushNotificationToAccount(conversation cid: UUID, needBeNoticedAccount: @escaping (Account) -> Void) {
         accountManager.accounts.forEach { account in
+            if HugeConversationSetting.muteHugeConversationInBackground(with: cid, in: account) {
+                return
+            }
+            
             withSession(for: account) { userSession in
                 ///managedObjectContext由于为强解类型
                 if userSession.managedObjectContext == nil { return }
