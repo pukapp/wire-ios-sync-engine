@@ -32,12 +32,6 @@ public extension NSManagedObjectContext {
         }
         
         set {
-            if userInfo.allKeys.count == 0 {
-                fatal("userInfo has been deleted")
-            }
-            if self.zm_isUserInterfaceContext {
-                fatal("serverTimeDelta can't be accessed on the ui context")
-            }
             precondition(zm_isSyncContext, "serverTimeDelta can only be accessed on the sync context")
             userInfo[NSManagedObjectContext.ServerTimeDeltaKey] = newValue
         }
