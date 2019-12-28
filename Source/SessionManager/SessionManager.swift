@@ -582,6 +582,15 @@ public protocol ForegroundNotificationResponder: class {
             
             self?.activeUserSession?.closeAndDeleteCookie(deleteCookie)
             self?.activeUserSession = nil
+            /*
+             StorageStack.reset ----->  managedObjectContextDirectory?.tearDown
+             -----> currentManageContext.userInfo.removeAll
+             
+             activeUserSession?.closeAndDeleteCookie和置空操作已经将当前的managerContext销毁，
+             所以当在这里这个user后台接收到推送时，这个用户会被recreate。
+             而此时reset会导致这个新的userSession的currentManageContext.userInfo.removeAll,
+             从而导致一系列的 zm_isSyncContext 为 false，从而被fatal
+             */
             StorageStack.reset()
             
             if deleteAccount {
