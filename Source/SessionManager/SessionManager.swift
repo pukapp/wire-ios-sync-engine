@@ -591,7 +591,7 @@ public protocol ForegroundNotificationResponder: class {
              而此时reset会导致这个新的userSession的currentManageContext.userInfo.removeAll,
              从而导致一系列的 zm_isSyncContext 为 false，从而被fatal
              */
-            StorageStack.reset()
+            //StorageStack.reset()
             
             if deleteAccount {
                 self?.deleteAccountData(for: account)
