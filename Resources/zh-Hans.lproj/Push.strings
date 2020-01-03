@@ -128,15 +128,15 @@
 "push.notification.add.location.oneonone.nousername" = "对话中有一个新的位置分享";
 
 // SELF ADDED/REMOVED TO GROUP
-"push.notification.member.join.self" = "%1$@ 将您加为好友";
+"push.notification.member.join.self" = "%1$@ 将您入对话中";
 "push.notification.member.join.self.noconversationname" = "%1$@ 添加您到对话中";
 "push.notification.member.join.self.nousername.noconversationname" = "您被添加到一个对话中";
-"push.notification.member.join.self.nousername" = "您已被加为好友";
+"push.notification.member.join.self.nousername" = "有会话加入了您";
 
-"push.notification.member.leave.self" = "%1$@ 已将您从好友列表中删除";
-"push.notification.member.leave.self.noconversationname" = "您被%1$@从对话中移出";
+"push.notification.member.leave.self" = "%1$@ 移除了您";
+"push.notification.member.leave.self.noconversationname" = "%1$@从对话中移除了您";
 "push.notification.member.leave.self.nousername.noconversationname" = "您从一个对话中被移出";
-"push.notification.member.leave.self.nousername" = "你被删除";
+"push.notification.member.leave.self.nousername" = "你被移除了";
 
 // EPHEMERAL MESSAGE TIMER UPDATE
 "push.notification.message-timer.update" = "%@将消息时限设置为%@";
