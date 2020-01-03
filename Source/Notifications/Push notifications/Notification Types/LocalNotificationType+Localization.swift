@@ -280,7 +280,9 @@ extension LocalNotificationType {
             
             case .participantsAdded, .participantsRemoved:
                 conversationTypeKey = nil // System messages don't follow the template and is missing the `group` suffix
-                senderKey = SelfKey
+                // 修复当发送者名字没有(senderKey == "nousername")时，通知展示异常的BUG("%1$@ 添加您到对话中")
+                // 直接被替换则不可能出现self.nousername/self.nousername.noconversationname的情况
+                senderKey = [SelfKey, senderKey].compactMap({ $0 }).joined(separator: ".")
             
             default:
                 break
