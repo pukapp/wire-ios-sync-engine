@@ -1437,6 +1437,28 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         [conversation resetLocallyModifiedKeys:[NSSet setWithObject:ZMConversationUserDefinedNameKey]];
         [remainingKeys removeObject:ZMConversationUserDefinedNameKey];
     }
+    
+    ///发送绑定头像的请求，只有当两个key都被改变，并且都不为nil时才能去发送
+    BOOL previewAvatarKeyChanged = [conversation hasLocalModificationsForKey:ZMConversationPreviewAvatarKey];
+    BOOL completeAvatarKeyChanged = [conversation hasLocalModificationsForKey:ZMConversationCompleteAvatarKey];
+    ///两个头像key只有一个被改变
+    if ((int)(previewAvatarKeyChanged) + (int)(completeAvatarKeyChanged) == 1) {
+        ///reset被改变的key
+        if (previewAvatarKeyChanged) {
+            [conversation resetLocallyModifiedKeys:[NSSet setWithObject:ZMConversationPreviewAvatarKey]];
+            [remainingKeys removeObject:ZMConversationPreviewAvatarKey];
+        }
+        if (completeAvatarKeyChanged) {
+            [conversation resetLocallyModifiedKeys:[NSSet setWithObject:ZMConversationCompleteAvatarKey]];
+            [remainingKeys removeObject:ZMConversationCompleteAvatarKey];
+        }
+    } else if (previewAvatarKeyChanged && completeAvatarKeyChanged && (!conversation.groupImageSmallKey || !conversation.groupImageMediumKey)) {
+        ///两个头像key都被改变了,但是有key为nil，则也不能创建请求
+        [conversation resetLocallyModifiedKeys:[NSSet setWithObjects:ZMConversationPreviewAvatarKey, ZMConversationCompleteAvatarKey, nil]];
+        [remainingKeys removeObject:ZMConversationPreviewAvatarKey];
+        [remainingKeys removeObject:ZMConversationCompleteAvatarKey];
+    }
+
     if (remainingKeys.count < keys.count) {
         [(id<ZMContextChangeTracker>)sync objectsDidChange:[NSSet setWithObject:conversation]];
         [self.managedObjectContext enqueueDelayedSave];
