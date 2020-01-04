@@ -799,7 +799,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     /// 群主更换
     if ([dataPayload.allKeys containsObject:@"new_creator"] && dataPayload[@"new_creator"] != nil) {
         
-        ZMUser *user = [ZMUser userWithRemoteID:[NSUUID uuidWithTransportString:dataPayload[@"new_creator"]] createIfNeeded:false inContext:self.managedObjectContext];
+        ZMUser *user = [ZMUser userWithRemoteID:[NSUUID uuidWithTransportString:dataPayload[@"new_creator"]] createIfNeeded:YES inContext:self.managedObjectContext];
         conversation.creator = user;
         conversation.creatorChangeTimestamp = [NSDate date];
         [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
