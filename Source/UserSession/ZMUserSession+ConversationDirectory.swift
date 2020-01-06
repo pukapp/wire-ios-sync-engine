@@ -21,6 +21,15 @@ import Foundation
 extension ZMUserSession {
     
     public var conversationDirectory: ConversationDirectoryType {
+        if managedObjectContext == nil {
+            if self.storeProvider == nil {
+                fatal("storeProvider为nil")
+            }
+            if self.storeProvider.contextDirectory == nil {
+                fatal("contextDirectory为nil")
+            }
+            fatal("managedObjectContext为nil")
+        }
         return managedObjectContext.conversationListDirectory()
     }
     
