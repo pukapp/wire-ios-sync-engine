@@ -1064,7 +1064,9 @@ extension SessionManager {
     @objc fileprivate func applicationWillResignActive(_ note: Notification) {
         ///应用进入后台，保存一下万人群信息
         for (_, session) in backgroundUserSessions {
-            session.saveHugeGroup()
+            if session.isAuthenticated() {
+                session.saveHugeGroup()
+            }
         }
         
         updateAllUnreadCounts()
