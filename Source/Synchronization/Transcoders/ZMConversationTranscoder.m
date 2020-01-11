@@ -34,6 +34,7 @@ NSString *const ConversationsPath = @"/conversations";
 
 NSString *const V3Assetspath = @"/assets/v3";
 
+NSString *const ConversationWalletNotify = @"ConversationWalletNotify";
 NSString *const ConversationServiceMessageAdd = @"ConversationServiceMessageAdd";
 NSString *const ConversationOtrMessageAdd = @"ConversationOtrMessageAdd";
 NSString *const ConversationUserConnection = @"ConversationUserConnection";
@@ -350,6 +351,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationChangeType:
         case ZMUpdateEventTypeConversationChangeCreater:
         case ZMUpdateEventTypeConversationUpdateAliasname:
+        case ZMUpdateEventTypeConversationWalletNotify:
         case ZMUpdateEventTypeConversationBgpMessageAdd:
         case ZMUpdateEventTypeConversationServiceMessageAdd:
         case ZMUpdateEventTypeConversationUpdate:
@@ -450,7 +452,12 @@ static NSString *const ConversationTeamManagedKey = @"managed";
        prefetchResult:(ZMFetchRequestBatchResult *)prefetchResult;
 {
     for (ZMUpdateEvent *event in events) {
-        
+        if (event.type == ZMUpdateEventTypeConversationWalletNotify) {
+            [[NSNotificationCenter defaultCenter]postNotificationName:ConversationWalletNotify object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
+            [self createConversationAndJoinMemberFromEvent:event];
+            continue;
+        }
+
         if (event.type == ZMUpdateEventTypeConversationServiceMessageAdd) {
             [[NSNotificationCenter defaultCenter]postNotificationName:ConversationServiceMessageAdd object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
             [self createConversationAndJoinMemberFromEvent:event];
