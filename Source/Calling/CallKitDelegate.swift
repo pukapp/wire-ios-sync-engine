@@ -427,17 +427,25 @@ extension CallKitDelegate : CXProviderDelegate {
     
     public func provider(_ provider: CXProvider, perform action: CXSetHeldCallAction) {
         log("perform CXSetHeldCallAction: \(action)")
-        if let manager = mediaManager as? AVSMediaManager {
-            manager.isMicrophoneMuted = action.isOnHold
+        guard let call = calls[action.callUUID] else {
+            log("fail CXSetHeldCallAction because call did not exist")
+            action.fail()
+            return
         }
+        
+        call.conversation.voiceChannel?.muted = action.isOnHold
         action.fulfill()
     }
     
     public func provider(_ provider: CXProvider, perform action: CXSetMutedCallAction) {
         log("perform CXSetMutedCallAction: \(action)")
-        if let manager = mediaManager as? AVSMediaManager {
-            manager.isMicrophoneMuted = action.isMuted
+        guard let call = calls[action.callUUID] else {
+            log("fail CXSetMutedCallAction because call did not exist")
+            action.fail()
+            return
         }
+        
+        call.conversation.voiceChannel?.muted = action.isMuted
         action.fulfill()
     }
     

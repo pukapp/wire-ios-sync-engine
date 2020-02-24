@@ -17,7 +17,6 @@
 //
 
 import Foundation
-import avs
 
 public enum VoiceChannelV3Error: LocalizedError {
     case switchToVideoNotAllowed
@@ -129,6 +128,15 @@ public class VoiceChannelV3 : NSObject, VoiceChannel {
         self.callCenter?.setVideoCaptureDevice(device, for: conversationId)
     }
     
+    public var muted: Bool {
+        get {
+            return callCenter?.muted ?? false
+        }
+        set {
+            callCenter?.muted = newValue
+        }
+    }
+    
 }
 
 extension VoiceChannelV3 : CallActions {
@@ -137,9 +145,7 @@ extension VoiceChannelV3 : CallActions {
         if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *) {
             userSession.callKitDelegate?.requestMuteCall(in: conversation!, muted: muted)
         } else {
-            if let manager = userSession.mediaManager as? AVSMediaManager {
-                manager.isMicrophoneMuted = muted
-            }
+            self.muted = muted
         }
     }
     
@@ -245,6 +251,10 @@ extension VoiceChannelV3 : CallObservers {
         return WireCallCenterV3.addCallStateObserver(observer: observer, context: userSession.managedObjectContext!)
     }
     
+    /// Add observer of the mute state. Returns a token which needs to be retained as long as the observer should be active.
+    public func addMuteStateObserver(_ observer: MuteStateObserver) -> Any {
+        return WireCallCenterV3.addMuteStateObserver(observer: observer, context: conversation!.managedObjectContext!)
+    }
 }
 
 public extension CallState {
