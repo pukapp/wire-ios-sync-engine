@@ -89,6 +89,14 @@ public enum LocalNotificationContentType : Equatable {
                 } else {
                     return .messageTimerUpdate(value.displayString)
                 }
+            case .serviceMessage:
+                if let systemMessage = message as? ZMSystemMessage,
+                    let serviceMessage = systemMessage.serviceMessage,
+                    let text = serviceMessage.text {
+                   return .text(text, isMention: false, isReply: false)
+                } else {
+                   return nil
+                }
             default:
                 return nil
             }

@@ -132,7 +132,8 @@ extension ZMLocalNotification {
             
             // we don't want to create notifications when other people join or leave conversation
             let forSelf = systemMessage.users.count == 1 && systemMessage.users.first!.isSelfUser
-            if !forSelf && systemMessage.systemMessageType != .messageTimerUpdate {
+            // serviceMessage需要弹出通知
+            if !forSelf && systemMessage.systemMessageType != .messageTimerUpdate && systemMessage.systemMessageType != .serviceMessage {
                 return false
             }
                         
