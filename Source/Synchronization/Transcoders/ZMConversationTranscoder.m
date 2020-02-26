@@ -419,13 +419,12 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     [conversation updateLastModified:serverTimestamp];
     [conversation updateServerModified:serverTimestamp];
     conversation.isServiceNotice = YES;
-    if (conversationCreated) {
-        NSUUID * const userId = [payloadData uuidForKey:@"from"];
-        ZMUser *user = [ZMUser userWithRemoteID:userId createIfNeeded:YES inContext:self.managedObjectContext];
-        user.needsToBeUpdatedFromBackend = true;
-        [conversation internalAddParticipants:@[user]];
-        user.connection.conversation = conversation;
-    }
+    NSUUID * const userId = [payloadData uuidForKey:@"from"];
+    ZMUser *user = [ZMUser userWithRemoteID:userId createIfNeeded:YES inContext:self.managedObjectContext];
+    //第一次创建ZMUser不需要设置也会下载一次，此处暂时不需要
+//        user.needsToBeUpdatedFromBackend = true;
+    [conversation internalAddParticipants:@[user]];
+    user.connection.conversation = conversation;
     return conversation;
     
 }
