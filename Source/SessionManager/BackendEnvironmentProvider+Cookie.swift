@@ -33,4 +33,15 @@ extension BackendEnvironmentProvider {
             return cookieStorage.authenticationCookieData != nil
         }
     }
+    
+    func tributaryURL(for account: Account) -> URL? {
+        guard let tributaryURLs = UserDefaults.standard.object(forKey: "tributaryURLs") as? [String: Any] else { return nil }
+        if let url = tributaryURLs.first(where: {
+            return $0.key == account.userIdentifier.transportString()
+        })?.value as? String {
+            return URL.init(string: url)
+        }
+        return nil
+    }
+    
 }

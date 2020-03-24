@@ -56,7 +56,17 @@ open class AuthenticatedSessionFactory {
             initialAccessToken: nil,
             applicationGroupIdentifier: nil
         )
-
+        /**
+         * 新增需求 - 用户访问的ip地址由服务端进行分配，防止域名被封之后，导致所有用户无法使用
+         * 登录和每次应用启动时去请求接口，获取对应ip，并保存在本地。
+         * 所以在每个transportSession创建的时候判断一次，
+         * 当该用户存在分流URL的时候，对baseURL直接重新赋值
+         **/
+        if let tributaryURL = environment.tributaryURL(for: account) {
+            transportSession.baseURL = tributaryURL
+            transportSession.websocketURL = tributaryURL
+        }
+        
         return ZMUserSession(
             mediaManager: mediaManager,
             flowManager:flowManager,

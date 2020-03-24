@@ -44,6 +44,9 @@ NSTimeInterval ZMSelfStrategyPendingValidationRequestInterval = 5;
 @property (nonatomic, weak) ZMClientRegistrationStatus *clientStatus;
 @property (nonatomic, weak) SyncStatus *syncStatus;
 @property (nonatomic) BOOL didCheckNeedsToBeUdpatedFromBackend;
+
+///判断是否需要获取TributaryURL，默认用户登录之后和程序每次启动的时候都去获取一下
+@property (nonatomic) BOOL needFetchTributaryURL;
 @end
 
 @interface ZMSelfStrategy (SingleRequestTranscoder) <ZMSingleRequestTranscoder>
@@ -125,6 +128,11 @@ NSTimeInterval ZMSelfStrategyPendingValidationRequestInterval = 5;
     ZMClientRegistrationStatus *clientStatus = self.clientStatus;
     ZMUser *selfUser = [ZMUser selfUserInContext:self.managedObjectContext];
     
+    if (!self.needFetchTributaryURL) {
+        self.needFetchTributaryURL = YES;
+        return [self requestForFetchTributaryURL];
+    }
+    
     if (clientStatus.currentPhase == ZMClientRegistrationPhaseWaitingForEmailVerfication) {
         [self.timedDownstreamSync readyForNextRequestIfNotBusy];
         return [self.timedDownstreamSync nextRequest];
@@ -161,6 +169,40 @@ NSTimeInterval ZMSelfStrategyPendingValidationRequestInterval = 5;
 {
     ZMUser *selfUser = [ZMUser selfUserInContext:self.managedObjectContext];
     return selfUser.remoteIdentifier != nil;
+}
+
+- (ZMTransportRequest *)requestForFetchTributaryURL
+{
+    ZMTransportRequest *request = [ZMTransportRequest requestGetFromPath:@"/self/ipproxy"];
+    [request addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:self.managedObjectContext block:^(ZMTransportResponse * response) {
+        [self responseForFetchTributaryURLWith:response];
+    }]];
+    return request;
+}
+
+- (void)responseForFetchTributaryURLWith:(ZMTransportResponse*)response
+{
+    switch (response.result) {
+        case ZMTransportResponseStatusSuccess: {
+            NSString *url =
+            [[[response.payload asDictionary] optionalDictionaryForKey:@"data"] optionalStringForKey:@"ip"];
+            NSString *userId =
+            [[[response.payload asDictionary] optionalDictionaryForKey:@"data"] optionalStringForKey:@"uid"];
+            if (url && userId) {
+                NSDictionary *tributaryURLs = [NSUserDefaults.standardUserDefaults objectForKey:@"tributaryURLs"];
+                NSMutableDictionary * mutableDic = [[NSMutableDictionary alloc] initWithDictionary:tributaryURLs];
+                if (![[tributaryURLs objectForKey:userId] isEqualToString:url]) {
+                    NSLog(@"======%@", url);
+                    [mutableDic setObject:url forKey:userId];
+                    [NSUserDefaults.standardUserDefaults setObject:mutableDic forKey:@"tributaryURLs"];
+                    [NSUserDefaults.standardUserDefaults synchronize];
+                }
+            }
+            break;
+        }
+        default:
+            break;
+    }
 }
 
 @end
