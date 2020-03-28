@@ -895,6 +895,12 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         conversation.isDisableSendMsg = !([dataPayload[ZMConversationInfoBlockTimeKey] integerValue] == 0);
         [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
     }
+    
+    //群封禁状态
+    if([dataPayload.allKeys containsObject:ZMConversationBlockedKey]) {
+        conversation.blocked = !([dataPayload[ZMConversationBlockedKey] integerValue] == 0);
+    }
+    
     //演讲者
     if ([dataPayload.allKeys containsObject:ZMConversationInfoOratorKey]) {
         NSArray *orator = [dataPayload optionalArrayForKey:ZMConversationInfoOratorKey];
