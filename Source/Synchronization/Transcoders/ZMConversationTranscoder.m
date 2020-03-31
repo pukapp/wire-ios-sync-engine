@@ -171,7 +171,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
              ZMConversationIsMessageVisibleOnlyManagerAndCreatorKey,
              ZMConversationAnnouncementKey,
              ZMConversationPreviewAvatarKey,
-             ZMConversationCompleteAvatarKey
+             ZMConversationCompleteAvatarKey,
+             ShowMemsumKey,
+             EnabledEditMsgKey
              ];
 }
 
@@ -781,6 +783,14 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if(dataPayload == NULL) {
         return;
     }
+    /// 是否允许编辑和删除消息
+    if ([dataPayload.allKeys containsObject:ZMConversationEnabledEditMsgKey] && dataPayload[ZMConversationEnabledEditMsgKey] != nil) {
+        conversation.enabledEditMsg = [dataPayload[ZMConversationEnabledEditMsgKey] boolValue];
+    }
+    /// 是否显示群成员数量
+    if ([dataPayload.allKeys containsObject:ZMConversationShowMemsumKey] && dataPayload[ZMConversationShowMemsumKey] != nil) {
+        conversation.showMemsum = [dataPayload[ZMConversationShowMemsumKey] boolValue];
+    }
     /// 允许查看群成员
     if ([dataPayload.allKeys containsObject:@"viewmem"] && dataPayload[@"viewmem"] != nil) {
         conversation.isAllowViewMembers = [dataPayload[@"viewmem"] boolValue];
@@ -1073,6 +1083,12 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if ([keys containsObject:ZMConversationPreviewAvatarKey] && [keys containsObject:ZMConversationCompleteAvatarKey]) {
         request = [self requestForBindAvatarKeyInConversation:updatedConversation];
     }
+    if ([keys containsObject:ShowMemsumKey]) {
+        request = [self requestForUpdatingShowMemsumInConversation:updatedConversation];
+    }
+    if ([keys containsObject:EnabledEditMsgKey]) {
+        request = [self requestForUpdatingEnabledEditMsgInConversation:updatedConversation];
+    }
     if (request == nil && (   [keys containsObject:ZMConversationArchivedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationSilencedChangedTimeStampKey]
                            || [keys containsObject:ZMConversationIsPlacedTopKey])) {
@@ -1292,6 +1308,31 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     [request expireAfterInterval:ZMTransportRequestDefaultExpirationInterval];
     return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObjects:ZMConversationPreviewAvatarKey, ZMConversationCompleteAvatarKey, nil] transportRequest:request];
 }
+
+/// 群显示人数的权限更新
+- (ZMUpstreamRequest *)requestForUpdatingShowMemsumInConversation:(ZMConversation *)conversation
+{
+    NSString *remoteIdComponent = conversation.remoteIdentifier.transportString;
+    Require(remoteIdComponent != nil);
+    NSDictionary *payload = @{ ZMConversationShowMemsumKey : @(conversation.showMemsum) };
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, remoteIdComponent, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    [request expireAfterInterval:ZMTransportRequestDefaultExpirationInterval];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject: ShowMemsumKey] transportRequest:request];
+}
+
+/// 群成员是否可以删除编辑消息的权限更新
+- (ZMUpstreamRequest *)requestForUpdatingEnabledEditMsgInConversation:(ZMConversation *)conversation
+{
+    NSString *remoteIdComponent = conversation.remoteIdentifier.transportString;
+    Require(remoteIdComponent != nil);
+    NSDictionary *payload = @{ ZMConversationEnabledEditMsgKey : @(conversation.enabledEditMsg) };
+    NSString *path = [NSString pathWithComponents:@[ConversationsPath, remoteIdComponent, @"update"]];
+    ZMTransportRequest *request = [ZMTransportRequest requestWithPath:path method:ZMMethodPUT payload:payload];
+    [request expireAfterInterval:ZMTransportRequestDefaultExpirationInterval];
+    return [[ZMUpstreamRequest alloc] initWithKeys:[NSSet setWithObject:EnabledEditMsgKey] transportRequest:request];
+}
+
 - (NSArray *)avatarPictureAssetsPayloadForConversation:(ZMConversation *)conversation {
     return @[
              @{
