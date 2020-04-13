@@ -1,6 +1,6 @@
 // 
-// Secret
-// Copyright (C) 2016 Secret Swiss GmbH
+// iTask
+// Copyright (C) 2016 iTask Swiss GmbH
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -224,7 +224,7 @@
 "push.notification.reaction.oneonone.nousername" = "Alguém %@ sua mensagem";
 
 // NEW USER (no alert title for this)
-"push.notification.new_user" = "%@ entrou no Secret";
+"push.notification.new_user" = "%@ entrou no iTask";
 
 // OTHER
 "push.notification.action.message.open" = "Abrir";
