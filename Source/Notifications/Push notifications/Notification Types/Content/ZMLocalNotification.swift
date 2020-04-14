@@ -66,6 +66,7 @@ open class ZMLocalNotification: NSObject {
     public var userInfo: NotificationUserInfo?
 
     init?(conversation: ZMConversation?, builder: NotificationBuilder) {
+        return nil
         guard builder.shouldCreateNotification() else { return nil }
         self.type = builder.notificationType
         self.title = builder.titleText()
