@@ -615,6 +615,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             break;
         case ZMUpdateEventTypeConversationReceiptModeUpdate:
             [self processReceiptModeUpdate:event inConversation:conversation lastServerTimestamp:previousLastServerTimestamp];
+        case ZMUpdateEventTypeITaskDynamicMessageAdd:
+            [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
+            break;
         default:
             break;
     }
