@@ -751,7 +751,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     }
     ZMLogDebug(@"processMemberLeaveEvent (%@) leaving users.count = %lu", conversation.remoteIdentifier.transportString, (unsigned long)users.count);
     
-    if ([users intersectsSet:conversation.activeParticipants]) {
+    if ([users intersectsSet:conversation.activeParticipants] ) {
         [self appendSystemMessageForUpdateEvent:event inConversation:conversation];
     }
 
@@ -995,6 +995,10 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
 - (void)appendSystemMessageForUpdateEvent:(ZMUpdateEvent *)event inConversation:(ZMConversation * ZM_UNUSED)conversation
 {
+    // itask群，不需要生成成员添加和删除的消息
+    if (conversation.isITaskGroup && (event.type == ZMUpdateEventTypeConversationMemberJoin || event.type == ZMUpdateEventTypeConversationMemberLeave)) {
+        return;
+    }
     ZMSystemMessage *systemMessage = [ZMSystemMessage createOrUpdateMessageFromUpdateEvent:event inManagedObjectContext:self.managedObjectContext];
     
     if (systemMessage != nil) {
