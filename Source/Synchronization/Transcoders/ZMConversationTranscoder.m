@@ -358,6 +358,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationUpdateBlockTime:
         case ZMUpdateEventTypeConversationAppMessageAdd:
         case ZMUpdateEventTypeConversationReceiptModeUpdate:
+        case ZMUpdateEventTypeITaskServiceMessageAdd:
+        case ZMUpdateEventTypeITaskDynamicMessageAdd:
             return YES;
         default:
             return NO;
@@ -457,7 +459,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             continue;
         }
 
-        if (event.type == ZMUpdateEventTypeConversationServiceMessageAdd) {
+        if (event.type == ZMUpdateEventTypeConversationServiceMessageAdd || event.type == ZMUpdateEventTypeITaskServiceMessageAdd) {
             [[NSNotificationCenter defaultCenter]postNotificationName:ConversationServiceMessageAdd object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
             [self createConversationAndJoinMemberFromEvent:event];
             continue;
@@ -539,6 +541,10 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationTyping:
         case ZMUpdateEventTypeConversationAssetAdd:
         case ZMUpdateEventTypeConversationClientMessageAdd:
+        case ZMUpdateEventTypeConversationWalletNotify:
+        case ZMUpdateEventTypeConversationServiceMessageAdd:
+        case ZMUpdateEventTypeITaskServiceMessageAdd:
+        case ZMUpdateEventTypeITaskDynamicMessageAdd:
             break;
         default:
             return;
