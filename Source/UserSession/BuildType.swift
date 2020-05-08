@@ -27,10 +27,10 @@ enum BuildType: Equatable {
 
     init(bundleID: String) {
         switch bundleID {
-        case "com.secrect.qhsj": self = .production
-        case "com.secret.alpha": self = .alpha
-        case "com.secret.development": self = .development
-        case "com.secret.beta": self = .internal
+        case "com.hzb.itask": self = .production
+        case "com.hzb.itask-alpha": self = .alpha
+        case "com.hzb.itask-development": self = .development
+        case "com.hzb.itask-beta": self = .internal
         default: self = .custom(bundleID: bundleID)
         }
     }
@@ -38,13 +38,13 @@ enum BuildType: Equatable {
     var certificateName: String {
         switch self {
         case .production:
-            return "Qhsj"
+            return "Task"
         case .alpha:
-            return "Alpha"
+            return "TaskBeta"
         case .development:
-            return "Development"
+            return "TaskDevelopment"
         case .internal:
-            return "Beta"
+            return "TaskBeta"
         case .custom(let bundleID):
             return bundleID
         }
@@ -53,13 +53,13 @@ enum BuildType: Equatable {
     var bundleID: String {
         switch self {
         case .production:
-            return "com.secrect.qhsj"
+            return "com.hzb.itask"
         case .alpha:
-            return "com.secret.alpha"
+            return "com.hzb.itask-alpha"
         case .development:
-            return "com.secret.development"
+            return "com.hzb.itask-development"
         case .internal:
-            return "com.secret.beta"
+            return "com.hzb.itask-beta"
         case .custom(let bundleID):
             return bundleID
         }
