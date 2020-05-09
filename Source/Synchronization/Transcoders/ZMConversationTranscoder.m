@@ -351,9 +351,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationChangeType:
         case ZMUpdateEventTypeConversationChangeCreater:
         case ZMUpdateEventTypeConversationUpdateAliasname:
-        case ZMUpdateEventTypeConversationWalletNotify:
         case ZMUpdateEventTypeConversationBgpMessageAdd:
-        case ZMUpdateEventTypeConversationServiceMessageAdd:
         case ZMUpdateEventTypeConversationUpdate:
         case ZMUpdateEventTypeConversationUpdateBlockTime:
         case ZMUpdateEventTypeConversationAppMessageAdd:
@@ -453,13 +451,13 @@ static NSString *const ConversationTeamManagedKey = @"managed";
        prefetchResult:(ZMFetchRequestBatchResult *)prefetchResult;
 {
     for (ZMUpdateEvent *event in events) {
-        if (event.type == ZMUpdateEventTypeConversationWalletNotify) {
-            [[NSNotificationCenter defaultCenter]postNotificationName:ConversationWalletNotify object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
-            [self createConversationAndJoinMemberFromEvent:event];
-            continue;
-        }
+//        if (event.type == ZMUpdateEventTypeConversationWalletNotify) {
+//            [[NSNotificationCenter defaultCenter]postNotificationName:ConversationWalletNotify object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
+//            [self createConversationAndJoinMemberFromEvent:event];
+//            continue;
+//        }
 
-        if (event.type == ZMUpdateEventTypeConversationServiceMessageAdd || event.type == ZMUpdateEventTypeITaskServiceMessageAdd) {
+        if (/*event.type == ZMUpdateEventTypeConversationServiceMessageAdd ||*/ event.type == ZMUpdateEventTypeITaskServiceMessageAdd) {
             [[NSNotificationCenter defaultCenter]postNotificationName:ConversationServiceMessageAdd object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
             [self createConversationAndJoinMemberFromEvent:event];
             continue;
@@ -541,8 +539,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationTyping:
         case ZMUpdateEventTypeConversationAssetAdd:
         case ZMUpdateEventTypeConversationClientMessageAdd:
-        case ZMUpdateEventTypeConversationWalletNotify:
-        case ZMUpdateEventTypeConversationServiceMessageAdd:
+//        case ZMUpdateEventTypeConversationWalletNotify:
+//        case ZMUpdateEventTypeConversationServiceMessageAdd:
         case ZMUpdateEventTypeITaskServiceMessageAdd:
         case ZMUpdateEventTypeITaskDynamicMessageAdd:
             break;
