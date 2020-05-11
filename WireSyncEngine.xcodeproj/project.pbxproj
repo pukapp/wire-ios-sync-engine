@@ -6,6 +6,20 @@
 	objectVersion = 46;
 	objects = {
 
+/* Begin PBXAggregateTarget section */
+		73FCF0F62466B1B400AB37ED /* MediasoupclientModuleMap */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 73FCF0F72466B1B400AB37ED /* Build configuration list for PBXAggregateTarget "MediasoupclientModuleMap" */;
+			buildPhases = (
+				73FCF0FA2466B1D500AB37ED /* ShellScript */,
+			);
+			dependencies = (
+			);
+			name = MediasoupclientModuleMap;
+			productName = MediasoupclientModuleMap;
+		};
+/* End PBXAggregateTarget section */
+
 /* Begin PBXBuildFile section */
 		092083401BA95EE100F82B29 /* UserClientRequestFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0920833F1BA95EE100F82B29 /* UserClientRequestFactory.swift */; };
 		0920C4DA1B305FF500C55728 /* UserSessionGiphyRequestStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0920C4D81B305FF500C55728 /* UserSessionGiphyRequestStateTests.swift */; };
@@ -318,9 +332,20 @@
 		5EFE9C15212AB138007932A6 /* UnregisteredUser+Payload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EFE9C14212AB138007932A6 /* UnregisteredUser+Payload.swift */; };
 		5EFE9C17212AB945007932A6 /* RegistrationPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EFE9C16212AB945007932A6 /* RegistrationPhase.swift */; };
 		7313D45E23B6136B00F73B20 /* HugeConversation+Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7313D45D23B6136B00F73B20 /* HugeConversation+Push.swift */; };
+		735E682824455670003E089C /* Starscream.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 735E68272445566F003E089C /* Starscream.framework */; };
+		735E682E244559EF003E089C /* SwiftyJSON.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 735E682D244559EF003E089C /* SwiftyJSON.framework */; };
+		735E698E244856C4003E089C /* MediasoupTrackModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735E698D244856C4003E089C /* MediasoupTrackModel.swift */; };
+		735E699C24519F3D003E089C /* Mediasoup+Consumer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735E699B24519F3B003E089C /* Mediasoup+Consumer.swift */; };
 		7369402E2390C222001A6C44 /* BGPMemberImageStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */; };
 		7399F57123A10556002DA207 /* ConversationAvatarUpdateStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */; };
 		7399F57323A1E1F9002DA207 /* ConversationAvatarUpdateStategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */; };
+		73EA4D0E243EC90400E63429 /* MediasoupWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D0D243EC90400E63429 /* MediasoupWrapper.swift */; };
+		73EA4D10243ED97B00E63429 /* MediasoupRoomManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D0F243ED97B00E63429 /* MediasoupRoomManager.swift */; };
+		73EA4D12243EE1AD00E63429 /* MediaOutputManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D11243EE1AD00E63429 /* MediaOutputManager.swift */; };
+		73EA4D142440192000E63429 /* MediasoupSignalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D132440192000E63429 /* MediasoupSignalManager.swift */; };
+		73EA4D212441762000E63429 /* mediasoup_client_ios.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 73EA4CE9243DB55A00E63429 /* mediasoup_client_ios.framework */; };
+		73EA4D2C2441C05800E63429 /* MediasoupSignalSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D2B2441C05800E63429 /* MediasoupSignalSocket.swift */; };
+		73FCF1012468F35A00AB37ED /* Swift的framework中导入OC的framework in Resources */ = {isa = PBXBuildFile; fileRef = 73FCF1002468F35A00AB37ED /* Swift的framework中导入OC的framework */; };
 		7C1F4BF5203C4F67000537A8 /* Analytics+Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1F4BF4203C4F67000537A8 /* Analytics+Push.swift */; };
 		7C26879D21F7193800570AA9 /* EventProcessingTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C26879C21F7193800570AA9 /* EventProcessingTracker.swift */; };
 		7C419ED821F8D81D00B95770 /* EventProcessingTrackerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C419ED621F8D7EB00B95770 /* EventProcessingTrackerTests.swift */; };
@@ -566,6 +591,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 549815921A43232400A7CE2E;
 			remoteInfo = "WireSyncEngine-ios.framework";
+		};
+		73FCF0FB2466B23C00AB37ED /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 540029AB1918CA8500578793 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 73FCF0F62466B1B400AB37ED;
+			remoteInfo = MediasoupclientModuleMap;
 		};
 		A9FF8088195B17B3002CD44B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -936,9 +968,20 @@
 		5EFE9C14212AB138007932A6 /* UnregisteredUser+Payload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UnregisteredUser+Payload.swift"; sourceTree = "<group>"; };
 		5EFE9C16212AB945007932A6 /* RegistrationPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegistrationPhase.swift; sourceTree = "<group>"; };
 		7313D45D23B6136B00F73B20 /* HugeConversation+Push.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HugeConversation+Push.swift"; sourceTree = "<group>"; };
+		735E68272445566F003E089C /* Starscream.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Starscream.framework; path = ../../Build/iOS/Starscream.framework; sourceTree = "<group>"; };
+		735E682D244559EF003E089C /* SwiftyJSON.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftyJSON.framework; path = ../../Build/iOS/SwiftyJSON.framework; sourceTree = "<group>"; };
+		735E698D244856C4003E089C /* MediasoupTrackModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupTrackModel.swift; sourceTree = "<group>"; };
+		735E699B24519F3B003E089C /* Mediasoup+Consumer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Mediasoup+Consumer.swift"; sourceTree = "<group>"; };
 		7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BGPMemberImageStrategy.swift; sourceTree = "<group>"; };
 		7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStatus.swift; sourceTree = "<group>"; };
 		7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStategy.swift; sourceTree = "<group>"; };
+		73EA4CE9243DB55A00E63429 /* mediasoup_client_ios.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = mediasoup_client_ios.framework; path = ../../Build/iOS/mediasoup_client_ios.framework; sourceTree = "<group>"; };
+		73EA4D0D243EC90400E63429 /* MediasoupWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupWrapper.swift; sourceTree = "<group>"; };
+		73EA4D0F243ED97B00E63429 /* MediasoupRoomManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupRoomManager.swift; sourceTree = "<group>"; };
+		73EA4D11243EE1AD00E63429 /* MediaOutputManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaOutputManager.swift; sourceTree = "<group>"; };
+		73EA4D132440192000E63429 /* MediasoupSignalManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupSignalManager.swift; sourceTree = "<group>"; };
+		73EA4D2B2441C05800E63429 /* MediasoupSignalSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupSignalSocket.swift; sourceTree = "<group>"; };
+		73FCF1002468F35A00AB37ED /* Swift的framework中导入OC的framework */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Swift的framework中导入OC的framework"; sourceTree = "<group>"; };
 		7C1F4BF4203C4F67000537A8 /* Analytics+Push.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Analytics+Push.swift"; sourceTree = "<group>"; };
 		7C26879C21F7193800570AA9 /* EventProcessingTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventProcessingTracker.swift; sourceTree = "<group>"; };
 		7C419ED621F8D7EB00B95770 /* EventProcessingTrackerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventProcessingTrackerTests.swift; sourceTree = "<group>"; };
@@ -1283,6 +1326,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				735E682E244559EF003E089C /* SwiftyJSON.framework in Frameworks */,
+				735E682824455670003E089C /* Starscream.framework in Frameworks */,
+				73EA4D212441762000E63429 /* mediasoup_client_ios.framework in Frameworks */,
 				878B823820A1DCE7007455CA /* HTMLString.framework in Frameworks */,
 				D59F3A1020691A0F0023474F /* ZipArchive.framework in Frameworks */,
 				CE5DC1A11DDA09F000D24DBA /* avs.framework in Frameworks */,
@@ -1451,6 +1497,7 @@
 		3EAD6A08199BB6C800D519DB /* Calling */ = {
 			isa = PBXGroup;
 			children = (
+				73EA4CE4243D8A8200E63429 /* newForSecret */,
 				165D3A181E1D43870052E654 /* VoiceChannel.swift */,
 				165D3A171E1D43870052E654 /* VoiceChannelV3.swift */,
 				165D3A3C1E1D60520052E654 /* ZMConversation+VoiceChannel.swift */,
@@ -1527,6 +1574,9 @@
 		540029B61918CA8500578793 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				735E682D244559EF003E089C /* SwiftyJSON.framework */,
+				735E68272445566F003E089C /* Starscream.framework */,
+				73EA4CE9243DB55A00E63429 /* mediasoup_client_ios.framework */,
 				F13ADE7921B5322400B6E736 /* SwiftProtobuf.framework */,
 				878B823720A1DCE7007455CA /* HTMLString.framework */,
 				D59F3A0F20691A0F0023474F /* ZipArchive.framework */,
@@ -2014,6 +2064,21 @@
 			path = Content;
 			sourceTree = "<group>";
 		};
+		73EA4CE4243D8A8200E63429 /* newForSecret */ = {
+			isa = PBXGroup;
+			children = (
+				73EA4D2B2441C05800E63429 /* MediasoupSignalSocket.swift */,
+				73EA4D132440192000E63429 /* MediasoupSignalManager.swift */,
+				73EA4D0F243ED97B00E63429 /* MediasoupRoomManager.swift */,
+				73EA4D0D243EC90400E63429 /* MediasoupWrapper.swift */,
+				73EA4D11243EE1AD00E63429 /* MediaOutputManager.swift */,
+				735E698D244856C4003E089C /* MediasoupTrackModel.swift */,
+				735E699B24519F3B003E089C /* Mediasoup+Consumer.swift */,
+				73FCF1002468F35A00AB37ED /* Swift的framework中导入OC的framework */,
+			);
+			path = newForSecret;
+			sourceTree = "<group>";
+		};
 		85D850FC5E45F9F688A64419 /* Synchronization */ = {
 			isa = PBXGroup;
 			children = (
@@ -2464,6 +2529,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				73FCF0FC2466B23C00AB37ED /* PBXTargetDependency */,
 			);
 			name = "WireSyncEngine-ios";
 			productName = "WireSyncEngine-ios";
@@ -2476,6 +2542,7 @@
 		540029AB1918CA8500578793 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+				DefaultBuildSystemTypeForWorkspace = Latest;
 				LastSwiftMigration = 0710;
 				LastSwiftUpdateCheck = 0700;
 				LastUpgradeCheck = 0930;
@@ -2502,6 +2569,11 @@
 						CreatedOnToolsVersion = 6.2;
 						LastSwiftMigration = 1000;
 						ProvisioningStyle = Manual;
+					};
+					73FCF0F62466B1B400AB37ED = {
+						CreatedOnToolsVersion = 10.2.1;
+						DevelopmentTeam = K7PT8BFN3J;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -2541,6 +2613,7 @@
 				549815921A43232400A7CE2E /* WireSyncEngine-ios */,
 				3E1860C2191A649D000FE027 /* WireSyncEngine-iOS-Tests */,
 				3E186087191A56F6000FE027 /* WireSyncEngine Test Host */,
+				73FCF0F62466B1B400AB37ED /* MediasoupclientModuleMap */,
 			);
 		};
 /* End PBXProject section */
@@ -2586,6 +2659,7 @@
 				3E2713211A8A68BF008EE50F /* Push.stringsdict in Resources */,
 				543095951DE76B270065367F /* random2.txt in Resources */,
 				3E27131F1A8A68BF008EE50F /* Push.strings in Resources */,
+				73FCF1012468F35A00AB37ED /* Swift的framework中导入OC的framework in Resources */,
 				F1A989BA1FD03E1B00B8A82E /* ZMLocalizable.strings in Resources */,
 				543095931DE76B170065367F /* random1.txt in Resources */,
 			);
@@ -2626,6 +2700,23 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "# to run locally, replace with $(BUILT_PRODUCTS_DIR)/WireSyncEngine.framework\n/usr/local/bin/carthage copy-frameworks\n";
+		};
+		73FCF0FA2466B1D500AB37ED /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ -d \"${SRCROOT}/Source/Calling/newForSecret/MediasoupclientModuleMap\" ]; then\necho \"${SRCROOT}/Source/Calling/newForSecret/MediasoupclientModuleMap directory already exists, so skipping the rest of the script.\"\nexit 0\nfi\n\nmkdir -p \"${SRCROOT}/Source/Calling/newForSecret/MediasoupclientModuleMap\"\ncat <<EOF > \"${SRCROOT}/Source/Calling/newForSecret/MediasoupclientModuleMap/module.modulemap\"\nmodule Mediasoupclient {\nheader \"${SRCROOT}/Carthage/Build/iOS/mediasoup_client_ios.framework/Headers/Mediasoupclient.h\"\nexport *\n}\nEOF\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -2887,6 +2978,7 @@
 				F1C1F3EE1FCF0C85007273E3 /* ZMUserSessionErrorCode+Localized.swift in Sources */,
 				166264742166093800300F45 /* CallEventStatus.swift in Sources */,
 				549815CD1A432BC700A7CE2E /* ZMBlacklistDownloader.m in Sources */,
+				73EA4D2C2441C05800E63429 /* MediasoupSignalSocket.swift in Sources */,
 				F96C8E7A1D7DCCE8004B6D87 /* LocalNotificationDispatcher+Messages.swift in Sources */,
 				549815CE1A432BC700A7CE2E /* ZMBlacklistVerificator.m in Sources */,
 				16D9E8BA22BCD39200FA463F /* LegalHoldRequestStrategy.swift in Sources */,
@@ -2928,6 +3020,7 @@
 				5498162B1A432BC800A7CE2E /* ZMConversationTranscoder.m in Sources */,
 				54E2C1E01E682DC400536569 /* LocalNotificationDispatcher.swift in Sources */,
 				879634401F7BEA4700FC79BA /* DispatchQueue+SerialAsync.swift in Sources */,
+				73EA4D0E243EC90400E63429 /* MediasoupWrapper.swift in Sources */,
 				F93A75F21C1F219800252586 /* ConversationStatusStrategy.swift in Sources */,
 				544F8FF31DDCD34600D1AB04 /* UserProfileUpdateNotifications.swift in Sources */,
 				F19F1D1F1EFBC2F000275E27 /* ZMAuthenticationStatus.m in Sources */,
@@ -2962,6 +3055,7 @@
 				09BCDB8F1BCE7F000020DCC7 /* ZMAPSMessageDecoder.m in Sources */,
 				546392721D79D5210094EC66 /* Application.swift in Sources */,
 				EFC8281C1FB343B600E27E21 /* RegistationCredentialVerificationStrategy.swift in Sources */,
+				73EA4D12243EE1AD00E63429 /* MediaOutputManager.swift in Sources */,
 				874A16902052BE5E001C6760 /* ZMUserSession+OpenConversation.swift in Sources */,
 				BFE7FCBF2101E50700D1165F /* CompanyLoginVerificationToken.swift in Sources */,
 				5498162E1A432BC800A7CE2E /* ZMLastUpdateEventIDTranscoder.m in Sources */,
@@ -3004,6 +3098,7 @@
 				16E0FBE3233296A9000E3235 /* ZMUserSession+ConversationDirectory.swift in Sources */,
 				8737D554209217BD00E5A4AF /* SessionManagerURLHandler.swift in Sources */,
 				547E5B581DDB4B800038D936 /* UserProfileUpdateStatus.swift in Sources */,
+				73EA4D142440192000E63429 /* MediasoupSignalManager.swift in Sources */,
 				EEEA75FC1F8A6142006D1070 /* ZMLocalNotification+Calling.swift in Sources */,
 				09B7308D1B301F0200A5CCC9 /* ZMUserSession+Proxy.m in Sources */,
 				09E393BE1BAB0C2A00F3EA1B /* ZMUserSession+OTR.m in Sources */,
@@ -3027,6 +3122,7 @@
 				F19F1D381EFBF61800275E27 /* SessionManager.swift in Sources */,
 				D522571E2062552800562561 /* AssetDeletionRequestStrategy.swift in Sources */,
 				1658C2371F503CF800889F22 /* FlowManager.swift in Sources */,
+				735E698E244856C4003E089C /* MediasoupTrackModel.swift in Sources */,
 				7CD279882338E52000E638CD /* ProcessInfo+SystemBootTime.swift in Sources */,
 				549710081F6FF5C100026EDD /* NotificationInContext+UserSession.swift in Sources */,
 				16D0A11D234C8CD700A83F87 /* LabelUpstreamRequestStrategy.swift in Sources */,
@@ -3036,6 +3132,7 @@
 				5E0EB1F421008C1900B5DC2B /* CompanyLoginRequester.swift in Sources */,
 				16A764611F3E0B0B00564F21 /* CallKitDelegate.swift in Sources */,
 				BF491CD11F03D7CF0055EE44 /* PermissionsDownloadRequestStrategy.swift in Sources */,
+				735E699C24519F3D003E089C /* Mediasoup+Consumer.swift in Sources */,
 				54973A361DD48CAB007F8702 /* NSManagedObject+EncryptionContext.swift in Sources */,
 				F9ABDF411CECBD8A008461B2 /* AccountStatus.swift in Sources */,
 				165D3A3D1E1D60520052E654 /* ZMConversation+VoiceChannel.swift in Sources */,
@@ -3048,6 +3145,7 @@
 				168CF42720077C54009FCB89 /* TeamInvitationStatus.swift in Sources */,
 				F159F4161F1E4C4C001B7D80 /* LocalStoreProvider.swift in Sources */,
 				8717DFA71F6EF44E0087EFE4 /* SessionManager+Push.swift in Sources */,
+				73EA4D10243ED97B00E63429 /* MediasoupRoomManager.swift in Sources */,
 				D52257232062637500562561 /* DeletableAssetIdentifierProvider.swift in Sources */,
 				D5225720206261AA00562561 /* AssetDeletionStatus.swift in Sources */,
 				5E8BB8A02147F5BC00EEA64B /* CallSnapshot.swift in Sources */,
@@ -3112,6 +3210,11 @@
 			isa = PBXTargetDependency;
 			target = 549815921A43232400A7CE2E /* WireSyncEngine-ios */;
 			targetProxy = 54F4DC571A4438AC00FDB6EA /* PBXContainerItemProxy */;
+		};
+		73FCF0FC2466B23C00AB37ED /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 73FCF0F62466B1B400AB37ED /* MediasoupclientModuleMap */;
+			targetProxy = 73FCF0FB2466B23C00AB37ED /* PBXContainerItemProxy */;
 		};
 		A9FF8089195B17B3002CD44B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -3220,10 +3323,13 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 0994E1DD1B835C4900A51721 /* ios-test-host.xcconfig */;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_ENTITLEMENTS = "WireSyncEngine Test Host.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Tests/iOS Test Host/Test-Host-Prefix.pch";
 				INFOPLIST_FILE = "Tests/iOS Test Host/Test-Host-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
@@ -3234,10 +3340,13 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 0994E1DD1B835C4900A51721 /* ios-test-host.xcconfig */;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_ENTITLEMENTS = "WireSyncEngine Test Host.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Tests/iOS Test Host/Test-Host-Prefix.pch";
 				INFOPLIST_FILE = "Tests/iOS Test Host/Test-Host-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
@@ -3276,7 +3385,11 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 0994E1E31B835C4900A51721 /* project-debug.xcconfig */;
 			buildSettings = {
-				HEADER_SEARCH_PATHS = "$(SDKROOT)/usr/include/libxml2";
+				HEADER_SEARCH_PATHS = (
+					"$(SDKROOT)/usr/include/libxml2",
+					"$(inherited)",
+					"$(PROJECT_DIR)/Carthage/Build/iOS/mediasoup_client_ios",
+				);
 				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
 			};
 			name = Debug;
@@ -3285,7 +3398,10 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 0994E1E41B835C4900A51721 /* project.xcconfig */;
 			buildSettings = {
-				HEADER_SEARCH_PATHS = "$(SDKROOT)/usr/include/libxml2";
+				HEADER_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/Carthage/Build/iOS/mediasoup_client_ios",
+					"$(SDKROOT)/usr/include/libxml2",
+				);
 				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
 			};
 			name = Release;
@@ -3294,6 +3410,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 0994E1F01B835C4900A51721 /* WireSyncEngine.xcconfig */;
 			buildSettings = {
+				"ARCHS[sdk=iphoneos*]" = arm64;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/Source/WireSyncEngine-iOS.pch";
 				GCC_WARN_UNKNOWN_PRAGMAS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
@@ -3304,6 +3421,8 @@
 				INFOPLIST_FILE = "$(SRCROOT)/Resources/WireSyncEngine-ios-Info.plist";
 				MOMC_NO_INVERSE_RELATIONSHIP_WARNINGS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.$(PRODUCT_NAME:rfc1034identifier)";
+				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Source/Calling/newForSecret\"";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 			};
 			name = Debug;
 		};
@@ -3311,6 +3430,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 0994E1F01B835C4900A51721 /* WireSyncEngine.xcconfig */;
 			buildSettings = {
+				"ARCHS[sdk=iphoneos*]" = arm64;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/Source/WireSyncEngine-iOS.pch";
 				GCC_WARN_UNKNOWN_PRAGMAS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
@@ -3321,6 +3441,26 @@
 				INFOPLIST_FILE = "$(SRCROOT)/Resources/WireSyncEngine-ios-Info.plist";
 				MOMC_NO_INVERSE_RELATIONSHIP_WARNINGS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.$(PRODUCT_NAME:rfc1034identifier)";
+				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Source/Calling/newForSecret\"";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+			};
+			name = Release;
+		};
+		73FCF0F82466B1B400AB37ED /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = K7PT8BFN3J;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		73FCF0F92466B1B400AB37ED /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = K7PT8BFN3J;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
 		};
@@ -3359,6 +3499,15 @@
 			buildConfigurations = (
 				549815A71A43232500A7CE2E /* Debug */,
 				549815A91A43232500A7CE2E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		73FCF0F72466B1B400AB37ED /* Build configuration list for PBXAggregateTarget "MediasoupclientModuleMap" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				73FCF0F82466B1B400AB37ED /* Debug */,
+				73FCF0F92466B1B400AB37ED /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

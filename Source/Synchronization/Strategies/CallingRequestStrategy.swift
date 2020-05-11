@@ -128,10 +128,10 @@ extension CallingRequestStrategy : ZMEventConsumer {
         for event in events {
             guard event.type == .conversationOtrMessageAdd else { continue }
             
-            if let genericMessage = ZMGenericMessage(from: event), genericMessage.hasCalling() {
+            if let genericMessage = ZMGenericMessage(from: event), genericMessage.hasMediasoup() {
                 
                 guard
-                    let payload = genericMessage.calling.content.data(using: .utf8, allowLossyConversion: false),
+                    let payload = genericMessage.mediasoup.content.data(using: .utf8, allowLossyConversion: false),
                     let senderUUID = event.senderUUID(),
                     let conversationUUID = event.conversationUUID(),
                     let clientId = event.senderClientID(),
@@ -141,7 +141,7 @@ extension CallingRequestStrategy : ZMEventConsumer {
                     continue
                 }
                 
-                self.zmLog.debug("received calling message, timestamp \(eventTimestamp), serverTimeDelta \(serverTimeDelta)")
+                self.zmLog.debug("received calling message, timestamp \(eventTimestamp), serverTimeDelta \(serverTimeDelta), calling.content \(String(describing: genericMessage.calling.content))")
                 
                 let callEvent = CallEvent(data: payload,
                                           currentTimestamp: Date().addingTimeInterval(serverTimeDelta),
@@ -181,7 +181,7 @@ extension CallingRequestStrategy : WireCallCenterTransport {
             
             self.zmLog.debug("sending calling message")
             
-            let genericMessage = ZMGenericMessage.message(content: ZMCalling.calling(message: dataString))
+            let genericMessage = ZMGenericMessage.message(content: ZMMediasoup.mediasoup(message: dataString))
             
             self.genericMessageStrategy.schedule(message: genericMessage, inConversation: conversation) { (response) in
                 if response.httpStatus == 201 {
