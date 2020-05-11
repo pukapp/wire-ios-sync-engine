@@ -29,7 +29,7 @@ private let zmLog = ZMSLog(tag: "calling")
 public protocol AVSWrapperType {
     init(userId: UUID, clientId: String, observer: UnsafeMutableRawPointer?)
     func startCall(conversationId: UUID, callType: AVSCallType, conversationType: AVSConversationType, useCBR: Bool) -> Bool
-    func answerCall(conversationId: UUID, callType: AVSCallType, useCBR: Bool) -> Bool
+    func answerCall(conversationId: UUID, callType: AVSCallType, conversationType: AVSConversationType, useCBR: Bool) -> Bool
     func endCall(conversationId: UUID)
     func rejectCall(conversationId: UUID)
     func close()
@@ -104,7 +104,7 @@ public class AVSWrapper: AVSWrapperType {
     }
 
     /// Marks the call as answered in AVS.
-    public func answerCall(conversationId: UUID, callType: AVSCallType, useCBR: Bool) -> Bool {
+    public func answerCall(conversationId: UUID, callType: AVSCallType, conversationType: AVSConversationType, useCBR: Bool) -> Bool {
         let didAnswer = wcall_answer(handle, conversationId.transportString(), callType.rawValue, useCBR ? 1 : 0)
         return didAnswer == 0
     }

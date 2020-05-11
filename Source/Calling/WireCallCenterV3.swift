@@ -109,14 +109,15 @@ private let zmLog = ZMSLog(tag: "calling")
     public required init(userId: UUID, clientId: String, avsWrapper: AVSWrapperType? = nil, uiMOC: NSManagedObjectContext, flowManager: FlowManagerType, analytics: AnalyticsType? = nil, transport: WireCallCenterTransport) {
         self.selfUserId = userId
         self.uiMOC = uiMOC
-        self.flowManager = flowManager
+        self.flowManager = MediaManagerShared.instance//flowManager
         self.analytics = analytics
         self.transport = transport
         
         super.init()
         
         let observer = Unmanaged.passUnretained(self).toOpaque()
-        self.avsWrapper = avsWrapper ?? AVSWrapper(userId: userId, clientId: clientId, observer: observer)
+        self.avsWrapper = avsWrapper ?? MediasoupWrapper.init(userId: userId, clientId: clientId, observer: observer)
+            //AVSWrapper(userId: userId, clientId: clientId, observer: observer)MediasoupWrapper
     }
 
 }
@@ -348,7 +349,9 @@ extension WireCallCenterV3 {
         if !video {
             setVideoState(conversationId: conversationId, videoState: VideoState.stopped)
         }
-        let answered = avsWrapper.answerCall(conversationId: conversationId, callType: callType, useCBR: useConstantBitRateAudio)
+        
+        let convType: AVSConversationType = conversation.conversationType == .group ? .group : .oneToOne
+        let answered = avsWrapper.answerCall(conversationId: conversationId, callType: callType, conversationType: convType, useCBR: useConstantBitRateAudio)
         if answered {
             let callState : CallState = .answered(degraded: isDegraded(conversationId: conversationId))
             

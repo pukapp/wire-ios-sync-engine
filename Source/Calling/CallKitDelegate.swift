@@ -49,7 +49,7 @@ public class CallKitDelegate : NSObject {
         self.init(provider: CXProvider(configuration: CallKitDelegate.providerConfiguration),
                   callController: CXCallController(queue: DispatchQueue.main),
                   sessionManager: sessionManager,
-                  mediaManager: mediaManager)
+                  mediaManager: MediaManagerShared.instance)
     }
     
     public init(provider : CXProvider,
@@ -427,7 +427,7 @@ extension CallKitDelegate : CXProviderDelegate {
     
     public func provider(_ provider: CXProvider, perform action: CXSetHeldCallAction) {
         log("perform CXSetHeldCallAction: \(action)")
-        if let manager = mediaManager as? AVSMediaManager {
+        if let manager = mediaManager as? MediaManagerShared {
             manager.isMicrophoneMuted = action.isOnHold
         }
         action.fulfill()
@@ -435,7 +435,7 @@ extension CallKitDelegate : CXProviderDelegate {
     
     public func provider(_ provider: CXProvider, perform action: CXSetMutedCallAction) {
         log("perform CXSetMutedCallAction: \(action)")
-        if let manager = mediaManager as? AVSMediaManager {
+        if let manager = mediaManager as? MediaManagerShared {
             manager.isMicrophoneMuted = action.isMuted
         }
         action.fulfill()

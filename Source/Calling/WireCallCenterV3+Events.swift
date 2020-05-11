@@ -175,6 +175,7 @@ extension WireCallCenterV3 {
     func handleGroupMemberChange(conversationId: UUID) {
         handleEvent("group-member-change") {
             let members = self.avsWrapper.members(in: conversationId)
+            print("group-member-change--members:\(members.count)")
             self.callParticipantsChanged(conversationId: conversationId, participants: members)
         }
     }

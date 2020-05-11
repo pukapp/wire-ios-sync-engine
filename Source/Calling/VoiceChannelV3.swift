@@ -134,12 +134,15 @@ public class VoiceChannelV3 : NSObject, VoiceChannel {
 extension VoiceChannelV3 : CallActions {
     
     public func mute(_ muted: Bool, userSession: ZMUserSession) {
-        if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *) {
-            userSession.callKitDelegate?.requestMuteCall(in: conversation!, muted: muted)
-        } else {
-            if let manager = userSession.mediaManager as? AVSMediaManager {
-                manager.isMicrophoneMuted = muted
-            }
+//        if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *) {
+//            userSession.callKitDelegate?.requestMuteCall(in: conversation!, muted: muted)
+//        }
+        /** 这里由于callKit无法同步的改变isMicrophoneMuted的状态，
+         *  但是按钮点击静音之后，会同步的刷新页面，就会导致状态刷新的有问题
+         *  所以这里不采用callKit
+         **/
+        if let manager = userSession.mediaManager as? MediaManagerShared {
+            manager.isMicrophoneMuted = muted
         }
     }
     
