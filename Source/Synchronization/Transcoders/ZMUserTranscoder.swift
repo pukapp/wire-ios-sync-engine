@@ -18,6 +18,8 @@
 
 import Foundation
 
+private let log = ZMSLog(tag: "UserTranscoder")
+
 extension ZMUserTranscoder {
     
     @objc
@@ -28,6 +30,8 @@ extension ZMUserTranscoder {
         case .userDelete:
             processUserDeletion(updateEvent)
         case .userMomentUpdate:
+            processUserMomentUpdate(updateEvent)
+        case .userNoticeMessage:
             processUserMomentUpdate(updateEvent)
         default:
             break
@@ -67,7 +71,14 @@ extension ZMUserTranscoder {
         PostLoginAuthenticationNotification.notifyAccountDeleted(context: managedObjectContext)
     }
     
+    // @modify
     private func processUserMomentUpdate(_ updateEvent: ZMUpdateEvent) {
+        if updateEvent.type == .userNoticeMessage {
+            // 目前只有第五元素
+            self.dealwithUserNotice(updateEvent: updateEvent)
+            return
+        }
+        
         guard updateEvent.type == .userMomentUpdate else { return }
         
         guard let msg_body = updateEvent.payload["msg_body"] as? [String: Any],
@@ -108,6 +119,85 @@ extension ZMUserTranscoder {
         default:
             break
         }
+    }
+    
+    func dealwithUserNotice(updateEvent: ZMUpdateEvent) {
+        guard let data = updateEvent.payload["data"] as? [AnyHashable : Any] else { return }
+        
+        guard let _type = data["msgType"] as? String, let type = UserNoticeMessageType(rawValue: _type) else {
+            log.error("Invalid message type")
+            return
+        }
+        
+        if type == .fifthElement {
+            if let dict = data["msgData"] as? [AnyHashable : String] {
+                dealwith5thElement(info: dict)
+            }
+        } else {
+            log.warn("Unsupported user mesage type")
+        }
+    }
+    
+    func dealwith5thElement(info: [AnyHashable : String]) {
+        typealias ElementType = [AnyHashable : String]
+        
+        guard let id = info["id"], let convID = info["conv"] else {
+            log.error("Invalid message body")
+            return
+        }
+        
+        let userID = ZMUser.selfUser(in: self.managedObjectContext).remoteIdentifier.transportString()
+        let key = "5th-\(userID)"
+        
+        var arr: [ElementType] = []
+        if let obj = UserDefaults.standard.array(forKey: key) as? [ElementType] {
+            arr = obj
+        }
+        
+        arr = arr.filter { item in
+            if let itemID = item["id"], id != itemID {
+                return true
+            } else {
+                return false
+            }
+        }
+        
+        arr.insert(info, at: 0)
+        UserDefaults.standard.set(arr, forKey: key)
+        
+        // Pull
+        if let remoteID = UUID(uuidString: convID) {
+            var conversationCreated: ObjCBool = false
+            let conv = ZMConversation(remoteID: remoteID, createIfNeeded: true, in: self.managedObjectContext, created: &conversationCreated)
+            conv?.fifth_image = info["img"]
+            conv?.fifth_name = info["name"]
+            conv?.joinGroupUrl = info["join_url"]
+            if conversationCreated.boolValue {
+                conv?.conversationType = .invalid
+            }
+            conv?.needsToBeUpdatedFromBackend = true
+        }
+        
+        if arr.count > 1 {
+            return
+        }
+        
+        var shouldSendNotification = false
+        if let payload = UserDefaults.standard.value(forKey: userID) as? [AnyHashable : Any] {
+            let items: [String] = (payload["ShortcutConversations"] as? [String]) ?? []
+            shouldSendNotification = items.count == 0
+        } else {
+            shouldSendNotification = true
+        }
+        
+        if shouldSendNotification {
+            log.info("Send notification to show 5th element")
+            NotificationCenter.default.post(name: NSNotification.Name("Show5thElementNotification"), object: nil)
+        }
         
     }
+}
+
+enum UserNoticeMessageType: String {
+    case fifthElement = "20010"
 }

@@ -28,6 +28,8 @@ private let zmLog = ZMSLog(tag: "userClientRS")
 
 //new add
 public let NewClientAddChange = Notification.Name("NewClientAddChangeNotification")
+public let FifthElementChanged = Notification.Name("Show5thElementNotification")
+
 
 // Register new client, update it with new keys, deletes clients.
 @objcMembers
