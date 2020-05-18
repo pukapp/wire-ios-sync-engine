@@ -153,6 +153,8 @@ public class AVSWrapper: AVSWrapperType {
 
     /// Returns the list of members in the conversation.
     public func members(in conversationId: UUID) -> [AVSCallMember] {
+        return []
+        /*
         guard let membersRef = wcall_get_members(handle, conversationId.transportString()) else { return [] }
         
         let cMembers = membersRef.pointee
@@ -166,6 +168,7 @@ public class AVSWrapper: AVSWrapperType {
         wcall_free_members(membersRef)
         
         return callMembers
+ */
     }
 
     // MARK: - C Callback Handlers

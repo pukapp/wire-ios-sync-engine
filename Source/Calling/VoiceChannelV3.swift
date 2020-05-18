@@ -17,7 +17,6 @@
 //
 
 import Foundation
-import avs
 
 public enum VoiceChannelV3Error: LocalizedError {
     case switchToVideoNotAllowed

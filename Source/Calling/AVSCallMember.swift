@@ -17,7 +17,6 @@
 //
 
 import Foundation
-import avs
 
 
 /**
@@ -46,6 +45,7 @@ public struct AVSCallMember: Hashable {
      * - parameter audioEstablished: Whether an audio connection was established. Defaults to `false`.
      * - parameter videoState: The state of video connection. Defaults to `stopped`.
      */
+    /*
     public init?(wcallMember: wcall_member) {
         guard let remoteId = UUID(cString: wcallMember.userid) else { return nil }
         self.remoteId = remoteId
@@ -53,6 +53,7 @@ public struct AVSCallMember: Hashable {
         videoState = VideoState(rawValue: wcallMember.video_recv) ?? .stopped
         networkQuality = .normal
     }
+ */
 
     public init(userId : UUID, audioEstablished: Bool = false, videoState: VideoState = .stopped, networkQuality: NetworkQuality = .normal) {
         self.remoteId = userId

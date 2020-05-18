@@ -10,16 +10,51 @@ import Foundation
 import SwiftyJSON
 import Mediasoupclient
 
+private let zmLog = ZMSLog(tag: "calling")
+
 extension MediasoupRoomManager: MediasoupSignalManagerDelegate {
     
     func socketConnected() {
-        let rtpCapabilities = self.signalManager.getRoomRtpCapabilities()
-        self.device!.load(rtpCapabilities)
-        self.joinRoom()
+        zmLog.info("mediasoup::socketState:socketConnected")
+        self.signalManager.requestToGetRoomRtpCapabilities()
     }
     
-    func socketError(with err: String) {
-        
+    func socketDisconnected() {
+        zmLog.info("mediasoup::socketState:socketDisconnected")
+        if let roomId = self.roomId {
+            self.delegate?.leaveRoom(conversationId: roomId, reason: .internalError)
+        }
+    }
+    
+    func onReceiveResponse(with action: MediasoupSignalAction.SendRequest, info: JSON) {
+        switch action {
+        case .getRouterRtpCapabilities:
+            zmLog.info("mediasoup::onReceiveResponse:getRouterRtpCapabilities")
+            self.device!.load(info.description)
+            self.joinRoom()
+        case .createWebRtcTransport(let isProducing):
+            zmLog.info("mediasoup::onReceiveResponse:createWebRtcTransport")
+            self.processWebRtcTransport(with: isProducing, webRtcTransportData: info)
+            
+            if self.sendTransport != nil && self.recvTransport != nil {
+                self.signalManager.loginRoom(with: self.device!.getRtpCapabilities())
+            }
+        case .loginRoom:
+            zmLog.info("mediasoup::onReceiveResponse:loginRoom")
+            if let peers = info["peers"].array,
+                peers.count > 0 {
+                for info in peers {
+                    receiveNewPeer(peerInfo: info)
+                }
+            }
+            DispatchQueue.global().async {
+                self.produceAudio()
+                if self.callType == .video {
+                    self.produceVideo()
+                }
+            }
+        default:break
+        }
     }
     
     func onReceiveRequest(with action: MediasoupSignalAction.ReceiveRequest, info: JSON) {
@@ -80,7 +115,6 @@ class MediasoupRoomManager: NSObject {
     
     private var roomId: UUID?
     private var userId: UUID?
-    var roomPeersManager: MediasoupCallPeersManager?
     
     private var sendTransport: SendTransport?
     private var recvTransport: RecvTransport?
@@ -89,6 +123,9 @@ class MediasoupRoomManager: NSObject {
     
     private var producers: [Producer]
     private var producerListeners: [MediasoupProducerListener]
+    
+    var roomPeersManager: MediasoupCallPeersManager?
+    ///存储从服务端接收到的consumerJson数据，由于房间状态问题，暂不解析成consumer
     private var consumersInfo: [JSON]
     
     var callType: AVSCallType = .normal
@@ -104,15 +141,22 @@ class MediasoupRoomManager: NSObject {
     
     override init() {
         Mediasoupclient.initializePC()
+        Logger.setLogLevel(LogLevel.LOG_DEBUG)
+        Logger.setDefaultHandler()
         producers = []
         producerListeners = []
         consumersInfo = []
-        super.init() //192.168.1.150:4443
-        signalManager = MediasoupSignalManager(url: "ws://192.168.3.66:4443", delegate: self)
+        super.init() //wss://13.76.41.238:4443 //wss://192.168.3.66:4443
+        signalManager = MediasoupSignalManager(url: "wss://13.76.41.238:4443", delegate: self)
     }
     
     func connectToRoom(with roomId: UUID,callType: AVSCallType, userId: UUID, delegate: MediasoupRoomManagerDelegate) -> Bool {
-        print("mediasoup::initDevice")
+        guard self.roomId == nil else {
+            ///已经在房间里面了
+            return false
+        }
+        
+        zmLog.info("mediasoup::initDevice\n")
         self.device = Device()
         self.mediaOutputManager = MediaOutputManager()
         
@@ -122,11 +166,11 @@ class MediasoupRoomManager: NSObject {
         self.userId = userId
         self.roomPeersManager = MediasoupCallPeersManager()
         signalManager.connectRoom(with: roomId.transportString(), userId: self.userId!.transportString())
-        
         return true
     }
     
     func leaveRoom(with roomId: UUID) {
+        zmLog.info("Mediasoup::leaveRoom\n")
         if roomId == self.roomId {
             signalManager.leaveRoom()
         
@@ -149,32 +193,19 @@ class MediasoupRoomManager: NSObject {
             self.mediaOutputManager?.clear()
             self.mediaOutputManager = nil
             self.device = nil
-            print("Mediasoup::destoryDevice")
+            zmLog.info("Mediasoup::destoryDevice\n")
             self.roomId = nil
         }
     }
     
     func joinRoom() {
-        guard self.device!.isLoaded() else {
+        guard let device = self.device, device.isLoaded() else {
             return
         }
 
-        self.createWebRtcTransport(isProducing: false)
-        self.createWebRtcTransport(isProducing: true)
-        
-        if let response = self.signalManager.loginRoom(with: self.device!.getRtpCapabilities()),
-            let peers = response["peers"].array,
-            peers.count > 0 {
-            for info in peers {
-                receiveNewPeer(peerInfo: info)
-            }
-        }
-        
-        self.produceAudio()
-        
-        if self.callType == .video {
-            self.produceVideo()
-        }
+        ///创建transport
+        signalManager.createWebRtcTransportRequest(with: false)
+        signalManager.createWebRtcTransportRequest(with: true)
     }
 
     func receiveNewPeer(peerInfo: JSON) {
@@ -187,9 +218,7 @@ class MediasoupRoomManager: NSObject {
         self.delegate?.onNewPeer(conversationId: roomId, peerId: uid)
     }
     
-    func createWebRtcTransport(isProducing: Bool) {
-        let webRtcTransportData = signalManager.createWebRtcTransportRequest(with: isProducing)
-        
+    func processWebRtcTransport(with isProducing: Bool, webRtcTransportData: JSON) {
         let id: String = webRtcTransportData["id"].stringValue
         let iceParameters: String = webRtcTransportData["iceParameters"].description
         let iceCandidates: String = webRtcTransportData["iceCandidates"].description
@@ -217,11 +246,11 @@ class MediasoupConsumerListener: NSObject, ConsumerListener {
     }
     
     func onTransportClose(_ consumer: Consumer!) {
-        print("ConsumerListener---onTransportClose")
+        zmLog.info("Mediasoup::ConsumerListener---onTransportClose\n")
     }
     
     deinit {
-        print("Mediasoup::deinit:---MediasoupConsumerListener")
+        zmLog.info("Mediasoup::deinit:---MediasoupConsumerListener\n")
     }
 }
 
@@ -230,18 +259,22 @@ class MediasoupProducerListener: NSObject, ProducerListener {
     var producerId: String?
     
     func onTransportClose(_ producer: Producer!) {
-        print("ProducerListener---onTransportClose")
+        zmLog.info("Mediasoup::ProducerListener---onTransportClose\n")
     }
     
     deinit {
-        print("Mediasoup::deinit:---MediasoupProducerListener")
+        zmLog.info("Mediasoup::deinit:---MediasoupProducerListener\n")
     }
 }
 
 extension MediasoupRoomManager: MediasoupTransportListenerDelegate {
     func onProduce(_ transportId: String, kind: String, rtpParameters: String, appData: String) -> String {
-        let produceId = signalManager.produceWebRtcTransportRequest(with: transportId, kind: kind, rtpParameters: rtpParameters, appData: appData)
-        print("onProduce====id:\(produceId)")
+        zmLog.info("Mediasoup::onProduce====kind:\(kind)\n")
+        guard let produceId = signalManager.produceWebRtcTransportRequest(with: transportId, kind: kind, rtpParameters: rtpParameters, appData: appData) else {
+            //fatal("Mediasoup::onProduce:getProduceId-Error")
+            return ""
+        }
+        zmLog.info("Mediasoup::onProduce====id:\(produceId)\n")
         return produceId
     }
     
@@ -269,20 +302,20 @@ class MediasoupTransportListener: NSObject, SendTransportListener, RecvTransport
     }
 
     func onProduce(_ transport: Transport!, kind: String!, rtpParameters: String!, appData: String!) -> String! {
-        print("ProduceTransport-onConnect--onProduce")
+        zmLog.info("Mediasoup::ProduceTransport-onConnect--onProduce\n")
         return self.delegate.onProduce(transport.getId(), kind: kind, rtpParameters: rtpParameters, appData: appData)
     }
     
     func onConnect(_ transport: Transport!, dtlsParameters: String!) {
-        print("ProduceTransport-onConnect--listener")
+        zmLog.info("Mediasoup::ProduceTransport-onConnect--listener\n")
         self.delegate.onConnect(transport.getId(), dtlsParameters: dtlsParameters)
     }
     
     func onConnectionStateChange(_ transport: Transport!, connectionState: String!) {
         if self.isProduce {
-            print("ProduceTransport-connectionState----\(String(describing: connectionState))")
+            zmLog.info("Mediasoup::ProduceTransport-connectionState----\(String(describing: connectionState))\n")
         } else {
-            print("RecvTransport-connectionState----\(String(describing: connectionState))")
+            zmLog.info("Mediasoup::RecvTransport-connectionState----\(String(describing: connectionState))\n")
         }
         
     }
@@ -335,7 +368,7 @@ extension MediasoupRoomManager {
         self.producers.append(producer)
         self.producerListeners.append(listener)
         
-        print("createProducer() created id =" + producer.getId() + " kind =" + producer.getKind())
+        zmLog.info("Mediasoup::createProducer() created id =" + producer.getId() + " kind =" + producer.getKind() + "\n")
     }
     
     func setLocalAudio(mute: Bool) {
@@ -352,20 +385,21 @@ extension MediasoupRoomManager {
     func setLocalVideo(state: VideoState) {
         switch state {
         case .started:
-            if let videoProduce = self.producers.first(where: {return $0.getKind() == "video" }) {
+            if let videoProduce = self.producers.first(where: {return $0.getKind() == "video" }), videoProduce.isPaused() {
                 videoProduce.resume()
                 self.signalManager.setProduceState(with: videoProduce.getId(), pause: false)
             } else {
                 self.produceVideo()
             }
         case .stopped:
-            if let videoProduce = self.producers.first(where: {return $0.getKind() == "video" }) {
+            if let videoProduce = self.producers.first(where: {return $0.getKind() == "video" }), !videoProduce.isClosed() {
                 videoProduce.close()
                 self.signalManager.closeProduce(with: videoProduce.getId())
+                self.roomPeersManager?.removeSelfVideoTrack(userId: self.userId!)
                 self.producers = self.producers.filter({ return $0.getKind() != "video" })
             }
         case .paused:
-            if let videoProduce = self.producers.first(where: {return $0.getKind() == "video" }) {
+            if let videoProduce = self.producers.first(where: {return $0.getKind() == "video" }), !videoProduce.isPaused() {
                 videoProduce.pause()
                 self.signalManager.setProduceState(with: videoProduce.getId(), pause: true)
             }
@@ -399,7 +433,7 @@ extension MediasoupRoomManager {
         let producerId: String = consumerInfo["producerId"].stringValue
         let rtpParameters: JSON = consumerInfo["rtpParameters"]
         
-        print("Consumer-NewConsumer--peer:\(peerId)--kind:\(kind)---id:\(id)")
+        zmLog.info("Mediasoup::Consumer-NewConsumer--peer:\(peerId)--kind:\(kind)---id:\(id)\n")
         
         let consumerListen = MediasoupConsumerListener(consumerId: id)
         let consumer: Consumer = self.recvTransport!.consume(consumerListen, id: id, producerId: producerId, kind: kind, rtpParameters: rtpParameters.description)
@@ -425,10 +459,11 @@ extension MediasoupRoomManager {
         case .consumerPaused:
             consumer.pause()
         case .consumerClosed:
-            //self.roomPeersManager?.removeConsumer(with: consumerId)
+            ///这里必须先将视频画面给关系，再closeConsumer，否则会出现闪退
             if consumer.getKind() == "video" {
                 self.delegate?.onVideoStateChange(peerId: peer.peerId, videoStart: .stopped)
             }
+            self.roomPeersManager?.removeConsumer(with: consumerId)
         default: fatal("error")
         }
         

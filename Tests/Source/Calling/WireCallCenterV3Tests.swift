@@ -17,7 +17,6 @@
 //
 
 import Foundation
-import avs
 @testable import WireSyncEngine
 
 class WireCallCenterTransportMock : WireCallCenterTransport {

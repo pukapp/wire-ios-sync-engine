@@ -20,7 +20,6 @@ import Foundation
 import AddressBook
 import WireDataModel
 import WireCryptobox
-import avs
 @testable import WireSyncEngine
 
 

@@ -17,7 +17,6 @@
 //
 
 import Foundation
-import avs
 
 private let zmLog = ZMSLog(tag: "calling")
 

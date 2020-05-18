@@ -19,7 +19,7 @@
 import Foundation
 import CallKit
 import Intents
-import avs
+import AVFoundation
 
 private let identifierSeparator : Character = "+"
 

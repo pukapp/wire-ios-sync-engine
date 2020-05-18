@@ -332,6 +332,7 @@
 		5EFE9C15212AB138007932A6 /* UnregisteredUser+Payload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EFE9C14212AB138007932A6 /* UnregisteredUser+Payload.swift */; };
 		5EFE9C17212AB945007932A6 /* RegistrationPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EFE9C16212AB945007932A6 /* RegistrationPhase.swift */; };
 		7313D45E23B6136B00F73B20 /* HugeConversation+Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7313D45D23B6136B00F73B20 /* HugeConversation+Push.swift */; };
+		73568C63246D3F5D00DE68D5 /* ConvCallingStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73568C62246D3F5C00DE68D5 /* ConvCallingStateManager.swift */; };
 		735E682824455670003E089C /* Starscream.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 735E68272445566F003E089C /* Starscream.framework */; };
 		735E682E244559EF003E089C /* SwiftyJSON.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 735E682D244559EF003E089C /* SwiftyJSON.framework */; };
 		735E698E244856C4003E089C /* MediasoupTrackModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735E698D244856C4003E089C /* MediasoupTrackModel.swift */; };
@@ -968,6 +969,7 @@
 		5EFE9C14212AB138007932A6 /* UnregisteredUser+Payload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UnregisteredUser+Payload.swift"; sourceTree = "<group>"; };
 		5EFE9C16212AB945007932A6 /* RegistrationPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegistrationPhase.swift; sourceTree = "<group>"; };
 		7313D45D23B6136B00F73B20 /* HugeConversation+Push.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HugeConversation+Push.swift"; sourceTree = "<group>"; };
+		73568C62246D3F5C00DE68D5 /* ConvCallingStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvCallingStateManager.swift; sourceTree = "<group>"; };
 		735E68272445566F003E089C /* Starscream.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Starscream.framework; path = ../../Build/iOS/Starscream.framework; sourceTree = "<group>"; };
 		735E682D244559EF003E089C /* SwiftyJSON.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftyJSON.framework; path = ../../Build/iOS/SwiftyJSON.framework; sourceTree = "<group>"; };
 		735E698D244856C4003E089C /* MediasoupTrackModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupTrackModel.swift; sourceTree = "<group>"; };
@@ -2070,6 +2072,7 @@
 				73EA4D2B2441C05800E63429 /* MediasoupSignalSocket.swift */,
 				73EA4D132440192000E63429 /* MediasoupSignalManager.swift */,
 				73EA4D0F243ED97B00E63429 /* MediasoupRoomManager.swift */,
+				73568C62246D3F5C00DE68D5 /* ConvCallingStateManager.swift */,
 				73EA4D0D243EC90400E63429 /* MediasoupWrapper.swift */,
 				73EA4D11243EE1AD00E63429 /* MediaOutputManager.swift */,
 				735E698D244856C4003E089C /* MediasoupTrackModel.swift */,
@@ -3062,6 +3065,7 @@
 				F9B171F61C0EF21100E6EEC6 /* ClientUpdateStatus.swift in Sources */,
 				54D175271ADE9EC9001AA338 /* ZMUserSession+Authentication.m in Sources */,
 				549816351A432BC800A7CE2E /* ZMLoginTranscoder.m in Sources */,
+				73568C63246D3F5D00DE68D5 /* ConvCallingStateManager.swift in Sources */,
 				5E8BB89C2147CE1600EEA64B /* AVSCallMember.swift in Sources */,
 				166D18A4230EBFFA001288CD /* MediaManager.swift in Sources */,
 				874F142D1C16FD9700C15118 /* Device.swift in Sources */,

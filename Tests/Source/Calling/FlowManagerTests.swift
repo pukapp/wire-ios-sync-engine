@@ -18,7 +18,6 @@
 
 
 import Foundation
-import avs
 @testable import WireSyncEngine
 
 

@@ -17,7 +17,6 @@
 //
 
 import Foundation
-import avs
 
 /// Equivalent of `wcall_audio_cbr_change_h`.
 typealias ConstantBitRateChangeHandler = @convention(c) (UnsafePointer<Int8>?, Int32, UnsafeMutableRawPointer?) -> Void
