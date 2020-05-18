@@ -9,6 +9,8 @@
 import Foundation
 import Mediasoupclient
 
+private let zmLog = ZMSLog(tag: "calling")
+
 open class MediasoupPreviewView : RTCEAGLVideoView {
     
     private var attached: Bool = false
@@ -36,7 +38,7 @@ open class MediasoupPreviewView : RTCEAGLVideoView {
     }
     
     deinit {
-        print("Mediasoup::deinit:---MediasoupPreviewView")
+        zmLog.info("Mediasoup::deinit:---MediasoupPreviewView")
     }
     
 }
@@ -44,7 +46,7 @@ open class MediasoupPreviewView : RTCEAGLVideoView {
 open class MediasoupVideoView : RTCEAGLVideoView {
     
     deinit {
-        print("Mediasoup::deinit:---MediasoupVideoView")
+        zmLog.info("Mediasoup::deinit:---MediasoupVideoView")
     }
     
     open var shouldFill: Bool = false
@@ -55,6 +57,7 @@ open class MediasoupVideoView : RTCEAGLVideoView {
                 let uid = UUID(uuidString: id),
                 let track = MediasoupRoomManager.shareInstance.roomPeersManager?.getVideoTrack(with: uid)
             {
+                zmLog.info("mediasoup:addTrack--track")
                 track.isEnabled = true
                 track.add(self)
             }
@@ -68,8 +71,10 @@ open class MediasoupVideoView : RTCEAGLVideoView {
             if let uid = UUID(uuidString: id),
             let track = MediasoupRoomManager.shareInstance.roomPeersManager?.getVideoTrack(with: uid)
             {
+                zmLog.info("mediasoup:removeAddedTrack--")
                track.remove(self)
             }
+            zmLog.info("mediasoup:removeAddedTrack--track == nil")
         }
     }
 }

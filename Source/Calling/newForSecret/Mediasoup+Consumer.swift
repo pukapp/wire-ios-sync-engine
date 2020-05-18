@@ -9,6 +9,8 @@
 import Foundation
 import Mediasoupclient
 
+private let zmLog = ZMSLog(tag: "calling")
+
 extension MediasoupCallPeersManager {
     ///转换成avsMember 供上层调用
     public var avsMembers : [AVSCallMember] {
@@ -78,12 +80,18 @@ class MediasoupCallPeersManager {
     }
     
     deinit {
-        print("Mediasoup::deinit:---MediasoupCallPeersManager")
+        zmLog.info("Mediasoup::deinit:---MediasoupCallPeersManager")
     }
 }
 
 ///videoTrack manager
 extension MediasoupCallPeersManager {
+    
+    func removeSelfVideoTrack(userId: UUID) {
+        if self.selfUserId == userId {
+            self.selfVideoTrack = nil
+        }
+    }
     
     func addSelfVideoTrack(userId: UUID, videoTrack: RTCVideoTrack) {
         self.selfUserId = userId
@@ -143,6 +151,7 @@ class MediasoupCallMember {
     fileprivate func removeConsumer(with id: String) {
         if let index = self.consumers.firstIndex(where: {return $0.getId() == id }) {
             self.consumers[index].close()
+            zmLog.info("Mediasoup::removeConsumer--\(self.consumers.count)")
             self.consumers.remove(at: index)
             self.consumerListeners.remove(at: index)
         }
@@ -169,6 +178,7 @@ class MediasoupCallMember {
         self.consumers.forEach({
             $0.close()
         })
+        zmLog.info("Mediasoup::MediasoupCallMember--clear")
         self.consumers.removeAll()
         self.consumerListeners.removeAll()
     }
@@ -178,7 +188,7 @@ class MediasoupCallMember {
     }
     
     deinit {
-        print("Mediasoup::deinit:---MediasoupCallMember")
+        zmLog.info("Mediasoup::deinit:---MediasoupCallMember")
     }
 }
 

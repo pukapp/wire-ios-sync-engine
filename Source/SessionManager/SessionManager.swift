@@ -17,7 +17,6 @@
 //
 
 import Foundation
-import avs
 import WireTransport
 import WireUtilities
 import CallKit

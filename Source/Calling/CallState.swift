@@ -110,23 +110,23 @@ public enum CallState: Equatable {
     func logState() {
         switch self {
         case .answered(degraded: let degraded):
-            zmLog.debug("answered call, degraded: \(degraded)")
+            zmLog.debug("calling-state:answered call, degraded: \(degraded)")
         case .incoming(video: let isVideo, shouldRing: let shouldRing, degraded: let degraded):
-            zmLog.debug("incoming call, isVideo: \(isVideo), shouldRing: \(shouldRing), degraded: \(degraded)")
+            zmLog.debug("calling-state:incoming call, isVideo: \(isVideo), shouldRing: \(shouldRing), degraded: \(degraded)")
         case .establishedDataChannel:
-            zmLog.debug("established data channel")
+            zmLog.debug("calling-state:established data channel")
         case .established:
-            zmLog.debug("established call")
+            zmLog.debug("calling-state:established call")
         case .outgoing(degraded: let degraded):
-            zmLog.debug("outgoing call, , degraded: \(degraded)")
+            zmLog.debug("calling-state:outgoing call, , degraded: \(degraded)")
         case .terminating(reason: let reason):
-            zmLog.debug("terminating call reason: \(reason)")
+            zmLog.debug("calling-state:terminating call reason: \(reason)")
         case .mediaStopped:
-            zmLog.debug("media stopped")
+            zmLog.debug("calling-state:media stopped")
         case .none:
-            zmLog.debug("no call")
+            zmLog.debug("calling-state:no call")
         case .unknown:
-            zmLog.debug("unknown call state")
+            zmLog.debug("calling-state:unknown call state")
         }
     }
 

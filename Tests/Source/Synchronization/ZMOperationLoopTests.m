@@ -20,7 +20,6 @@
 @import WireTransport;
 @import WireCryptobox;
 @import WireDataModel;
-@import avs;
 
 #import "MessagingTest.h"
 #import "ZMSyncStrategy.h"

@@ -8,8 +8,9 @@
 
 import Foundation
 import avs
-import VideoToolbox
 import Mediasoupclient
+
+private let zmLog = ZMSLog(tag: "calling")
 
 public enum MediaOutputError : Error {
     case CAMERA_DEVICE_NOT_FOUND
@@ -20,7 +21,7 @@ private let MEDIA_VIDEO_FPS: Int = 15
 final class MediaOutputManager: NSObject {
 
     deinit {
-        print("Mediasoup::deinit:---MediaOutputManager")
+        zmLog.info("Mediasoup::deinit:---MediaOutputManager")
     }
     
     private static let MEDIA_STREAM_ID: String = "ARDAMS"
@@ -161,7 +162,7 @@ extension MediaOutputManager : RTCVideoCapturerDelegate {
                 try session.setCategory(category)
                 try session.setActive(true, options: .notifyOthersOnDeactivation)
             } catch _ {
-                print("MediaManagerShared == set SpeakEnable failure")
+                zmLog.info("MediaManagerShared == set SpeakEnable failure")
             }
         }
     }

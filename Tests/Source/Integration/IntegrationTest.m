@@ -18,7 +18,6 @@
 
 #import <XCTest/XCTest.h>
 
-@import avs;
 @import UIKit;
 
 #import "IntegrationTest.h"

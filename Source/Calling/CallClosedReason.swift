@@ -47,6 +47,9 @@ public enum CallClosedReason : Int32 {
     case securityDegraded
     /// Call was closed for an unknown reason. This is most likely a bug.
     case unknown
+    
+    /// Call was reject for others are in calling
+    case busy
 
     // MARK: - Briding
 
@@ -108,6 +111,8 @@ public enum CallClosedReason : Int32 {
             return WCALL_REASON_ERROR
         case .unknown:
             return WCALL_REASON_ERROR
+        case .busy:
+            return WCALL_REASON_REJECTED
         }
     }
 }

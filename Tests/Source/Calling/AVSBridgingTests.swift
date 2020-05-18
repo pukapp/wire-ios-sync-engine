@@ -17,7 +17,6 @@
 //
 
 import XCTest
-import avs
 @testable import WireSyncEngine
 
 class AVSBridgingTests: MessagingTest {

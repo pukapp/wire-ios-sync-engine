@@ -11,36 +11,77 @@ import SwiftyJSON
 import AVFoundation
 ///mediasoup的信令管理
 
+private let zmLog = ZMSLog(tag: "calling")
+
 protocol MediasoupSignalManagerDelegate {
     
     func socketConnected()
 
-    func socketError(with err: String)
+    func socketDisconnected()
     
     func onReceiveRequest(with action: MediasoupSignalAction.ReceiveRequest, info: JSON)
+    
+    func onReceiveResponse(with action: MediasoupSignalAction.SendRequest, info: JSON)
     
     func onNewNotification(with action: MediasoupSignalAction.Notification, info: JSON)
 }
 
 enum MediasoupSignalAction {
     
-    enum SendRequest: String {
-        case getRouterRtpCapabilities = "getRouterRtpCapabilities"
-        case loginRoom = "join"
+    enum SendRequest: Hashable {
+        case getRouterRtpCapabilities
+        case loginRoom
         
-        case createWebRtcTransport = "createWebRtcTransport"
-        case connectWebRtcTransport = "connectWebRtcTransport"
+        case createWebRtcTransport(producing: Bool)
+        case connectWebRtcTransport
         
-        case produceTransport = "produce"
-        case resumeProducer = "resumeProducer"
-        case pauseProducer = "pauseProducer"
-        case closeProducer = "closeProducer"
+        case produceTransport
+        case resumeProducer
+        case pauseProducer
+        case closeProducer
+        
+        var needProcessResponse: Bool {
+            switch self {
+            case .getRouterRtpCapabilities, .loginRoom, .createWebRtcTransport, .produceTransport:
+                return true
+            default:
+                return false
+            }
+        }
+        
+        var description: String {
+            switch self {
+            case .getRouterRtpCapabilities:
+                return "getRouterRtpCapabilities"
+            case .loginRoom:
+                return "join"
+            case .createWebRtcTransport:
+                return "createWebRtcTransport"
+            case .connectWebRtcTransport:
+                return "connectWebRtcTransport"
+            case .produceTransport:
+                return "produce"
+            case .resumeProducer:
+                return "resumeProducer"
+            case .pauseProducer:
+                return "pauseProducer"
+            case .closeProducer:
+                return "closeProducer"
+            }
+        }
+
+    }
+    ///发送请求之后 接收到的响应
+    enum ReceiveResponse: String {
+        case newConsumer = "newConsumer"
     }
     
+    ///需要返回响应给服务器
     enum ReceiveRequest: String {
         case newConsumer = "newConsumer"
     }
     
+    ///接收后无需任何操作
     enum Notification: String {
         case consumerPaused = "consumerPaused"
         case consumerResumed = "consumerResumed"
@@ -62,7 +103,7 @@ struct MediasoupSignalRequest {
     
     init(method: MediasoupSignalAction.SendRequest, data: JSON?) {
         self.request = true
-        self.method = method.rawValue
+        self.method = method.description
         self.data = data ?? ""
         self.id = Int(arc4random())
     }
@@ -86,21 +127,21 @@ struct MediasoupSignalRequest {
 }
 
 struct MediasoupSignalResponse {
-    let ok: Bool
     let response: Bool
+    let ok: Bool
     let id: Int
     let data: JSON?
     
-    init(ok: Bool, response: Bool, id: Int, data: JSON?) {
-        self.ok = ok
+    init(response: Bool, ok: Bool, id: Int, data: JSON?) {
         self.response = response
+        self.ok = ok
         self.id = id
         self.data = data
     }
     
     init(json: JSON) {
-        self.ok = json["ok"].boolValue
         self.response = json["response"].boolValue
+        self.ok = json["ok"].boolValue
         self.data = json["data"]
         self.id = json["id"].intValue
     }
@@ -109,8 +150,7 @@ struct MediasoupSignalResponse {
         let json: JSON = ["response": response,
                           "ok": ok,
                           "id": id,
-                          "data": ["qwe": "dsad"]
-        ]
+                          "data": ""]
         return json.description
     }
 }
@@ -144,10 +184,8 @@ extension MediasoupSignalManager: SocketActionDelegate {
         switch action {
         case .connected:
             self.delegate.socketConnected()
-        case .connectFail:
-            self.delegate.socketError(with: "connectFail")
-        case .close:
-            self.delegate.socketError(with: "connectClose")
+        case .disconnected:
+            self.delegate.socketDisconnected()
         case .text(text: let str):
             self.receiveSocketData(with: JSON(parseJSON: str))
         case .data(data: let data):
@@ -156,7 +194,7 @@ extension MediasoupSignalManager: SocketActionDelegate {
     }
     
     func receiveSocketData(with json: JSON) {
-        //print("receiveSocket---Data:\(json.description)")
+        //zmLog.info("receiveSocket---Data:\(json.description)")
         if json["request"].boolValue {
             self.receiveSocketRequest(with: MediasoupSignalRequest(json: json))
         } else if json["response"].boolValue {
@@ -167,31 +205,38 @@ extension MediasoupSignalManager: SocketActionDelegate {
     }
     
     func receiveSocketRequest(with request: MediasoupSignalRequest) {
-        //print("receiveSocket---request:\(request.method)--data:\(request.data)")
+        //zmLog.info("receiveSocket---request:\(request.method)--data:\(request.data)")
         guard let action = MediasoupSignalAction.ReceiveRequest(rawValue: request.method) else {
-            //print("receiveSocket-unknowm-request:\(request.method)-data:\(request.data)")
+            //zmLog.info("receiveSocket-unknowm-request:\(request.method)-data:\(request.data)")
             return
         }
-        let response = MediasoupSignalResponse(ok: true, response: true, id: request.id, data: nil)
+        let response = MediasoupSignalResponse(response: true, ok: true,  id: request.id, data: nil)
         self.socket?.send(string: response.jsonString())
         self.delegate.onReceiveRequest(with: action, info: request.data)
     }
     
     func receiveSocketResponse(with response: MediasoupSignalResponse) {
-        print("receiveSocket---Response:\(response.data!.description)")
-        if let semaphor = self.ackSemaphor.first(where: { return $0.0 == response.id })?.1 {
-            self.ackResponse.append(response)
-            semaphor.signal()
+        zmLog.info("Mediasoup::receiveSocketResponse--thread:\(Thread.current)\n")
+        //zmLog.info("Mediasoup::receiveSocket---Response:\(response.data!.description)--thread:\(Thread.current)\n")
+        if self.isWaitingResponse {
+            self.syncResponse = response
+            dispatchGroup.leave()
+            self.isWaitingResponse = false
+        } else {
+            if let request = self.syncRequestMap.first(where: { return $0.value == response.id }),
+                let data = response.data {
+                self.delegate.onReceiveResponse(with: request.key, info: data)
+            }
         }
     }
     
     func receiveSocketNotification(with notification: MediasoupSignalNotification) {
         
         guard let action = MediasoupSignalAction.Notification(rawValue: notification.method) else {
-            //print("receiveSocket-unknowm-notification:\(notification.method)-data:\(notification.data)")
+            //zmLog.info("receiveSocket-unknowm-notification:\(notification.method)-data:\(notification.data)")
             return
         }
-        print("receiveSocket-notification:\(notification.method)-data:\(notification.data)")
+        zmLog.info("receiveSocket-notification:\(notification.method)-data:\(notification.data)")
         self.delegate.onNewNotification(with: action, info: notification.data)
     }
 }
@@ -199,8 +244,12 @@ extension MediasoupSignalManager: SocketActionDelegate {
 class MediasoupSignalManager: NSObject {
 
     ///用来同步返回socket响应
-    private var ackSemaphor: [(Int, DispatchSemaphore)] = []
-    private var ackResponse: [MediasoupSignalResponse] = []
+    private let dispatchGroup = DispatchGroup()
+    private var isWaitingResponse: Bool = false
+    private var syncResponse: MediasoupSignalResponse?
+    
+    ///用来异步返回socket响应
+    private var syncRequestMap: [MediasoupSignalAction.SendRequest : Int] = [:]
     
     private var socket: MediasoupSignalSocket?
     private let url: String
@@ -220,33 +269,33 @@ class MediasoupSignalManager: NSObject {
         self.socket!.connect()
     }
     
-    func getRoomRtpCapabilities() -> String {
-        let response = sendAckSocketRequest(with: .getRouterRtpCapabilities, data: nil)
-        return response.data!.description
+    func requestToGetRoomRtpCapabilities() {
+        sendSocketRequest(with: .getRouterRtpCapabilities, data: nil)
     }
     
-    func loginRoom(with rtpCapabilities: String) -> JSON? {
+    func loginRoom(with rtpCapabilities: String) {
         let loginRoomRequestData: JSON = ["displayName" : "lc",
                                           "rtpCapabilities" : JSON(parseJSON: rtpCapabilities),
                                           "device" : "",
                                           "sctpCapabilities" : ""]
-        let response = sendAckSocketRequest(with: .loginRoom, data: loginRoomRequestData)
-        return response.data
+        sendSocketRequest(with: .loginRoom, data: loginRoomRequestData)
     }
     
     func leaveRoom() {
         self.socket?.disConnect()
         self.socket = nil
+        if self.isWaitingResponse {
+            self.dispatchGroup.leave()
+        }
     }
 
-    func createWebRtcTransportRequest(with producing: Bool) -> JSON {
+    func createWebRtcTransportRequest(with producing: Bool) {
         let data:JSON = ["forceTcp" : false,
                          "producing" : producing,
                          "consuming" : !producing,
                          "sctpCapabilities" : ""]
         
-        let response = sendAckSocketRequest(with: .createWebRtcTransport, data: data)
-        return response.data!
+        sendSocketRequest(with: .createWebRtcTransport(producing: producing), data: data)
     }
     
     func connectWebRtcTransportRequest(with transportId: String, dtlsParameters: String) {
@@ -256,20 +305,21 @@ class MediasoupSignalManager: NSObject {
         sendSocketRequest(with: .connectWebRtcTransport, data: data)
     }
     
-    func produceWebRtcTransportRequest(with transportId: String, kind: String, rtpParameters: String, appData: String) -> String {
+    func produceWebRtcTransportRequest(with transportId: String, kind: String, rtpParameters: String, appData: String) -> String? {
         let data: JSON = [
             "transportId": transportId,
             "kind": kind,
             "rtpParameters": JSON.init(parseJSON: rtpParameters),
             "appData": appData
         ]
-        let response = sendAckSocketRequest(with: .produceTransport, data: data)
-        
+        guard let response = sendAckSocketRequest(with: .produceTransport, data: data) else {
+            return nil
+        }
         return response.data!["id"].stringValue
     }
 
     func setProduceState(with id: String, pause: Bool) {
-        print("setProduceState--produceId == " + id)
+        zmLog.info("setProduceState--produceId == " + id)
         let data: JSON = [
             "producerId": id,
         ]
@@ -277,7 +327,7 @@ class MediasoupSignalManager: NSObject {
     }
     
     func closeProduce(with id: String) {
-        print("closeProduce--produceId == " + id)
+        zmLog.info("closeProduce--produceId == " + id)
         let data: JSON = [
             "producerId": id,
         ]
@@ -290,30 +340,36 @@ class MediasoupSignalManager: NSObject {
 extension MediasoupSignalManager{
     
     func sendSocketRequest(with action: MediasoupSignalAction.SendRequest, data: JSON?) {
-        print("Mediasoup::ActionManager::sendSocketRequest==action:\(action)--thread:\(Thread.current)\n")
+        zmLog.info("Mediasoup::ActionManager::sendSocketRequest==action:\(action)--thread:\(Thread.current)\n")
         let request = MediasoupSignalRequest.init(method: action, data: data)
+        if action.needProcessResponse {
+            syncRequestMap[action] = request.id
+        }
         self.socket?.send(string: request.jsonString())
     }
     
     ///需要同步的返回响应
-    func sendAckSocketRequest(with action: MediasoupSignalAction.SendRequest, data: JSON?) -> MediasoupSignalResponse {
-        print("Mediasoup::ActionManager::sendAckSocketRequest==action:\(action)--thread:\(Thread.current)\n")
+    func sendAckSocketRequest(with action: MediasoupSignalAction.SendRequest, data: JSON?) -> MediasoupSignalResponse? {
+        zmLog.info("Mediasoup::ActionManager::sendAckSocketRequest==action:\(action)--thread:\(Thread.current)\n")
         
         let request = MediasoupSignalRequest(method: action, data: data)
-        
-        let semaphor = DispatchSemaphore(value: 0)
-        self.ackSemaphor.append((request.id, semaphor))
-
+        if !self.isWaitingResponse {
+            dispatchGroup.enter()
+            self.isWaitingResponse = true
+        }
         self.socket?.send(string: request.jsonString())
-        
-        let _ = semaphor.wait(timeout: .now() + 5.0)
-        
-        if let response = self.ackResponse.first(where: { return $0.id == request.id }) {
-            self.ackSemaphor = self.ackSemaphor.filter({ return $0.0 != request.id })
-            self.ackResponse = self.ackResponse.filter({ return $0.id != request.id })
-            return response
+        if dispatchGroup.wait(timeout: .now() + 5.0) == .success {
+            if let response = self.syncResponse {
+                return response
+            } else {
+                zmLog.info("Mediasoup::sendAckSocketRequest:recvNilResponse\n")
+                return nil
+            }
         } else {
-            fatal("无响应")
+            dispatchGroup.leave()
+            self.isWaitingResponse = false
+            zmLog.info("Mediasoup::sendAckSocketRequest:timeout\n")
+            return nil
         }
     }
     

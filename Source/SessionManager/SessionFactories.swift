@@ -17,8 +17,6 @@
 //
 
 
-import avs
-
 
 open class AuthenticatedSessionFactory {
 
