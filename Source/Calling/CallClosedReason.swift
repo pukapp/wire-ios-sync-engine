@@ -17,7 +17,6 @@
 //
 
 import Foundation
-import avs
 
 /**
  * Reasons why a call can be terminated.
@@ -58,7 +57,7 @@ public enum CallClosedReason : Int32 {
      * - parameter wcall_reason: The flag
      * - returns: The decoded reason, or `.unknown` if the flag couldn't be processed.
      */
-
+/*
     init(wcall_reason: Int32) {
         switch wcall_reason {
         case WCALL_REASON_NORMAL:
@@ -115,4 +114,5 @@ public enum CallClosedReason : Int32 {
             return WCALL_REASON_REJECTED
         }
     }
+ */
 }

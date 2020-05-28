@@ -17,7 +17,7 @@
 //
 
 import Foundation
-import avs
+
 
 /**
  * General error codes for calls
@@ -44,6 +44,7 @@ public enum CallError : Int32 {
         }
     }
     
+    /*
     /// The raw flag for the call error
     var wcall_error : Int32 {
         switch self {
@@ -51,4 +52,6 @@ public enum CallError : Int32 {
             return WCALL_REASON_NORMAL
         }
     }
+ */
 }
+

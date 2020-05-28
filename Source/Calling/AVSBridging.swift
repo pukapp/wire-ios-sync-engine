@@ -49,12 +49,13 @@ extension VideoState: AVSEnum {
     typealias AVSType = RawValue
 }
 
+/*
 extension CallClosedReason: AVSValue {
     public init?(rawValue: Int32) {
         self.init(wcall_reason: rawValue)
     }
 }
-
+*/
 extension NetworkQuality: AVSEnum {
     typealias AVSType = RawValue
 }
@@ -103,7 +104,7 @@ extension String: AVSValue {
 }
 
 // MARK: - Decoding
-
+/*
 extension AVSWrapper {
 
     @discardableResult
@@ -163,3 +164,4 @@ extension AVSWrapper {
     }
 
 }
+*/

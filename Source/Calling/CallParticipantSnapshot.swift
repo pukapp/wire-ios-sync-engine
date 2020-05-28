@@ -64,21 +64,21 @@ class CallParticipantsSnapshot {
     }
     
     func callParticpantVideoStateChanged(userId: UUID, videoState: VideoState) {
-        guard let callMember = members.array.first(where: { $0.remoteId == userId }) else { return }
+        guard let _ = members.array.first(where: { $0.remoteId == userId }) else { return }
         
-        update(updatedMember: AVSCallMember(userId: userId, audioEstablished: callMember.audioEstablished, videoState: videoState))
+        update(updatedMember: AVSCallMember(userId: userId, callParticipantState: .connected(videoState: videoState)))
     }
     
     func callParticpantAudioEstablished(userId: UUID) {
         guard let callMember = members.array.first(where: { $0.remoteId == userId }) else { return }
         
-        update(updatedMember: AVSCallMember(userId: userId, audioEstablished: true, videoState: callMember.videoState))
+        update(updatedMember: AVSCallMember(userId: userId, callParticipantState: callMember.callParticipantState))
     }
 
     func callParticpantNetworkQualityChanged(userId: UUID, networkQuality: NetworkQuality) {
         guard let callMember = members.array.first(where: { $0.remoteId == userId }) else { return }
 
-        update(updatedMember: AVSCallMember(userId: userId, audioEstablished: callMember.audioEstablished, videoState: callMember.videoState, networkQuality: networkQuality))
+        update(updatedMember: AVSCallMember(userId: userId, callParticipantState: callMember.callParticipantState, networkQuality: networkQuality))
     }
     
     func update(updatedMember: AVSCallMember) {

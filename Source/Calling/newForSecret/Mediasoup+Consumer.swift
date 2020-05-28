@@ -24,28 +24,48 @@ extension MediasoupCallPeersManager {
     }
 }
 
+protocol MediasoupCallPeersObserver {
+    func roomPeersStateChange()
+    func roomPeersVideoStateChange(peerId: UUID, videoState: VideoState)
+}
+
 class MediasoupCallPeersManager {
 
     private var selfUserId: UUID?
     private var selfVideoTrack: RTCVideoTrack?
     private var peers: [MediasoupCallMember] = []
     
+    private let observer: MediasoupCallPeersObserver
+    
+    init(observer: MediasoupCallPeersObserver) {
+        self.observer = observer
+    }
     
     func addNewPeer(with peerId: UUID) {
         if let peer = self.peers.first(where: { return $0.peerId == peerId }) {
-            peer.connectState = .unConnected
+            peer.setPeerConnectState(with: .connecting)
         } else {
-            let peer = MediasoupCallMember(peerId: peerId, connectState: .unConnected, isVideo: false)
+            let peer = MediasoupCallMember(peerId: peerId, isVideo: false, stateObserver: self)
             self.peers.append(peer)
         }
     }
     
+    func peerDisConnect(with peerId: UUID) {
+        guard let peer = self.peers.first(where: { return $0.peerId == peerId }) else {
+            zmLog.info("mediasoup::peerDisConnect--no peer to disConnect")
+            return
+        }
+        peer.setPeerConnectState(with: .connecting)
+    }
+    
     func removePeer(with peerId: UUID) {
         guard let peer = self.peers.first(where: { return $0.peerId == peerId }) else {
+            zmLog.info("mediasoup::removePeer--no peer to remove")
             return
         }
         peer.clear()
         self.peers = self.peers.filter({ return $0.peerId != peerId })
+        peer.setPeerConnectState(with: .unconnected)
     }
     
     func addNewConsumer(with peerId: UUID, consumer: Consumer, listener: MediasoupConsumerListener) {
@@ -53,7 +73,7 @@ class MediasoupCallPeersManager {
             peer.addNewConsumer(with: consumer, listener: listener)
         } else {
             ///没有收到newPeer事件，却先接受到了consumer
-            let peer = MediasoupCallMember(peerId: peerId, connectState: .unConnected, isVideo: false)
+            let peer = MediasoupCallMember(peerId: peerId, isVideo: false, stateObserver: self)
             self.peers.append(peer)
             peer.addNewConsumer(with: consumer, listener: listener)
         }
@@ -72,6 +92,20 @@ class MediasoupCallPeersManager {
         } else {
             return nil
         }
+    }
+    
+    var peersCount: Int {
+        return self.peers.count
+    }
+    
+    ///总共接收到的视频个数
+    var totalVideoConsumersCount: Int {
+        return self.peers.filter({ return $0.hasVideo }).count
+    }
+    
+    ///自己是否开启了视频
+    var selfProduceVideo: Bool {
+        return self.selfVideoTrack != nil
     }
     
     func clear() {
@@ -112,26 +146,72 @@ extension MediasoupCallPeersManager {
     
 }
 
-class MediasoupCallMember {
+extension MediasoupCallPeersManager : MediasoupCallMemberStateObserver {
+    func callMemberConnectStateChange() {
+        self.observer.roomPeersStateChange()
+    }
+    
+    func callMemberVideoStateChange(peerId: UUID, videoState: VideoState) {
+        self.observer.roomPeersVideoStateChange(peerId: peerId, videoState: videoState)
+    }
+    
+    func callMemberConnectingTimeout(with peerID: UUID) {
+        self.removePeer(with: peerID)
+        self.observer.roomPeersStateChange()
+    }
+}
+
+protocol MediasoupCallMemberStateObserver {
+    func callMemberConnectStateChange()
+    func callMemberVideoStateChange(peerId: UUID, videoState: VideoState)
+    func callMemberConnectingTimeout(with peerID: UUID)
+}
+
+class MediasoupCallMember: ZMTimerClient {
+    
+    private let connectTimeInterval: TimeInterval = 60
     
     enum ConnectState {
-        case unConnected
         case connecting
         case connected
-        case connectedFailure
+        case unConnected
     }
     
     let peerId: UUID
-    var connectState: ConnectState
+    private var connectState: CallParticipantState = .connecting
     var isVideo: Bool
+    let stateObserver: MediasoupCallMemberStateObserver
+    
+    var callTimer: ZMTimer?
 
     var consumers: [Consumer] = []
     var consumerListeners: [MediasoupConsumerListener] = []
     
-    fileprivate init(peerId: UUID, connectState: ConnectState, isVideo: Bool) {
+    fileprivate init(peerId: UUID, isVideo: Bool, stateObserver: MediasoupCallMemberStateObserver) {
         self.peerId = peerId
-        self.connectState = connectState
         self.isVideo = isVideo
+        self.stateObserver = stateObserver
+        callTimer = ZMTimer(target: self)
+        callTimer?.fire(afterTimeInterval: connectTimeInterval)
+    }
+    
+    fileprivate func setPeerConnectState(with state: CallParticipantState) {
+        self.connectState = state
+        callTimer?.cancel()
+        callTimer = nil
+        if state == .connecting {
+            callTimer = ZMTimer(target: self)
+            callTimer?.fire(afterTimeInterval: connectTimeInterval)
+        }
+        zmLog.info("Mediasoup::MediasoupCallMember--setPeerConnectState--\(state)\n")
+        self.stateObserver.callMemberConnectStateChange()
+    }
+    
+    func timerDidFire(_ timer: ZMTimer!) {
+        if self.connectState == .connecting || self.connectState == .unconnected {
+            zmLog.info("Mediasoup::MediasoupCallMember--timerDidFire--\(self.peerId)\n")
+            self.stateObserver.callMemberConnectingTimeout(with: self.peerId)
+        }
     }
     
     fileprivate func addNewConsumer(with consumer: Consumer, listener: MediasoupConsumerListener) {
@@ -142,14 +222,20 @@ class MediasoupCallMember {
             self.consumers.append(consumer)
             self.consumerListeners.append(listener)
         }
-        self.connectState = .connected
         if consumer.getKind() == "video" {
-            self.isVideo = true
+            self.setPeerConnectState(with: .connected(videoState: .started))
+            self.stateObserver.callMemberVideoStateChange(peerId: self.peerId, videoState: .started)
+        } else {
+            self.setPeerConnectState(with: .connected(videoState: .stopped))
         }
     }
     
     fileprivate func removeConsumer(with id: String) {
         if let index = self.consumers.firstIndex(where: {return $0.getId() == id }) {
+            ///这里必须先将视频画面给关闭，再closeConsumer，否则会出现闪退
+            if self.consumers[index].getKind() == "video" {
+                self.stateObserver.callMemberVideoStateChange(peerId: self.peerId, videoState: .stopped)
+            }
             self.consumers[index].close()
             zmLog.info("Mediasoup::removeConsumer--\(self.consumers.count)")
             self.consumers.remove(at: index)
@@ -173,6 +259,9 @@ class MediasoupCallMember {
         }
     }
     
+    var hasVideo: Bool {
+        return self.consumers.contains(where: { return $0.getKind() == "video" })
+    }
     
     fileprivate func clear() {
         self.consumers.forEach({
@@ -184,7 +273,7 @@ class MediasoupCallMember {
     }
     
     func toAvsMember() -> AVSCallMember {
-        return AVSCallMember(userId: self.peerId, audioEstablished: self.connectState == .connected, videoState: self.isVideo ? VideoState.started : VideoState.stopped, networkQuality: .normal)
+        return AVSCallMember(userId: self.peerId, callParticipantState: self.connectState, networkQuality: .normal)
     }
     
     deinit {

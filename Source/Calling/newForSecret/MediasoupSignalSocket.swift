@@ -13,7 +13,7 @@ private let zmLog = ZMSLog(tag: "calling")
 
 enum SocketAction {
     case connected
-    case disconnected
+    case disconnected(needDestory: Bool)
     case text(text: String)
     case data(data: Data)
 }
@@ -22,9 +22,10 @@ protocol SocketActionDelegate {
     func receive(action: SocketAction)
 }
 
+private let socketRecvQueue: DispatchQueue = DispatchQueue(label: "MediasoupSignalSocket.RecvQueue")
+
 public class MediasoupSignalSocket {
 
-    private let socketQueue: DispatchQueue = DispatchQueue(label: "MediasoupSignalSocketRecv")
     private var socket: WebSocket?
     private var reConnectedTimes: Int = 0
     
@@ -32,21 +33,31 @@ public class MediasoupSignalSocket {
     private let delegate: SocketActionDelegate
 
     init(url: URL, delegate: SocketActionDelegate) {
+        zmLog.info("Mediasoup::Socket-init--url:\(url)")
         self.url = url
         self.delegate = delegate
-        self.socket = WebSocket.init(url: url, protocols: ["secret-media"])//secret-media
+        self.createSocket()
+    }
+    
+    func createSocket() {
+        self.socket = WebSocket.init(url: url, protocols: ["secret-media"])//secret-media--protoo
         self.socket!.disableSSLCertValidation = true
-        self.socket!.callbackQueue = self.socketQueue
+        self.socket!.callbackQueue = socketRecvQueue
         self.socket!.delegate = self
     }
 
     func connect() {
-        zmLog.info("mediasoup::socket-connect")
+        zmLog.info("Mediasoup::Socket-connect")
+        self.socket?.connect()
+    }
+    
+    func reConnect() {
+        zmLog.info("Mediasoup::Socket-reConnect")
         self.socket?.connect()
     }
     
     func disConnect() {
-        zmLog.info("mediasoup::socket-disConnect")
+        zmLog.info("Mediasoup::Socket-disConnect")
         self.socket?.disconnect()
     }
     
@@ -55,24 +66,30 @@ public class MediasoupSignalSocket {
     }
     
     deinit {
-        zmLog.info("Mediasoup::deinit:---MediasoupSignalSocket")
+        zmLog.info("Mediasoup::Socket-deinit")
     }
 }
 
-extension MediasoupSignalSocket: WebSocketDelegate {
+extension MediasoupSignalSocket: WebSocketDelegate, WebSocketPongDelegate {
+    
+    public func websocketDidReceivePong(socket: WebSocketClient, data: Data?) {
+        zmLog.info("Mediasoup::Socket-websocketDidReceivePong")
+    }
     
     public func websocketDidConnect(socket: WebSocketClient) {
+        zmLog.info("Mediasoup::Socket-websocketDidConnect")
         self.delegate.receive(action: .connected)
         self.reConnectedTimes = 0
     }
     
     public func websocketDidDisconnect(socket: WebSocketClient, error: Error?) {
-        zmLog.info("Mediasoup::socket:---websocketDidDisconnect")
+        zmLog.info("Mediasoup::Socket-websocketDidDisconnect")
         self.reConnectedTimes += 1
         if self.reConnectedTimes > 8 {
-            self.delegate.receive(action: .disconnected)
+            self.delegate.receive(action: .disconnected(needDestory: true))
         } else {
-            socket.connect()
+            self.delegate.receive(action: .disconnected(needDestory: false))
+            self.reConnect()
         }
     }
     

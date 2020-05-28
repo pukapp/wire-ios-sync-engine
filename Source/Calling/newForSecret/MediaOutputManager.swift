@@ -17,6 +17,53 @@ public enum MediaOutputError : Error {
 }
 private let MEDIA_VIDEO_FPS: Int = 15
 
+///视频输出参数，当视频的人数改变时，显示的视频越多，则使用不同的画面质量，从而减少服务器带宽压力，以及手机网速压力
+enum VideoOutputFormat: Int {
+    case high       // 640x480
+    case medium     // 480x320
+    case low        // 320x240
+    case veryLow    // 176x144
+    
+    var width: Int32 {
+        switch self {
+        case .high:
+            return 640
+        case .medium:
+            return 480
+        case .low:
+            return 320
+        case .veryLow:
+            return 176
+        }
+    }
+    var height: Int32 {
+        switch self {
+        case .high:
+            return 480
+        case .medium:
+            return 320
+        case .low:
+            return 240
+        case .veryLow:
+            return 144
+        }
+    }
+    
+    init(count: Int) {
+        if count < 2 {
+            self = .high
+        } else if count < 4 {
+            self = .medium
+        } else if count < 8 {
+            self = .low
+        } else {
+            self = .veryLow
+        }
+    }
+    
+}
+
+
 ///应当注意，此类每次使用时初始化，断开后就需要销毁，并且需要在MediasoupClient的Device初始化之后初始化
 final class MediaOutputManager: NSObject {
 
@@ -68,7 +115,12 @@ final class MediaOutputManager: NSObject {
         self.videoCapturer?.startCapture(with: capture, format: capture.activeFormat, fps: MEDIA_VIDEO_FPS)
     }
     
-    func getVideoTrack() -> RTCVideoTrack  {
+    func changeVideoOutputFormat(with format: VideoOutputFormat) {
+        zmLog.info("mediasoup::MediaManagerShared--changeVideoOutputFormat:\(format)")
+        self.videoSource?.adaptOutputFormat(toWidth: format.width, height: format.height, fps: Int32(MEDIA_VIDEO_FPS))
+    }
+    
+    func getVideoTrack(with format: VideoOutputFormat) -> RTCVideoTrack  {
         if let track = self.mediaSoupVideoTrack {
             return track
         }
@@ -78,7 +130,7 @@ final class MediaOutputManager: NSObject {
         self.videoCapturer!.delegate = self
         
         self.videoSource = self.peerConnectionFactory.videoSource();
-        self.videoSource!.adaptOutputFormat(toWidth: 640, height: 480, fps: 30);
+        self.videoSource!.adaptOutputFormat(toWidth: format.width, height: format.height, fps: Int32(MEDIA_VIDEO_FPS));
         
         let videoTrack: RTCVideoTrack = self.peerConnectionFactory.videoTrack(with: self.videoSource!, trackId: MediaOutputManager.VIDEO_TRACK_ID)
         self.mediaStream.addVideoTrack(videoTrack)
@@ -162,7 +214,7 @@ extension MediaOutputManager : RTCVideoCapturerDelegate {
                 try session.setCategory(category)
                 try session.setActive(true, options: .notifyOthersOnDeactivation)
             } catch _ {
-                zmLog.info("MediaManagerShared == set SpeakEnable failure")
+                zmLog.info("mediasoup::MediaManagerShared == set SpeakEnable failure")
             }
         }
     }

@@ -17,7 +17,6 @@
 //
 
 import Foundation
-import avs
 
 private let zmLog = ZMSLog(tag: "calling")
 
@@ -44,7 +43,7 @@ public protocol AVSWrapperType {
 /**
  * An object that provides an interface to the AVS APIs.
  */
-
+/*
 public class AVSWrapper: AVSWrapperType {
 
     /// The wrapped `wcall` instance.
@@ -278,3 +277,5 @@ public class AVSWrapper: AVSWrapperType {
     }
 
 }
+
+ */

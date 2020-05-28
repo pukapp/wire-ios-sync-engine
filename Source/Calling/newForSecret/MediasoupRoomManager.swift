@@ -15,54 +15,29 @@ private let zmLog = ZMSLog(tag: "calling")
 extension MediasoupRoomManager: MediasoupSignalManagerDelegate {
     
     func socketConnected() {
-        zmLog.info("mediasoup::socketState:socketConnected")
-        self.signalManager.requestToGetRoomRtpCapabilities()
-    }
-    
-    func socketDisconnected() {
-        zmLog.info("mediasoup::socketState:socketDisconnected")
-        if let roomId = self.roomId {
-            self.delegate?.leaveRoom(conversationId: roomId, reason: .internalError)
+        signalWorkQueue.async {
+            self.configureDevice()
+            self.roomState = .socketConnected
         }
     }
     
-    func onReceiveResponse(with action: MediasoupSignalAction.SendRequest, info: JSON) {
-        switch action {
-        case .getRouterRtpCapabilities:
-            zmLog.info("mediasoup::onReceiveResponse:getRouterRtpCapabilities")
-            self.device!.load(info.description)
-            self.joinRoom()
-        case .createWebRtcTransport(let isProducing):
-            zmLog.info("mediasoup::onReceiveResponse:createWebRtcTransport")
-            self.processWebRtcTransport(with: isProducing, webRtcTransportData: info)
-            
-            if self.sendTransport != nil && self.recvTransport != nil {
-                self.signalManager.loginRoom(with: self.device!.getRtpCapabilities())
-            }
-        case .loginRoom:
-            zmLog.info("mediasoup::onReceiveResponse:loginRoom")
-            if let peers = info["peers"].array,
-                peers.count > 0 {
-                for info in peers {
-                    receiveNewPeer(peerInfo: info)
-                }
-            }
-            DispatchQueue.global().async {
-                self.produceAudio()
-                if self.callType == .video {
-                    self.produceVideo()
-                }
-            }
-        default:break
+    func socketDisconnected(needDestory: Bool) {
+        if needDestory {
+            self.roomState = .unConnected
+            self.delegate?.leaveRoom(conversationId: self.roomId!, reason: .internalError)
+        } else {
+            self.roomState = .socketConnecting
+            self.disConnectedRoom()
+            self.delegate?.onReconnectingCall(conversationId: self.roomId!)
         }
     }
     
     func onReceiveRequest(with action: MediasoupSignalAction.ReceiveRequest, info: JSON) {
+        zmLog.info("Mediasoup::RoomManager--onReceiveRequest:action:\(action)")
         switch action {
         case .newConsumer:
             if (self.recvTransport == nil || !readyToComsumer) {
-                // User has not yet created a transport for receiving so temporarily store it
-                // and play it when the recv transport is created
+                // 用户还没有创建recvTransport或者音频设备还没有准备好，就先存起来，不去处理
                 self.consumersInfo.append(info)
                 return
             }
@@ -71,23 +46,24 @@ extension MediasoupRoomManager: MediasoupSignalManagerDelegate {
     }
     
     func onNewNotification(with action: MediasoupSignalAction.Notification, info: JSON) {
+        zmLog.info("Mediasoup::RoomManager--onNewNotification:action:\(action)")
         switch action {
         case .consumerPaused, .consumerResumed, .consumerClosed:
             self.handleConsumerState(with: action, consumerInfo: info)
         case .peerClosed:
-            guard let roomId = self.roomId,
-                let peerId = info["peerId"].string,
+            guard let peerId = info["peerId"].string,
                 let pUid = UUID(uuidString: peerId) else {
                 return
             }
             self.roomPeersManager?.removePeer(with: pUid)
-            if self.roomPeersManager?.isRoomEmpty ?? true {
-                self.delegate?.leaveRoom(conversationId: roomId, reason: .normal)
-            } else {
-                self.delegate?.onGroupMemberChange(conversationId: roomId)
-            }
         case .newPeer:
             self.receiveNewPeer(peerInfo: info)
+        case .peerLeave:
+            guard let peerId = info["peerId"].string,
+                let pUid = UUID(uuidString: peerId) else {
+                    return
+            }
+            self.removePeer(with: pUid)
         case .peerDisplayNameChanged:
             break
         }
@@ -96,18 +72,30 @@ extension MediasoupRoomManager: MediasoupSignalManagerDelegate {
 }
 
 protocol MediasoupRoomManagerDelegate {
-    func onNewPeer(conversationId: UUID, peerId: UUID)
-    func onNewConsumer(conversationId: UUID, peerId: UUID)
+    func onEstablishedCall(conversationId: UUID, peerId: UUID)
+    func onReconnectingCall(conversationId: UUID)
     func leaveRoom(conversationId: UUID, reason: CallClosedReason)
-    func onVideoStateChange(peerId: UUID, videoStart: VideoState)
-    func onGroupMemberChange(conversationId: UUID)
+    func onVideoStateChange(conversationId: UUID, peerId: UUID, videoState: VideoState)
+    func onGroupMemberChange(conversationId: UUID, memberCount: Int)
 }
+
+let signalWorkQueue: DispatchQueue = DispatchQueue(label: "MediasoupSignalSocket.SignalSendQueue")
 
 class MediasoupRoomManager: NSObject {
     
+    enum RoomState {
+        case none
+        case socketConnecting
+        case socketConnected
+        case peerConnecting /// receive peer but no consumer
+        case peerConnected /// receive consumer
+        case unConnected
+    }
+    
     static let shareInstance: MediasoupRoomManager = MediasoupRoomManager()
     
-    private var delegate: MediasoupRoomManagerDelegate?
+    private var roomState: RoomState = .none
+    var delegate: MediasoupRoomManagerDelegate?
     private var signalManager: MediasoupSignalManager!
     
     private var device: Device?
@@ -127,95 +115,74 @@ class MediasoupRoomManager: NSObject {
     var roomPeersManager: MediasoupCallPeersManager?
     ///存储从服务端接收到的consumerJson数据，由于房间状态问题，暂不解析成consumer
     private var consumersInfo: [JSON]
-    
-    var callType: AVSCallType = .normal
-    
     ///当callKit准备好，才能去接收consumers，否则语音进程会被系统的callkit所打断
     var readyToComsumer: Bool = false {
         didSet {
+            zmLog.info("Mediasoup::RoomManager--readyToComsumer---\(self.consumersInfo.count)")
             if readyToComsumer {
                 handleRetainedConsumers()
             }
         }
     }
     
+    var isCalling: Bool {
+        return (self.roomState != .none && self.roomState != .unConnected)
+    }
+    
     override init() {
         Mediasoupclient.initializePC()
-        Logger.setLogLevel(LogLevel.LOG_DEBUG)
+        Logger.setLogLevel(LogLevel.LOG_WARN)
         Logger.setDefaultHandler()
         producers = []
         producerListeners = []
         consumersInfo = []
-        super.init() //wss://13.76.41.238:4443 //wss://192.168.3.66:4443
-        signalManager = MediasoupSignalManager(url: "wss://13.76.41.238:4443", delegate: self)
+        super.init()
+        /*
+         *  13.76.41.238        新加坡
+         *  106.75.225.178      上海
+         *  27.124.45.160       香港服务器
+         */
+        signalManager = MediasoupSignalManager(url: "wss://27.124.45.160:4443", delegate: self)
     }
     
-    func connectToRoom(with roomId: UUID,callType: AVSCallType, userId: UUID, delegate: MediasoupRoomManagerDelegate) -> Bool {
+    func connectToRoom(with roomId: UUID, userId: UUID) {
         guard self.roomId == nil else {
             ///已经在房间里面了
-            return false
-        }
-        
-        zmLog.info("mediasoup::initDevice\n")
-        self.device = Device()
-        self.mediaOutputManager = MediaOutputManager()
-        
-        self.delegate = delegate
-        self.roomId = roomId
-        self.callType = callType
-        self.userId = userId
-        self.roomPeersManager = MediasoupCallPeersManager()
-        signalManager.connectRoom(with: roomId.transportString(), userId: self.userId!.transportString())
-        return true
-    }
-    
-    func leaveRoom(with roomId: UUID) {
-        zmLog.info("Mediasoup::leaveRoom\n")
-        if roomId == self.roomId {
-            signalManager.leaveRoom()
-        
-            self.readyToComsumer = false
-
-            self.sendTransport?.close()
-            self.sendTransport = nil
-            self.sendTransportListen = nil
-            self.recvTransport?.close()
-            self.recvTransport = nil
-            self.recvTransportListen = nil
-
-            self.roomPeersManager?.clear()
-            self.consumersInfo.removeAll()
-            self.producers.forEach({ $0.close() })
-            self.producers.removeAll()
-            self.producerListeners.removeAll()
-
-            ///这两个需在上面的变量释放之后再进行释放
-            self.mediaOutputManager?.clear()
-            self.mediaOutputManager = nil
-            self.device = nil
-            zmLog.info("Mediasoup::destoryDevice\n")
-            self.roomId = nil
-        }
-    }
-    
-    func joinRoom() {
-        guard let device = self.device, device.isLoaded() else {
             return
         }
-
-        ///创建transport
-        signalManager.createWebRtcTransportRequest(with: false)
-        signalManager.createWebRtcTransportRequest(with: true)
+        print("Mediasoup::signalWorkQueue--\(signalWorkQueue.debugDescription)")
+        self.roomState = .socketConnecting
+        self.device = Device()
+        self.mediaOutputManager = MediaOutputManager()
+        zmLog.info("Mediasoup::RoomManager--connectToRoomWith roomId:\(roomId) userId:\(userId)")
+        self.roomId = roomId
+        self.userId = userId
+        self.roomPeersManager = MediasoupCallPeersManager(observer: self)
+        self.signalManager.connectRoom(with: roomId.transportString(), userId: self.userId!.transportString())
     }
-
-    func receiveNewPeer(peerInfo: JSON) {
-        guard let roomId = self.roomId,
-            let peerId = peerInfo["id"].string,
-            let uid = UUID(uuidString: peerId) else {
+    
+    func configureDevice() {
+        if !self.device!.isLoaded() {
+            guard let rtpCapabilities = self.signalManager.requestToGetRoomRtpCapabilities() else {
                 return
+            }
+            self.device!.load(rtpCapabilities)
         }
-        self.roomPeersManager?.addNewPeer(with: uid)
-        self.delegate?.onNewPeer(conversationId: roomId, peerId: uid)
+        self.createWebRtcTransports()
+    }
+    
+    ///创建transport
+    func createWebRtcTransports() {
+        guard let recvJson = signalManager.createWebRtcTransportRequest(with: false) else {
+            return
+        }
+        self.processWebRtcTransport(with: false, webRtcTransportData: recvJson)
+        guard let sendJson = signalManager.createWebRtcTransportRequest(with: true) else {
+            return
+        }
+        self.processWebRtcTransport(with: true, webRtcTransportData: sendJson)
+        
+        self.loginRoom()
     }
     
     func processWebRtcTransport(with isProducing: Bool, webRtcTransportData: JSON) {
@@ -223,6 +190,7 @@ class MediasoupRoomManager: NSObject {
         let iceParameters: String = webRtcTransportData["iceParameters"].description
         let iceCandidates: String = webRtcTransportData["iceCandidates"].description
         let dtlsParameters: String = webRtcTransportData["dtlsParameters"].description
+        zmLog.info("Mediasoup::RoomManager--processWebRtcTransport:\(webRtcTransportData)")
         
         if isProducing {
             self.sendTransportListen = MediasoupTransportListener(isProduce: true, delegate: self)
@@ -230,11 +198,162 @@ class MediasoupRoomManager: NSObject {
         } else {
             self.recvTransportListen = MediasoupTransportListener(isProduce: false, delegate: self)
             self.recvTransport = self.device!.createRecvTransport(recvTransportListen, id: id, iceParameters: iceParameters, iceCandidates: iceCandidates, dtlsParameters: dtlsParameters)
-            // Play consumers that have been stored
+            //创建好recvTransport之后就可以开始处理接收到暂存的Consumers了
             handleRetainedConsumers()
         }
     }
     
+    ///登录房间，并且获取房间内peer信息
+    func loginRoom() {
+        guard let response = self.signalManager.loginRoom(with: self.device!.getRtpCapabilities()) else {
+            return
+        }
+        if let peers = response["peers"].array,
+            peers.count > 0 {
+            for info in peers {
+                receiveNewPeer(peerInfo: info)
+            }
+        }
+        
+        self.startProduce()
+    }
+    
+    ///开启音频发送
+    func startProduce() {
+        self.produceAudio()
+    }
+    
+    ///网络断开连接
+    func disConnectedRoom() {
+        
+        self.signalManager.leaveGroup()
+        
+        ///需要在此线程中释放资源
+        signalWorkQueue.async {
+            zmLog.info("Mediasoup::disConnectedRoom---thread:\(Thread.current)")
+            self.roomPeersManager?.removeSelfVideoTrack(userId: self.userId!)
+            
+            if self.sendTransport != nil {
+                self.sendTransport?.close()
+                self.sendTransport = nil
+                self.sendTransportListen = nil
+            }
+            
+            
+            if self.recvTransport != nil {
+                self.recvTransport?.close()
+                self.recvTransport = nil
+                self.recvTransportListen = nil
+            }
+            
+            print("Mediasoup::leaveRoom--roomPeersManager-clear--thread:\(Thread.current)")
+            self.consumersInfo.removeAll()
+            self.producers.forEach({
+                zmLog.info("Mediasoup::leaveRoom--produce-isClosed::\($0.isClosed())")
+                if !$0.isClosed() {
+                    $0.close()
+                }
+            })
+            self.producers.removeAll()
+            self.producerListeners.removeAll()
+            
+        }
+    }
+    
+    func leaveRoom(with roomId: UUID) {
+        self.signalManager.leaveGroup()
+        
+        ///需要在此线程中释放资源
+        signalWorkQueue.async {
+            guard self.roomId == roomId else {
+                return
+            }
+            zmLog.info("Mediasoup::leaveRoom---thread:\(Thread.current)")
+        
+            self.signalManager.peerLeave()
+            ///关闭socket
+            self.signalManager.leaveRoom()
+            
+            self.roomState = .none
+
+            self.readyToComsumer = false
+            
+            if self.sendTransport != nil {
+                self.sendTransport?.close()
+                self.sendTransport = nil
+                self.sendTransportListen = nil
+            }
+
+            
+            if self.recvTransport != nil {
+                self.recvTransport?.close()
+                self.recvTransport = nil
+                self.recvTransportListen = nil
+            }
+
+            zmLog.info("Mediasoup::leaveRoom--roomPeersManager-clear--thread:\(Thread.current)")
+            self.roomPeersManager?.clear()
+            self.consumersInfo.removeAll()
+            self.producers.removeAll()
+            self.producerListeners.removeAll()
+
+            zmLog.info("Mediasoup::destoryDevice--\(String(describing: self.device))")
+            self.device = nil
+            self.roomId = nil
+            
+            ///这两个需在上面的变量释放之后再进行释放
+            self.mediaOutputManager?.clear()
+            self.mediaOutputManager = nil
+            
+        }
+    }
+    
+}
+
+extension MediasoupRoomManager {
+    
+    func receiveNewPeer(peerInfo: JSON) {
+        guard let peerId = peerInfo["id"].string,
+            let uid = UUID(uuidString: peerId) else {
+            return
+        }
+        if self.roomState != .peerConnecting {
+            self.roomState = .peerConnecting
+        }
+        self.roomPeersManager?.addNewPeer(with: uid)
+        self.delegate?.onEstablishedCall(conversationId: self.roomId!, peerId: uid)
+    }
+    
+    func removePeer(with id: UUID) {
+        self.roomPeersManager?.removePeer(with: id)
+    }
+    
+}
+
+extension MediasoupRoomManager: MediasoupCallPeersObserver {
+    func roomPeersStateChange() {
+        guard let roomId = self.roomId else {
+            return
+        }
+        if self.roomPeersManager?.isRoomEmpty ?? false {
+            zmLog.info("Mediasoup::RoomManager-roomPeersStateChange ==roomEmpty")
+            self.leaveRoom(with: roomId)
+            self.delegate?.leaveRoom(conversationId: roomId, reason: .normal)
+        } else {
+            self.delegate?.onGroupMemberChange(conversationId: roomId, memberCount: self.roomPeersManager!.peersCount)
+        }
+    }
+    
+    func roomPeersVideoStateChange(peerId: UUID, videoState: VideoState) {
+        zmLog.info("Mediasoup::RoomManager--roomPeersVideoStateChange--videoState:\(videoState)")
+        if self.roomPeersManager!.selfProduceVideo  {
+            ///实时监测显示的视频人数，并且更改自己所发出去的视频参数
+            ///这里由于受到视频关闭的时候，是先通知到界面，而不是先更改数据源的，所以这里需要判断
+            let totalCount = self.roomPeersManager!.totalVideoConsumersCount
+            self.mediaOutputManager?.changeVideoOutputFormat(with: VideoOutputFormat(count: (videoState == .stopped ? totalCount - 1 : totalCount)))
+        }
+        self.delegate?.onVideoStateChange(conversationId: self.roomId!, peerId: peerId, videoState: videoState)
+    }
 }
 
 class MediasoupConsumerListener: NSObject, ConsumerListener {
@@ -246,11 +365,11 @@ class MediasoupConsumerListener: NSObject, ConsumerListener {
     }
     
     func onTransportClose(_ consumer: Consumer!) {
-        zmLog.info("Mediasoup::ConsumerListener---onTransportClose\n")
+        zmLog.info("Mediasoup::RoomManager--ConsumerListener-onTransportClose")
     }
     
     deinit {
-        zmLog.info("Mediasoup::deinit:---MediasoupConsumerListener\n")
+        zmLog.info("Mediasoup::RoomManager---ConsumerListener-deinit")
     }
 }
 
@@ -259,15 +378,16 @@ class MediasoupProducerListener: NSObject, ProducerListener {
     var producerId: String?
     
     func onTransportClose(_ producer: Producer!) {
-        zmLog.info("Mediasoup::ProducerListener---onTransportClose\n")
+        zmLog.info("Mediasoup::RoomManager--ProducerListener-onTransportClose")
     }
     
     deinit {
-        zmLog.info("Mediasoup::deinit:---MediasoupProducerListener\n")
+        zmLog.info("Mediasoup::RoomManager--ProducerListener-deinit")
     }
 }
 
 extension MediasoupRoomManager: MediasoupTransportListenerDelegate {
+    
     func onProduce(_ transportId: String, kind: String, rtpParameters: String, appData: String) -> String {
         zmLog.info("Mediasoup::onProduce====kind:\(kind)\n")
         guard let produceId = signalManager.produceWebRtcTransportRequest(with: transportId, kind: kind, rtpParameters: rtpParameters, appData: appData) else {
@@ -302,22 +422,28 @@ class MediasoupTransportListener: NSObject, SendTransportListener, RecvTransport
     }
 
     func onProduce(_ transport: Transport!, kind: String!, rtpParameters: String!, appData: String!) -> String! {
-        zmLog.info("Mediasoup::ProduceTransport-onConnect--onProduce\n")
         return self.delegate.onProduce(transport.getId(), kind: kind, rtpParameters: rtpParameters, appData: appData)
     }
     
     func onConnect(_ transport: Transport!, dtlsParameters: String!) {
-        zmLog.info("Mediasoup::ProduceTransport-onConnect--listener\n")
         self.delegate.onConnect(transport.getId(), dtlsParameters: dtlsParameters)
     }
     
     func onConnectionStateChange(_ transport: Transport!, connectionState: String!) {
         if self.isProduce {
-            zmLog.info("Mediasoup::ProduceTransport-connectionState----\(String(describing: connectionState))\n")
+            zmLog.info("Mediasoup::ProduceTransport-connectionState:\(String(describing: connectionState)) thread:\(Thread.current)")
         } else {
-            zmLog.info("Mediasoup::RecvTransport-connectionState----\(String(describing: connectionState))\n")
+            zmLog.info("Mediasoup::RecvTransport-connectionState:\(String(describing: connectionState)) thread:\(Thread.current)")
         }
-        
+        if connectionState == "failed" {
+            ///重启ICE
+            zmLog.info("Mediasoup::Transport-onConnectionStateChange--restartIce isProduce:\(isProduce)  thread:\(Thread.current)")
+            //transport.restartIce(<#T##iceParameters: String!##String!#>)
+        }
+    }
+    
+    deinit {
+        zmLog.info("Mediasoup::RoomManager---MediasoupTransportListener--\(self.isProduce)-deinit")
     }
 }
 
@@ -325,23 +451,21 @@ class MediasoupTransportListener: NSObject, SendTransportListener, RecvTransport
 extension MediasoupRoomManager {
     
     func produceAudio() {
-        if self.sendTransport == nil {
+        guard self.sendTransport != nil,
+            self.device!.canProduce("audio"),
+            self.roomState != .none  else {
             return
         }
-        
-        if !self.device!.canProduce("audio") {
-            return
-        }
-        
+
         let audioTrack: RTCAudioTrack = self.mediaOutputManager!.getAudioTrack()
         self.createProducer(track: audioTrack, codecOptions: nil, encodings: nil)
     }
     
     func produceVideo() {
-
         guard self.sendTransport != nil,
             self.device!.canProduce("video"),
             self.roomPeersManager?.getVideoTrack(with: self.userId!) == nil else {
+                zmLog.info("Mediasoup::RoomManager--can not produceVideo")
                 return
         }
         
@@ -354,21 +478,26 @@ extension MediasoupRoomManager {
         encodings.append(RTCUtils.genRtpEncodingParameters(true, maxBitrateBps: 1000000, minBitrateBps: 0, maxFramerate: 60, numTemporalLayers: 0, scaleResolutionDownBy: 0))
         encodings.append(RTCUtils.genRtpEncodingParameters(true, maxBitrateBps: 1500000, minBitrateBps: 0, maxFramerate: 60, numTemporalLayers: 0, scaleResolutionDownBy: 0))
         
-        let videoTrack = self.mediaOutputManager!.getVideoTrack()
+        let videoTrack = self.mediaOutputManager!.getVideoTrack(with: VideoOutputFormat(count: self.roomPeersManager?.totalVideoConsumersCount ?? 0))
         
         self.createProducer(track: videoTrack, codecOptions: codecOptions.description, encodings: encodings)
-        
+        ///将自己的track也放在管理类中
         self.roomPeersManager?.addSelfVideoTrack(userId: self.userId!, videoTrack: videoTrack)
     }
     
     private func createProducer(track: RTCMediaStreamTrack, codecOptions: String?, encodings: Array<RTCRtpEncodingParameters>?) {
-        let listener = MediasoupProducerListener()
-        let producer: Producer = self.sendTransport!.produce(listener, track: track, encodings: encodings, codecOptions: codecOptions)
-        listener.producerId =  producer.getId()
-        self.producers.append(producer)
-        self.producerListeners.append(listener)
-        
-        zmLog.info("Mediasoup::createProducer() created id =" + producer.getId() + " kind =" + producer.getKind() + "\n")
+        /** 需要注意：sendTransport!.produce 这个方法最好在一个线程里面同步的去执行
+         *  webRTC 里面 peerConnection 的 各种状态设置不是线程安全的，并且当传入了错误的状态会报错，从而引起应用崩溃，所以这里一个一个的去创建produce
+        */
+        signalWorkQueue.async {
+            let listener = MediasoupProducerListener()
+            let producer: Producer = self.sendTransport!.produce(listener, track: track, encodings: encodings, codecOptions: codecOptions)
+            listener.producerId =  producer.getId()
+            self.producers.append(producer)
+            self.producerListeners.append(listener)
+            
+            zmLog.info("Mediasoup::RoomManager--createProducer id =" + producer.getId() + " kind =" + producer.getKind())
+        }
     }
     
     func setLocalAudio(mute: Bool) {
@@ -383,28 +512,31 @@ extension MediasoupRoomManager {
     }
     
     func setLocalVideo(state: VideoState) {
-        switch state {
-        case .started:
-            if let videoProduce = self.producers.first(where: {return $0.getKind() == "video" }), videoProduce.isPaused() {
-                videoProduce.resume()
-                self.signalManager.setProduceState(with: videoProduce.getId(), pause: false)
-            } else {
-                self.produceVideo()
+        zmLog.info("Mediasoup::RoomManager--setLocalVideo--\(state)")
+        signalWorkQueue.async {
+            switch state {
+            case .started:
+                if let videoProduce = self.producers.first(where: {return $0.getKind() == "video" }), videoProduce.isPaused() {
+                    videoProduce.resume()
+                    self.signalManager.setProduceState(with: videoProduce.getId(), pause: false)
+                } else {
+                    self.produceVideo()
+                }
+            case .stopped:
+                if let videoProduce = self.producers.first(where: {return $0.getKind() == "video" }), !videoProduce.isClosed() {
+                    videoProduce.close()
+                    self.signalManager.closeProduce(with: videoProduce.getId())
+                    self.producers = self.producers.filter({ return $0.getKind() != "video" })
+                    self.roomPeersManager?.removeSelfVideoTrack(userId: self.userId!)
+                }
+            case .paused:
+                if let videoProduce = self.producers.first(where: {return $0.getKind() == "video" }), !videoProduce.isPaused() {
+                    videoProduce.pause()
+                    self.signalManager.setProduceState(with: videoProduce.getId(), pause: true)
+                }
+            default:
+                break;
             }
-        case .stopped:
-            if let videoProduce = self.producers.first(where: {return $0.getKind() == "video" }), !videoProduce.isClosed() {
-                videoProduce.close()
-                self.signalManager.closeProduce(with: videoProduce.getId())
-                self.roomPeersManager?.removeSelfVideoTrack(userId: self.userId!)
-                self.producers = self.producers.filter({ return $0.getKind() != "video" })
-            }
-        case .paused:
-            if let videoProduce = self.producers.first(where: {return $0.getKind() == "video" }), !videoProduce.isPaused() {
-                videoProduce.pause()
-                self.signalManager.setProduceState(with: videoProduce.getId(), pause: true)
-            }
-        default:
-            break;
         }
     }
 }
@@ -427,23 +559,21 @@ extension MediasoupRoomManager {
             let peerUId = UUID(uuidString: peerId) else {
             return
         }
+        if self.roomState != .peerConnected {
+            self.roomState = .peerConnected
+        }
         
         let kind: String = consumerInfo["kind"].stringValue
         let id: String = consumerInfo["id"].stringValue
         let producerId: String = consumerInfo["producerId"].stringValue
         let rtpParameters: JSON = consumerInfo["rtpParameters"]
         
-        zmLog.info("Mediasoup::Consumer-NewConsumer--peer:\(peerId)--kind:\(kind)---id:\(id)\n")
+        zmLog.info("Mediasoup::RoomManager-NewConsumer--peer:\(peerId)--kind:\(kind)---id:\(id)")
         
         let consumerListen = MediasoupConsumerListener(consumerId: id)
         let consumer: Consumer = self.recvTransport!.consume(consumerListen, id: id, producerId: producerId, kind: kind, rtpParameters: rtpParameters.description)
         
         self.roomPeersManager?.addNewConsumer(with: peerUId, consumer: consumer, listener: consumerListen)
-        
-        if consumer.getKind() == "video" {
-            self.delegate?.onVideoStateChange(peerId: peerUId, videoStart: .started)
-        }
-        self.delegate?.onNewConsumer(conversationId: self.roomId!, peerId: peerUId)
     }
     
     func handleConsumerState(with action: MediasoupSignalAction.Notification, consumerInfo: JSON) {
@@ -459,14 +589,9 @@ extension MediasoupRoomManager {
         case .consumerPaused:
             consumer.pause()
         case .consumerClosed:
-            ///这里必须先将视频画面给关系，再closeConsumer，否则会出现闪退
-            if consumer.getKind() == "video" {
-                self.delegate?.onVideoStateChange(peerId: peer.peerId, videoStart: .stopped)
-            }
             self.roomPeersManager?.removeConsumer(with: consumerId)
         default: fatal("error")
         }
-        
     }
     
 }

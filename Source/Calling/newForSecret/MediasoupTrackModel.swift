@@ -17,13 +17,16 @@ open class MediasoupPreviewView : RTCEAGLVideoView {
     
     
     override open func didMoveToWindow() {
-        guard let videoTrack = MediasoupRoomManager.shareInstance.mediaOutputManager?.getVideoTrack() else {
+        guard let videoTrack = MediasoupRoomManager.shareInstance.mediaOutputManager?.getVideoTrack(with: .high) else {
+            zmLog.info("Mediasoup::SelfPreviewView--videoTrack == nil  mediaOutputManager:\(MediasoupRoomManager.shareInstance.mediaOutputManager == nil)")
             return
         }
         
         if self.window != nil && !attached {
+            zmLog.info("Mediasoup::SelfPreviewView--addTrack")
             videoTrack.add(self)
         } else {
+            zmLog.info("Mediasoup::SelfPreviewView--removeTrack")
             videoTrack.remove(self)
             attached = false
         }
@@ -38,7 +41,7 @@ open class MediasoupPreviewView : RTCEAGLVideoView {
     }
     
     deinit {
-        zmLog.info("Mediasoup::deinit:---MediasoupPreviewView")
+        zmLog.info("Mediasoup::MediasoupPreviewView---deinit")
     }
     
 }
@@ -46,7 +49,7 @@ open class MediasoupPreviewView : RTCEAGLVideoView {
 open class MediasoupVideoView : RTCEAGLVideoView {
     
     deinit {
-        zmLog.info("Mediasoup::deinit:---MediasoupVideoView")
+        zmLog.info("Mediasoup::VideoView--deinit")
     }
     
     open var shouldFill: Bool = false
@@ -57,7 +60,7 @@ open class MediasoupVideoView : RTCEAGLVideoView {
                 let uid = UUID(uuidString: id),
                 let track = MediasoupRoomManager.shareInstance.roomPeersManager?.getVideoTrack(with: uid)
             {
-                zmLog.info("mediasoup:addTrack--track")
+                zmLog.info("Mediasoup::VideoView--addTrack--track")
                 track.isEnabled = true
                 track.add(self)
             }
@@ -71,10 +74,10 @@ open class MediasoupVideoView : RTCEAGLVideoView {
             if let uid = UUID(uuidString: id),
             let track = MediasoupRoomManager.shareInstance.roomPeersManager?.getVideoTrack(with: uid)
             {
-                zmLog.info("mediasoup:removeAddedTrack--")
+                zmLog.info("Mediasoup::VideoView--removeAddedTrack--")
                track.remove(self)
             }
-            zmLog.info("mediasoup:removeAddedTrack--track == nil")
+            zmLog.info("Mediasoup::VideoView--removeAddedTrack--track == nil")
         }
     }
 }

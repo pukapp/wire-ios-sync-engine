@@ -17,7 +17,6 @@
 //
 
 import Foundation
-import avs
 
 private let zmLog = ZMSLog(tag: "calling")
 
@@ -25,7 +24,7 @@ private let zmLog = ZMSLog(tag: "calling")
  * The state of a participant in a call.
  */
 
-public enum CallParticipantState: Equatable {
+public enum CallParticipantState: Equatable, Hashable {
     /// Participant is not in the call
     case unconnected
     /// Participant is in the process of connecting to the call
@@ -76,11 +75,13 @@ public enum CallState: Equatable {
     /// Unknown call state
     case unknown
 
+    case reconnecting
     /**
      * Creates the call state from the given AVS flag.
      * - parameter wcallState: The state of the call as represented in AVS.
      */
 
+    /*
     init(wcallState: Int32) {
         switch wcallState {
         case WCALL_STATE_NONE:
@@ -102,6 +103,7 @@ public enum CallState: Equatable {
             self = .none
         }
     }
+ */
 
     /**
      * Logs the current state to the calling logs.
@@ -123,6 +125,8 @@ public enum CallState: Equatable {
             zmLog.debug("calling-state:terminating call reason: \(reason)")
         case .mediaStopped:
             zmLog.debug("calling-state:media stopped")
+        case .reconnecting:
+            zmLog.debug("calling-state:reconnecting")
         case .none:
             zmLog.debug("calling-state:no call")
         case .unknown:
@@ -149,5 +153,39 @@ public enum CallState: Equatable {
         default:
             return self
         }
+    }
+    
+    private var compareNumber: Int {
+        switch self {
+        case .none:
+            return 0
+        case .outgoing:
+            return 1
+        case .incoming:
+            return 2
+        case .answered:
+            return 3
+        case .establishedDataChannel:
+            return 4
+        case .established:
+            return 5
+        case .mediaStopped:
+            return 6
+        case .terminating(let reason):
+            if reason == .stillOngoing {
+                return 7
+            } else {
+                return 8
+            }
+        case .unknown:
+            return 9
+        case .reconnecting:
+            return 10
+        }
+    }
+
+    
+    public static func == (lhs: CallState, rhs: CallState) -> Bool {
+        return lhs.compareNumber == rhs.compareNumber
     }
 }
