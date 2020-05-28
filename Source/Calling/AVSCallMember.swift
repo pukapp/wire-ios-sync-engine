@@ -29,14 +29,15 @@ public struct AVSCallMember: Hashable {
     public let remoteId: UUID
 
     /// Whether an audio connection was established.
-    public let audioEstablished: Bool
+    //public let audioEstablished: Bool
 
     /// The state of video connection.
-    public let videoState: VideoState
+    //public let videoState: VideoState
 
     /// Netwok quality of this leg
     public let networkQuality: NetworkQuality
 
+    public let callParticipantState: CallParticipantState
     // MARK: - Initialization
 
     /**
@@ -55,21 +56,28 @@ public struct AVSCallMember: Hashable {
     }
  */
 
-    public init(userId : UUID, audioEstablished: Bool = false, videoState: VideoState = .stopped, networkQuality: NetworkQuality = .normal) {
+    public init(userId : UUID, callParticipantState: CallParticipantState, networkQuality: NetworkQuality = .normal) {
         self.remoteId = userId
-        self.audioEstablished = audioEstablished
-        self.videoState = videoState
+        self.callParticipantState = callParticipantState
         self.networkQuality = networkQuality
     }
 
     // MARK: - Properties
 
     /// The state of the participant.
-    var callParticipantState: CallParticipantState {
-        if audioEstablished {
-            return .connected(videoState: videoState)
-        } else {
-            return .connecting
+//    var callParticipantState: CallParticipantState {
+//        if audioEstablished {
+//            return .connected(videoState: videoState)
+//        } else {
+//            return .connecting
+//        }
+//    }
+    public var audioEstablished: Bool {
+        switch self.callParticipantState {
+        case .connected(videoState: _):
+            return true
+        default:
+            return false
         }
     }
 

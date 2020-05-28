@@ -111,6 +111,13 @@ extension WireCallCenterV3 {
             self.handleCallState(callState: .established, conversationId: conversationId, userId: userId)
         }
     }
+    
+    /// Handles established calls.
+    func handleReconnectingCall(conversationId: UUID) {
+        handleEvent("reconnecting-call") {
+            self.handleCallState(callState: .reconnecting, conversationId: conversationId, userId: nil)
+        }
+    }
 
     /**
      * Handles ended calls

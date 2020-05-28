@@ -30,7 +30,7 @@ private let zmLog = ZMSLog(tag: "calling")
 @objc public class WireCallCenterV3: NSObject {
 
     /// The maximum number of participants for a video call.
-    let videoParticipantsLimit = 4
+    let videoParticipantsLimit = 10
 
     // MARK: - Properties
 
@@ -395,7 +395,7 @@ extension WireCallCenterV3 {
             
             let members: [AVSCallMember] = {
                 guard let user = conversation.connectedUser, conversation.conversationType == .oneOnOne else { return [] }
-                return [AVSCallMember(userId: user.remoteIdentifier)]
+                return [AVSCallMember(userId: user.remoteIdentifier, callParticipantState: .connecting)]
             }()
 
             let previousCallState = callSnapshots[conversationId]?.callState
@@ -554,7 +554,7 @@ extension WireCallCenterV3 {
 
         switch callState {
         case .incoming(video: let video, shouldRing: _, degraded: _):
-            createSnapshot(callState: callState, members: [AVSCallMember(userId: userId!)], callStarter: userId, video: video, for: conversationId)
+            createSnapshot(callState: callState, members: [AVSCallMember(userId: userId!, callParticipantState: .connecting)], callStarter: userId, video: video, for: conversationId)
         case .established:
             // WORKAROUND: the call established handler will is called once for every participant in a
             // group call. Until that's no longer the case we must take care to only set establishedDate once.
