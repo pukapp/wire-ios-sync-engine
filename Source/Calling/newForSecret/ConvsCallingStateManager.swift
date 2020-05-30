@@ -39,6 +39,9 @@ class ConvsCallingStateManager {
     }
     
     func startCall(cid: UUID, callType: AVSCallType, conversationType: AVSConversationType, userId: UUID, clientId: String) -> Bool {
+        if roomManager.isCalling {
+            return false
+        }
         if self.convsCallingState.contains(where: { return $0.cid == cid }) {
             zmLog.info("mediasoup::error-startCall-already exist convInfo")
             return false
@@ -46,9 +49,6 @@ class ConvsCallingStateManager {
         if self.convsCallingState.contains(where: { return $0.isInCalling }) {
             ///说明当前正在通话中
             zmLog.info("mediasoup::error-startCall-already calling")
-            return false
-        }
-        if roomManager.isCalling {
             return false
         }
         let info = ConversationCallingInfo(cid: cid, convType: conversationType, callType: callType, starter: (userId, clientId), state: .none, delegate: self)
@@ -104,12 +104,12 @@ class ConvsCallingStateManager {
         if convInfo.convType == .oneToOne {
             convInfo.state = .terminating(reason: reason)
         } else if convInfo.convType == .group {
-            if convInfo.starter.userId == self.selfUserID && convInfo.memberCount > 1 {
-                ///自己是发起者
-                convInfo.state = .terminating(reason: reason)
-            } else {
-                
-            }
+//            if convInfo.starter.userId == self.selfUserID && convInfo.memberCount > 1 {
+//                ///自己是发起者
+//                convInfo.state = .terminating(reason: reason)
+//            } else {
+//
+//            }
             if reason == .timeout {///群聊，当因为未响应或者webSocket连接超时，导致超时时，改变该群的状态为still
                 convInfo.state = .terminating(reason: .stillOngoing)
             } else {

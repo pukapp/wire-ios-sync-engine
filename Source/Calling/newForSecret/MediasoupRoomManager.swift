@@ -55,7 +55,7 @@ extension MediasoupRoomManager: MediasoupSignalManagerDelegate {
                 let pUid = UUID(uuidString: peerId) else {
                 return
             }
-            self.roomPeersManager?.removePeer(with: pUid)
+            self.roomPeersManager?.peerDisConnect(with: pUid)
         case .newPeer:
             self.receiveNewPeer(peerInfo: info)
         case .peerLeave:
@@ -79,7 +79,14 @@ protocol MediasoupRoomManagerDelegate {
     func onGroupMemberChange(conversationId: UUID, memberCount: Int)
 }
 
-let signalWorkQueue: DispatchQueue = DispatchQueue(label: "MediasoupSignalSocket.SignalSendQueue")
+/*
+ * 由于关闭房间会有两种情况
+ * 1.收到外部消息或主动调用，则关闭房间，释放资源
+ * 2.收到socket信令，然后判断当前房间状态，为空，则释放资源
+ * 由于目前im端消息的推送延迟问题，所以目前socket的peerLeave信令需要处理，im端的消息也需要处理，所以就会造成多个线程同时创建，或者同时释放的问题
+ * 所以这需要是一条串行队列，否则会造成很多闪退bug
+ */
+let signalWorkQueue: DispatchQueue = DispatchQueue.init(label: "MediasoupSignalWorkQueue")
 
 class MediasoupRoomManager: NSObject {
     
@@ -172,7 +179,8 @@ class MediasoupRoomManager: NSObject {
     }
     
     ///创建transport
-    func createWebRtcTransports() {
+    private func createWebRtcTransports() {
+        zmLog.info("Mediasoup::createWebRtcTransports--PThread:\(Thread.current)")
         guard let recvJson = signalManager.createWebRtcTransportRequest(with: false) else {
             return
         }
@@ -185,7 +193,7 @@ class MediasoupRoomManager: NSObject {
         self.loginRoom()
     }
     
-    func processWebRtcTransport(with isProducing: Bool, webRtcTransportData: JSON) {
+    private func processWebRtcTransport(with isProducing: Bool, webRtcTransportData: JSON) {
         let id: String = webRtcTransportData["id"].stringValue
         let iceParameters: String = webRtcTransportData["iceParameters"].description
         let iceCandidates: String = webRtcTransportData["iceCandidates"].description
@@ -204,7 +212,7 @@ class MediasoupRoomManager: NSObject {
     }
     
     ///登录房间，并且获取房间内peer信息
-    func loginRoom() {
+    private func loginRoom() {
         guard let response = self.signalManager.loginRoom(with: self.device!.getRtpCapabilities()) else {
             return
         }
@@ -219,12 +227,12 @@ class MediasoupRoomManager: NSObject {
     }
     
     ///开启音频发送
-    func startProduce() {
+    private func startProduce() {
         self.produceAudio()
     }
     
     ///网络断开连接
-    func disConnectedRoom() {
+    fileprivate func disConnectedRoom() {
         
         self.signalManager.leaveGroup()
         
@@ -238,7 +246,6 @@ class MediasoupRoomManager: NSObject {
                 self.sendTransport = nil
                 self.sendTransportListen = nil
             }
-            
             
             if self.recvTransport != nil {
                 self.recvTransport?.close()
@@ -271,8 +278,6 @@ class MediasoupRoomManager: NSObject {
             zmLog.info("Mediasoup::leaveRoom---thread:\(Thread.current)")
         
             self.signalManager.peerLeave()
-            ///关闭socket
-            self.signalManager.leaveRoom()
             
             self.roomState = .none
 
@@ -284,7 +289,6 @@ class MediasoupRoomManager: NSObject {
                 self.sendTransportListen = nil
             }
 
-            
             if self.recvTransport != nil {
                 self.recvTransport?.close()
                 self.recvTransport = nil
@@ -297,7 +301,7 @@ class MediasoupRoomManager: NSObject {
             self.producers.removeAll()
             self.producerListeners.removeAll()
 
-            zmLog.info("Mediasoup::destoryDevice--\(String(describing: self.device))")
+            zmLog.info("Mediasoup::leaveRoom--destoryDevice--\(String(describing: self.device))")
             self.device = nil
             self.roomId = nil
             
@@ -305,6 +309,8 @@ class MediasoupRoomManager: NSObject {
             self.mediaOutputManager?.clear()
             self.mediaOutputManager = nil
             
+            ///关闭socket
+            self.signalManager.leaveRoom()
         }
     }
     
@@ -430,6 +436,7 @@ class MediasoupTransportListener: NSObject, SendTransportListener, RecvTransport
     }
     
     func onConnectionStateChange(_ transport: Transport!, connectionState: String!) {
+        zmLog.info("Mediasoup::onConnectionStateChange--PThread:\(Thread.current)")
         if self.isProduce {
             zmLog.info("Mediasoup::ProduceTransport-connectionState:\(String(describing: connectionState)) thread:\(Thread.current)")
         } else {
@@ -490,8 +497,11 @@ extension MediasoupRoomManager {
          *  webRTC 里面 peerConnection 的 各种状态设置不是线程安全的，并且当传入了错误的状态会报错，从而引起应用崩溃，所以这里一个一个的去创建produce
         */
         signalWorkQueue.async {
+            guard let sendTransport = self.sendTransport else {
+                return
+            }
             let listener = MediasoupProducerListener()
-            let producer: Producer = self.sendTransport!.produce(listener, track: track, encodings: encodings, codecOptions: codecOptions)
+            let producer: Producer = sendTransport.produce(listener, track: track, encodings: encodings, codecOptions: codecOptions)
             listener.producerId =  producer.getId()
             self.producers.append(producer)
             self.producerListeners.append(listener)
@@ -556,7 +566,8 @@ extension MediasoupRoomManager {
 
     func handleNewConsumer(with consumerInfo: JSON) {
         guard let peerId = consumerInfo["appData"]["peerId"].string,
-            let peerUId = UUID(uuidString: peerId) else {
+            let peerUId = UUID(uuidString: peerId),
+            let recvTransport = self.recvTransport else {
             return
         }
         if self.roomState != .peerConnected {
@@ -571,7 +582,7 @@ extension MediasoupRoomManager {
         zmLog.info("Mediasoup::RoomManager-NewConsumer--peer:\(peerId)--kind:\(kind)---id:\(id)")
         
         let consumerListen = MediasoupConsumerListener(consumerId: id)
-        let consumer: Consumer = self.recvTransport!.consume(consumerListen, id: id, producerId: producerId, kind: kind, rtpParameters: rtpParameters.description)
+        let consumer: Consumer = recvTransport.consume(consumerListen, id: id, producerId: producerId, kind: kind, rtpParameters: rtpParameters.description)
         
         self.roomPeersManager?.addNewConsumer(with: peerUId, consumer: consumer, listener: consumerListen)
     }

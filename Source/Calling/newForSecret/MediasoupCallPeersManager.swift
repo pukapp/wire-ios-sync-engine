@@ -29,6 +29,7 @@ protocol MediasoupCallPeersObserver {
     func roomPeersVideoStateChange(peerId: UUID, videoState: VideoState)
 }
 
+///管理房间里的成员，以及回调成员的状态变化
 class MediasoupCallPeersManager {
 
     private var selfUserId: UUID?
