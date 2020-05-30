@@ -40,7 +40,8 @@ public class MediasoupSignalSocket {
     }
     
     func createSocket() {
-        self.socket = WebSocket.init(url: url, protocols: ["secret-media"])//secret-media--protoo
+        zmLog.info("Mediasoup::Socket----url:\(url)")
+        self.socket = WebSocket(url: url, protocols: ["secret-media"])//secret-media--protoo
         self.socket!.disableSSLCertValidation = true
         self.socket!.callbackQueue = socketRecvQueue
         self.socket!.delegate = self
@@ -53,6 +54,7 @@ public class MediasoupSignalSocket {
     
     func reConnect() {
         zmLog.info("Mediasoup::Socket-reConnect")
+        self.createSocket()
         self.socket?.connect()
     }
     
@@ -85,11 +87,13 @@ extension MediasoupSignalSocket: WebSocketDelegate, WebSocketPongDelegate {
     public func websocketDidDisconnect(socket: WebSocketClient, error: Error?) {
         zmLog.info("Mediasoup::Socket-websocketDidDisconnect")
         self.reConnectedTimes += 1
-        if self.reConnectedTimes > 8 {
+        if self.reConnectedTimes > 6 {
             self.delegate.receive(action: .disconnected(needDestory: true))
         } else {
             self.delegate.receive(action: .disconnected(needDestory: false))
-            self.reConnect()
+            DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
+                self.reConnect()
+            }
         }
     }
     

@@ -223,7 +223,6 @@ extension MediasoupWrapper {
             if model.callAction == .start {
                 self.callCenter?.handleMissedCall(conversationId: model.cid, messageTime: model.callData, userId: model.userId, isVideoCall: model.callType == .video)
             }
-            zmLog.info("mediasoup::receiveUpdateCallingAction---action:\(model.callAction)--cid:\(model.cid)--uid:\(model.userId)--clientId:\(model.clientId)\n")
             return
         }
         

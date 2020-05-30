@@ -395,7 +395,7 @@ extension MediasoupSignalManager{
         
         self.socket?.send(string: request.jsonString())
         
-        let result = sendAckRequestDispatch.wait(timeout: .now() + 10)
+        let result = sendAckRequestDispatch.wait(timeout: .now() + 20)
         if result == .success {
             return self.syncResponse
         } else {

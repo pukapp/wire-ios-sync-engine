@@ -80,6 +80,7 @@ final class MediaOutputManager: NSObject {
     
     private var videoCapturer: RTCCameraVideoCapturer?
     private var videoSource: RTCVideoSource?
+    private var currentOutputFormat: VideoOutputFormat?
     
     private var isFront: Bool = true
     private var frontCapture: AVCaptureDevice?
@@ -116,14 +117,18 @@ final class MediaOutputManager: NSObject {
     }
     
     func changeVideoOutputFormat(with format: VideoOutputFormat) {
-        zmLog.info("mediasoup::MediaManagerShared--changeVideoOutputFormat:\(format)")
-        self.videoSource?.adaptOutputFormat(toWidth: format.width, height: format.height, fps: Int32(MEDIA_VIDEO_FPS))
+        if self.currentOutputFormat != format {
+            zmLog.info("mediasoup::MediaManagerShared--changeVideoOutputFormat:\(format)")
+            self.currentOutputFormat = format
+            self.videoSource?.adaptOutputFormat(toWidth: format.width, height: format.height, fps: Int32(MEDIA_VIDEO_FPS))
+        }
     }
     
     func getVideoTrack(with format: VideoOutputFormat) -> RTCVideoTrack  {
         if let track = self.mediaSoupVideoTrack {
             return track
         }
+        self.currentOutputFormat = format
         
         // if there is a device start capturing it
         self.videoCapturer = RTCCameraVideoCapturer.init();
