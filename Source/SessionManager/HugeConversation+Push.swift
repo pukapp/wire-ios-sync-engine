@@ -20,14 +20,14 @@ public class HugeConversationSetting: NSObject {
     @objc(saveWithConversationList:in:)
     public static func save(with conversationList: [ZMConversation], in userId: String) {
         let saveKey = HugeConversationSaveID + "-" + userId
-
-        let updateConversations = conversationList.map { (conv) -> String in
-            let cid = conv.remoteIdentifier!.transportString()
-            if conv.mutedMessageTypes == .regular || conv.mutedMessageTypes == .all {
-                return cid + separatedString + "1"
-            } else {
-                return cid + separatedString + "0"
-            }
+        
+        let updateConversations: [String] = conversationList.compactMap { conv in
+            guard let cid = conv.remoteIdentifier?.transportString() else {return nil}
+                if conv.mutedMessageTypes == .regular || conv.mutedMessageTypes == .all {
+                    return cid + separatedString + "1"
+                } else {
+                    return cid + separatedString + "0"
+                }
         }
         
         UserDefaults.standard.setValue(updateConversations, forKey: saveKey)
