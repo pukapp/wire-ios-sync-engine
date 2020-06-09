@@ -91,7 +91,7 @@ extension MediasoupSignalSocket: WebSocketDelegate, WebSocketPongDelegate {
             self.delegate.receive(action: .disconnected(needDestory: true))
         } else {
             self.delegate.receive(action: .disconnected(needDestory: false))
-            DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
+            socketRecvQueue.asyncAfter(deadline: .now() + 5) {
                 self.reConnect()
             }
         }
