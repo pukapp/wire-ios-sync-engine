@@ -271,11 +271,9 @@ class MediasoupSignalManager: NSObject {
     fileprivate var syncResponse: JSON!
     
     private var socket: MediasoupSignalSocket?
-    private let url: String
     private let delegate: MediasoupSignalManagerDelegate
 
-    init(url: String, delegate: MediasoupSignalManagerDelegate) {
-        self.url = url
+    init(delegate: MediasoupSignalManagerDelegate) {
         self.delegate = delegate
     }
     
@@ -283,8 +281,8 @@ class MediasoupSignalManager: NSObject {
         self.socket?.disConnect()
     }
     
-    func connectRoom(with roomId: String, userId: String) {
-        let urlString = self.url + "/?roomId=\(roomId)&peerId=\(userId)"
+    func connectRoom(with url: String, roomId: String, userId: String) {
+        let urlString = url + "/?roomId=\(roomId)&peerId=\(userId)"
         guard let roomUrl = URL.init(string: urlString) else {
             return
         }

@@ -138,34 +138,46 @@ class MediasoupRoomManager: NSObject {
     
     override init() {
         Mediasoupclient.initializePC()
-        Logger.setLogLevel(LogLevel.LOG_WARN)
+        Logger.setLogLevel(LogLevel.WARN)
         Logger.setDefaultHandler()
         producers = []
         producerListeners = []
         consumersInfo = []
         super.init()
-        /*
-         *  13.76.41.238        新加坡
-         *  106.75.225.178      上海
-         *  27.124.45.160       香港服务器
-         */
-        signalManager = MediasoupSignalManager(url: "wss://27.124.45.160:4443", delegate: self)
+        signalManager = MediasoupSignalManager(delegate: self)
     }
     
     func connectToRoom(with roomId: UUID, userId: UUID) {
+        print("Mediasoup::signalWorkQueue--\(signalWorkQueue.debugDescription)")
         guard self.roomId == nil else {
             ///已经在房间里面了
             return
         }
-        print("Mediasoup::signalWorkQueue--\(signalWorkQueue.debugDescription)")
-        self.roomState = .socketConnecting
-        self.device = Device()
-        self.mediaOutputManager = MediaOutputManager()
-        zmLog.info("Mediasoup::RoomManager--connectToRoomWith roomId:\(roomId) userId:\(userId)")
         self.roomId = roomId
         self.userId = userId
+        self.roomState = .socketConnecting
+        
+        self.device = Device()
+        self.mediaOutputManager = MediaOutputManager()
         self.roomPeersManager = MediasoupCallPeersManager(observer: self)
-        self.signalManager.connectRoom(with: roomId.transportString(), userId: self.userId!.transportString())
+        self.signalManager.connectRoom(with: "wss://27.124.45.160:4443", roomId: roomId.transportString(), userId: self.userId!.transportString())
+        
+//        MediasoupService.requestRoomInfo(with: roomId.transportString(), uid: userId.transportString()) {[weak self] (roomInfo) in
+//            signalWorkQueue.async {
+//                guard let `self` = self,
+//                    self.roomState == .socketConnecting else { return }
+//
+//                guard let info = roomInfo else {
+//                    self.delegate?.leaveRoom(conversationId: roomId, reason: .internalError)
+//                    return
+//                }
+//                self.device = Device()
+//                self.mediaOutputManager = MediaOutputManager()
+//                self.roomPeersManager = MediasoupCallPeersManager(observer: self)
+//                self.signalManager.connectRoom(with: info.roomUrl, roomId: roomId.transportString(), userId: self.userId!.transportString())
+//            }
+//        }
+
     }
     
     func configureDevice() {
@@ -222,12 +234,7 @@ class MediasoupRoomManager: NSObject {
                 receiveNewPeer(peerInfo: info)
             }
         }
-        
-        self.startProduce()
-    }
-    
-    ///开启音频发送
-    private func startProduce() {
+        ///开启音频发送
         self.produceAudio()
     }
     
@@ -427,8 +434,12 @@ class MediasoupTransportListener: NSObject, SendTransportListener, RecvTransport
         super.init()
     }
 
-    func onProduce(_ transport: Transport!, kind: String!, rtpParameters: String!, appData: String!) -> String! {
-        return self.delegate.onProduce(transport.getId(), kind: kind, rtpParameters: rtpParameters, appData: appData)
+//    func onProduce(_ transport: Transport!, kind: String!, rtpParameters: String!, appData: String!) -> String! {
+//        return
+//    }
+    
+    func onProduce(_ transport: Transport!, kind: String!, rtpParameters: String!, appData: String!, callback: ((String?) -> Void)!) {
+        callback(self.delegate.onProduce(transport.getId(), kind: kind, rtpParameters: rtpParameters, appData: appData))
     }
     
     func onConnect(_ transport: Transport!, dtlsParameters: String!) {
@@ -475,19 +486,19 @@ extension MediasoupRoomManager {
                 zmLog.info("Mediasoup::RoomManager--can not produceVideo")
                 return
         }
-        
-        let codecOptions: JSON = [
-            "x-google-start-bitrate": 1000
-        ]
-        
-        var encodings: Array = Array<RTCRtpEncodingParameters>.init()
-        encodings.append(RTCUtils.genRtpEncodingParameters(true, maxBitrateBps: 500000, minBitrateBps: 0, maxFramerate: 60, numTemporalLayers: 0, scaleResolutionDownBy: 0))
-        encodings.append(RTCUtils.genRtpEncodingParameters(true, maxBitrateBps: 1000000, minBitrateBps: 0, maxFramerate: 60, numTemporalLayers: 0, scaleResolutionDownBy: 0))
-        encodings.append(RTCUtils.genRtpEncodingParameters(true, maxBitrateBps: 1500000, minBitrateBps: 0, maxFramerate: 60, numTemporalLayers: 0, scaleResolutionDownBy: 0))
+       
+        ///WebRTC-M79版本不支持这些参数
+//        let codecOptions: JSON = [
+//            "x-google-start-bitrate": 1000
+//        ]
+//        var encodings: Array = Array<RTCRtpEncodingParameters>.init()
+//        encodings.append(RTCUtils.genRtpEncodingParameters(true, maxBitrateBps: 500000, minBitrateBps: 0, maxFramerate: 60, numTemporalLayers: 0, scaleResolutionDownBy: 0))
+//        encodings.append(RTCUtils.genRtpEncodingParameters(true, maxBitrateBps: 1000000, minBitrateBps: 0, maxFramerate: 60, numTemporalLayers: 0, scaleResolutionDownBy: 0))
+//        encodings.append(RTCUtils.genRtpEncodingParameters(true, maxBitrateBps: 1500000, minBitrateBps: 0, maxFramerate: 60, numTemporalLayers: 0, scaleResolutionDownBy: 0))
         
         let videoTrack = self.mediaOutputManager!.getVideoTrack(with: VideoOutputFormat(count: self.roomPeersManager?.totalVideoConsumersCount ?? 0))
         
-        self.createProducer(track: videoTrack, codecOptions: codecOptions.description, encodings: encodings)
+        self.createProducer(track: videoTrack, codecOptions: nil, encodings: nil)
         ///将自己的track也放在管理类中
         self.roomPeersManager?.addSelfVideoTrack(userId: self.userId!, videoTrack: videoTrack)
     }

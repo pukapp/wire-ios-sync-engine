@@ -54,6 +54,7 @@ open class MediasoupVideoView : RTCEAGLVideoView {
     
     open var shouldFill: Bool = false
     open var fillRatio: CGFloat = 0.0
+    open var videoSize: CGSize = CGSize(width: 100, height: 100)
     open var userid: String? {
         didSet {
             if let id = userid,
@@ -66,8 +67,6 @@ open class MediasoupVideoView : RTCEAGLVideoView {
             }
         }
     }
-        
-    open var videoSize: CGSize = CGSize(width: 100, height: 100)
     
     open func removeAddedTrack() {
         if let id = userid {
