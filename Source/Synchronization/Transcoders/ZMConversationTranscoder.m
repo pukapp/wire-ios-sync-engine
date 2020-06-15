@@ -911,6 +911,15 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         conversation.blocked = !([dataPayload[ZMConversationBlockedKey] integerValue] == 0);
     }
     
+    //更新群助手
+    if([dataPayload.allKeys containsObject:ZMConversationAssistantBotKey] && [dataPayload.allKeys containsObject:ZMConversationAssistantBotOptKey]) {
+        if([dataPayload optionalNumberForKey:ZMConversationAssistantBotOptKey].integerValue == 0) {// 删除
+            conversation.assistantBot = nil;
+        } else if ([dataPayload optionalNumberForKey:ZMConversationAssistantBotOptKey].integerValue == 1) {// 添加
+            conversation.assistantBot = [dataPayload optionalStringForKey:ZMConversationAssistantBotKey];
+        }
+    }
+    
     //演讲者
     if ([dataPayload.allKeys containsObject:ZMConversationInfoOratorKey]) {
         NSArray *orator = [dataPayload optionalArrayForKey:ZMConversationInfoOratorKey];
