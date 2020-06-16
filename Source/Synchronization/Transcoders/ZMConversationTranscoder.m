@@ -916,7 +916,10 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         if([dataPayload optionalNumberForKey:ZMConversationAssistantBotOptKey].integerValue == 0) {// 删除
             conversation.assistantBot = nil;
         } else if ([dataPayload optionalNumberForKey:ZMConversationAssistantBotOptKey].integerValue == 1) {// 添加
-            conversation.assistantBot = [dataPayload optionalStringForKey:ZMConversationAssistantBotKey];
+            NSString *bid = [dataPayload optionalStringForKey:ZMConversationAssistantBotKey];
+            ZMUser *botUser = [ZMUser userWithRemoteID:[NSUUID uuidWithTransportString:bid] createIfNeeded:false inContext:self.managedObjectContext];
+            botUser.needsToBeUpdatedFromBackend = true;
+            conversation.assistantBot = bid;
         }
     }
     
