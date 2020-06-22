@@ -76,8 +76,7 @@ final class MediaOutputManager: NSObject {
     private static let AUDIO_TRACK_ID: String = "ARDAMSa0"
     
     private let peerConnectionFactory: RTCPeerConnectionFactory
-    private let mediaStream: RTCMediaStream
-    
+
     private var videoCapturer: RTCCameraVideoCapturer?
     private var videoSource: RTCVideoSource?
     private var currentOutputFormat: VideoOutputFormat?
@@ -89,24 +88,26 @@ final class MediaOutputManager: NSObject {
         return isFront ? frontCapture : backCapture
     }
     
+    ///由于主界面和room管理类可能会同时异步获取videoTrack，从而会造成获取两个track，这里需要加一个锁。
+    let getVideoTracklock = NSLock()
     private var mediaSoupVideoTrack: RTCVideoTrack?
     private var mediaSoupAudioTrack: RTCAudioTrack?
     
     override init() {
         self.peerConnectionFactory = RTCPeerConnectionFactory.init();
 
-        self.mediaStream = self.peerConnectionFactory.mediaStream(withStreamId: MediaOutputManager.MEDIA_STREAM_ID)
-        
         self.frontCapture = AVCaptureDevice.DiscoverySession.init(deviceTypes: [.builtInWideAngleCamera], mediaType: .video, position: .front).devices.first;
         self.backCapture = AVCaptureDevice.DiscoverySession.init(deviceTypes: [.builtInWideAngleCamera], mediaType: .video, position: .back).devices.first;
     }
     
     func startVideoCapture() {
+        zmLog.info("mediasoup::--startVideoCapture")
         guard let capture = self.currentCapture else { return }
         self.videoCapturer?.startCapture(with: capture, format: capture.activeFormat, fps: MEDIA_VIDEO_FPS)
     }
     
     func stopVideoCapture() {
+        zmLog.info("mediasoup::--stopVideoCapture")
         self.videoCapturer?.stopCapture()
     }
     
@@ -124,26 +125,30 @@ final class MediaOutputManager: NSObject {
         }
     }
     
+    
     func getVideoTrack(with format: VideoOutputFormat) -> RTCVideoTrack  {
+        getVideoTracklock.lock()
+        
         if let track = self.mediaSoupVideoTrack {
+            getVideoTracklock.unlock()
             return track
         }
-        self.currentOutputFormat = format
+        zmLog.info("mediasoup::--getVideoTrack:\(format)")
         
-        // if there is a device start capturing it
-        self.videoCapturer = RTCCameraVideoCapturer.init();
-        self.videoCapturer!.delegate = self
+        self.currentOutputFormat = format
         
         self.videoSource = self.peerConnectionFactory.videoSource();
         self.videoSource!.adaptOutputFormat(toWidth: format.width, height: format.height, fps: Int32(MEDIA_VIDEO_FPS));
         
-        let videoTrack: RTCVideoTrack = self.peerConnectionFactory.videoTrack(with: self.videoSource!, trackId: MediaOutputManager.VIDEO_TRACK_ID)
-        self.mediaStream.addVideoTrack(videoTrack)
+        self.videoCapturer = RTCCameraVideoCapturer(delegate: self)
+        self.videoCapturer?.startCapture(with: self.currentCapture!, format: self.currentCapture!.activeFormat, fps: MEDIA_VIDEO_FPS)
         
+        let videoTrack: RTCVideoTrack = self.peerConnectionFactory.videoTrack(with: self.videoSource!, trackId: MediaOutputManager.VIDEO_TRACK_ID)
         videoTrack.isEnabled = true
         
         self.mediaSoupVideoTrack = videoTrack
         
+        getVideoTracklock.unlock()
         return videoTrack
     }
     
@@ -154,7 +159,6 @@ final class MediaOutputManager: NSObject {
         
         let audioTrack: RTCAudioTrack = self.peerConnectionFactory.audioTrack(withTrackId: MediaOutputManager.AUDIO_TRACK_ID)
         audioTrack.isEnabled = true
-        self.mediaStream.addAudioTrack(audioTrack)
         
         self.mediaSoupAudioTrack = audioTrack
         return audioTrack
@@ -163,19 +167,24 @@ final class MediaOutputManager: NSObject {
     func clear() {
         if let audioTrack = self.mediaSoupAudioTrack {
             audioTrack.isEnabled = false
-            self.mediaStream.removeAudioTrack(audioTrack)
+            self.mediaSoupAudioTrack = nil
         }
         if let videoTrack = self.mediaSoupVideoTrack {
             videoTrack.isEnabled = false
-            self.mediaStream.removeVideoTrack(videoTrack)
+            self.mediaSoupVideoTrack = nil
+            self.videoCapturer?.stopCapture()
+            self.videoCapturer = nil
+            self.videoSource = nil
         }
     }
 }
 
 extension MediaOutputManager : RTCVideoCapturerDelegate {
     func capturer(_ capturer: RTCVideoCapturer, didCapture frame: RTCVideoFrame) {
-        UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
-        self.videoSource?.capturer(capturer, didCapture: frame)
+        DispatchQueue.main.async {
+            UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
+            self.videoSource?.capturer(capturer, didCapture: frame)
+        }
     }
 }
 

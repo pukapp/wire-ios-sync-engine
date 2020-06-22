@@ -235,9 +235,11 @@ class MediasoupCallMember: ZMTimerClient {
         if let index = self.consumers.firstIndex(where: {return $0.getId() == id }) {
             ///这里必须先将视频画面给关闭，再closeConsumer，否则会出现闪退
             if self.consumers[index].getKind() == "video" {
+                self.connectState = .connected(videoState: .stopped)
                 self.stateObserver.callMemberVideoStateChange(peerId: self.peerId, videoState: .stopped)
             }
-            self.consumers[index].close()
+            ///这里consumer不能主动的调用close，否则会造成二次开启视频之后接收方的崩溃
+            //self.consumers[index].close()
             zmLog.info("Mediasoup::removeConsumer--\(self.consumers.count)")
             self.consumers.remove(at: index)
             self.consumerListeners.remove(at: index)

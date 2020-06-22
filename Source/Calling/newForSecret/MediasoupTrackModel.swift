@@ -24,7 +24,9 @@ open class MediasoupPreviewView : RTCEAGLVideoView {
         
         if self.window != nil && !attached {
             zmLog.info("Mediasoup::SelfPreviewView--addTrack")
-            videoTrack.add(self)
+            signalWorkQueue.async {
+                videoTrack.add(self)
+            }
         } else {
             zmLog.info("Mediasoup::SelfPreviewView--removeTrack")
             videoTrack.remove(self)
@@ -57,27 +59,27 @@ open class MediasoupVideoView : RTCEAGLVideoView {
     open var videoSize: CGSize = CGSize(width: 100, height: 100)
     open var userid: String? {
         didSet {
+            zmLog.info("Mediasoup::VideoView--userid--newValue:\(String(describing: userid)),oldValue\(String(describing: oldValue))")
             if let id = userid,
                 let uid = UUID(uuidString: id),
                 let track = MediasoupRoomManager.shareInstance.roomPeersManager?.getVideoTrack(with: uid)
             {
-                zmLog.info("Mediasoup::VideoView--addTrack--track")
-                track.isEnabled = true
-                track.add(self)
+                self.videoTrack = track
             }
         }
     }
     
-    open func removeAddedTrack() {
-        if let id = userid {
-            if let uid = UUID(uuidString: id),
-            let track = MediasoupRoomManager.shareInstance.roomPeersManager?.getVideoTrack(with: uid)
-            {
-                zmLog.info("Mediasoup::VideoView--removeAddedTrack--")
-               track.remove(self)
-            }
-            zmLog.info("Mediasoup::VideoView--removeAddedTrack--track == nil")
+    private var videoTrack: RTCVideoTrack? {
+        didSet {
+            zmLog.info("Mediasoup::VideoView--videoTrack--newValue:\(String(describing: videoTrack)),oldValue\(String(describing: oldValue))")
+            oldValue?.remove(self)
+            videoTrack?.add(self)
         }
+    }
+    
+    
+    @objc open func removeAddedTrack() {
+        self.videoTrack = nil
     }
 }
 

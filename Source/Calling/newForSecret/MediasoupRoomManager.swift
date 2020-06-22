@@ -138,7 +138,7 @@ class MediasoupRoomManager: NSObject {
     
     override init() {
         Mediasoupclient.initializePC()
-        Logger.setLogLevel(LogLevel.WARN)
+        Logger.setLogLevel(LogLevel.TRACE)
         Logger.setDefaultHandler()
         producers = []
         producerListeners = []
@@ -160,7 +160,8 @@ class MediasoupRoomManager: NSObject {
         self.device = Device()
         self.mediaOutputManager = MediaOutputManager()
         self.roomPeersManager = MediasoupCallPeersManager(observer: self)
-        self.signalManager.connectRoom(with: "wss://27.124.45.160:4443", roomId: roomId.transportString(), userId: self.userId!.transportString())
+        ///192.168.3.66----27.124.45.160
+        self.signalManager.connectRoom(with: "wss://192.168.3.66:4443", roomId: roomId.transportString(), userId: self.userId!.transportString())
         
 //        MediasoupService.requestRoomInfo(with: roomId.transportString(), uid: userId.transportString()) {[weak self] (roomInfo) in
 //            signalWorkQueue.async {
@@ -248,29 +249,25 @@ class MediasoupRoomManager: NSObject {
             zmLog.info("Mediasoup::disConnectedRoom---thread:\(Thread.current)")
             self.roomPeersManager?.removeSelfVideoTrack(userId: self.userId!)
             
+            print("Mediasoup::leaveRoom--roomPeersManager-clear--thread:\(Thread.current)")
+            self.consumersInfo.removeAll()
+            self.producers.forEach({ $0.close() })
+            self.producers.removeAll()
+            self.producerListeners.removeAll()
+                
             if self.sendTransport != nil {
                 self.sendTransport?.close()
+                self.sendTransport?.dispose()
                 self.sendTransport = nil
                 self.sendTransportListen = nil
             }
             
             if self.recvTransport != nil {
                 self.recvTransport?.close()
+                self.recvTransport?.dispose()
                 self.recvTransport = nil
                 self.recvTransportListen = nil
             }
-            
-            print("Mediasoup::leaveRoom--roomPeersManager-clear--thread:\(Thread.current)")
-            self.consumersInfo.removeAll()
-            self.producers.forEach({
-                zmLog.info("Mediasoup::leaveRoom--produce-isClosed::\($0.isClosed())")
-                if !$0.isClosed() {
-                    $0.close()
-                }
-            })
-            self.producers.removeAll()
-            self.producerListeners.removeAll()
-            
         }
     }
     
@@ -290,23 +287,25 @@ class MediasoupRoomManager: NSObject {
 
             self.readyToComsumer = false
             
+            zmLog.info("Mediasoup::leaveRoom--roomPeersManager-clear--thread:\(Thread.current)")
+            self.consumersInfo.removeAll()
+            self.producers.forEach({ $0.close() })
+            self.producers.removeAll()
+            self.producerListeners.removeAll()
+            
             if self.sendTransport != nil {
                 self.sendTransport?.close()
+                self.sendTransport?.dispose()
                 self.sendTransport = nil
                 self.sendTransportListen = nil
             }
-
+            
             if self.recvTransport != nil {
                 self.recvTransport?.close()
+                self.recvTransport?.dispose()
                 self.recvTransport = nil
                 self.recvTransportListen = nil
             }
-
-            zmLog.info("Mediasoup::leaveRoom--roomPeersManager-clear--thread:\(Thread.current)")
-            self.roomPeersManager?.clear()
-            self.consumersInfo.removeAll()
-            self.producers.removeAll()
-            self.producerListeners.removeAll()
 
             zmLog.info("Mediasoup::leaveRoom--destoryDevice--\(String(describing: self.device))")
             self.device = nil
@@ -316,6 +315,8 @@ class MediasoupRoomManager: NSObject {
             self.mediaOutputManager?.clear()
             self.mediaOutputManager = nil
             
+            self.roomPeersManager?.clear()
+            self.roomPeersManager = nil
             ///关闭socket
             self.signalManager.leaveRoom()
         }
@@ -338,7 +339,10 @@ extension MediasoupRoomManager {
     }
     
     func removePeer(with id: UUID) {
-        self.roomPeersManager?.removePeer(with: id)
+        ///接收end消息时会调用，所以需要放在此线程中
+        signalWorkQueue.async {
+            self.roomPeersManager?.removePeer(with: id)
+        }
     }
     
 }
@@ -434,10 +438,6 @@ class MediasoupTransportListener: NSObject, SendTransportListener, RecvTransport
         super.init()
     }
 
-//    func onProduce(_ transport: Transport!, kind: String!, rtpParameters: String!, appData: String!) -> String! {
-//        return
-//    }
-    
     func onProduce(_ transport: Transport!, kind: String!, rtpParameters: String!, appData: String!, callback: ((String?) -> Void)!) {
         callback(self.delegate.onProduce(transport.getId(), kind: kind, rtpParameters: rtpParameters, appData: appData))
     }
@@ -548,6 +548,7 @@ extension MediasoupRoomManager {
                     videoProduce.close()
                     self.signalManager.closeProduce(with: videoProduce.getId())
                     self.producers = self.producers.filter({ return $0.getKind() != "video" })
+                    self.producerListeners = self.producerListeners.filter({ return $0.producerId != videoProduce.getId() })
                     self.roomPeersManager?.removeSelfVideoTrack(userId: self.userId!)
                 }
             case .paused:
