@@ -34,7 +34,6 @@ NSString *const ConversationsPath = @"/conversations";
 
 NSString *const V3Assetspath = @"/assets/v3";
 
-NSString *const ConversationWalletNotify = @"ConversationWalletNotify";
 NSString *const ConversationServiceMessageAdd = @"ConversationServiceMessageAdd";
 NSString *const ConversationOtrMessageAdd = @"ConversationOtrMessageAdd";
 NSString *const ConversationUserConnection = @"ConversationUserConnection";
@@ -353,13 +352,13 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         case ZMUpdateEventTypeConversationChangeType:
         case ZMUpdateEventTypeConversationChangeCreater:
         case ZMUpdateEventTypeConversationUpdateAliasname:
-        case ZMUpdateEventTypeConversationWalletNotify:
         case ZMUpdateEventTypeConversationBgpMessageAdd:
         case ZMUpdateEventTypeConversationServiceMessageAdd:
         case ZMUpdateEventTypeConversationUpdate:
         case ZMUpdateEventTypeConversationUpdateBlockTime:
         case ZMUpdateEventTypeConversationAppMessageAdd:
         case ZMUpdateEventTypeConversationReceiptModeUpdate:
+        case ZMUpdateEventTypeConversationJsonMessageAdd:
             return YES;
         default:
             return NO;
@@ -453,14 +452,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
        prefetchResult:(ZMFetchRequestBatchResult *)prefetchResult;
 {
     for (ZMUpdateEvent *event in events) {
-        if (event.type == ZMUpdateEventTypeConversationWalletNotify) {
-            [[NSNotificationCenter defaultCenter]postNotificationName:ConversationWalletNotify object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
-            [self createConversationAndJoinMemberFromEvent:event];
-            continue;
-        }
 
         if (event.type == ZMUpdateEventTypeConversationServiceMessageAdd) {
-            [[NSNotificationCenter defaultCenter]postNotificationName:ConversationServiceMessageAdd object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
+            [[NSNotificationCenter defaultCenter] postNotificationName:ConversationServiceMessageAdd object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
             [self createConversationAndJoinMemberFromEvent:event];
             continue;
         }
@@ -480,7 +474,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         }
         
         if (event.type == ZMUpdateEventTypeUserConnection) {
-            [[NSNotificationCenter defaultCenter]postNotificationName:ConversationUserConnection object:nil userInfo:nil];
+            [[NSNotificationCenter defaultCenter] postNotificationName:ConversationUserConnection object:nil userInfo:nil];
         }
         
         ZMConversation *conversation = [self conversationFromEventPayload:event
@@ -499,7 +493,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         
         if (event.type == ZMUpdateEventTypeConversationOtrMessageAdd ||
             event.type == ZMUpdateEventTypeConversationOtrAssetAdd ||
-            event.type == ZMUpdateEventTypeConversationBgpMessageAdd) {
+            event.type == ZMUpdateEventTypeConversationBgpMessageAdd ||
+            event.type == ZMUpdateEventTypeConversationJsonMessageAdd ) {
             [[NSNotificationCenter defaultCenter] postNotificationName:ConversationOtrMessageAdd object:nil userInfo:nil];
         }
         
