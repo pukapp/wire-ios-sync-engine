@@ -43,8 +43,14 @@ extension ZMSyncStrategy: ZMUpdateEventConsumer {
             Logging.eventProcessing.info("Consuming: [\n\(decryptedUpdateEvents.map({ "\tevent: \(ZMUpdateEvent.eventTypeString(for: $0.type) ?? "Unknown")" }).joined(separator: "\n"))\n]")
         
             for event in decryptedUpdateEvents {
+                let date1 = Date()
                 for eventConsumer in self.eventConsumers {
                     eventConsumer.processEvents([event], liveEvents: true, prefetchResult: prefetchResult)
+                }
+                let time = -date1.timeIntervalSinceNow
+                // 打印处理时间超过0.001的事件
+                if time > 0.001 {
+                    Logging.eventProcessing.debug("Event processed in \(time): \(event.type.stringValue ?? ""))")
                 }
                 self.eventProcessingTracker?.registerEventProcessed()
             }

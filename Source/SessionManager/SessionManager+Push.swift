@@ -172,12 +172,7 @@ extension SessionManager: PKPushRegistryDelegate {
             }
             
             withSession(for: account) { userSession in
-                ///managedObjectContext由于为强解类型
-                if userSession.managedObjectContext == nil { return }
-                if let conversations = ZMConversation.hugeGroupConversations(in: userSession.managedObjectContext) as? [ZMConversation],
-                    !conversations.filter({$0.mutedMessageTypes == .none && $0.remoteIdentifier == cid }).isEmpty {
-                    needBeNoticedAccount(account)
-                }
+                needBeNoticedAccount(account)
             }
         }
     }
