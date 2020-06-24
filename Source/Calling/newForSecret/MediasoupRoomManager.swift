@@ -105,7 +105,7 @@ class MediasoupRoomManager: NSObject {
     var delegate: MediasoupRoomManagerDelegate?
     private var signalManager: MediasoupSignalManager!
     
-    private var device: Device?
+    private var device: MPDevice?
     var mediaOutputManager: MediaOutputManager?
     
     private var roomId: UUID?
@@ -157,11 +157,11 @@ class MediasoupRoomManager: NSObject {
         self.userId = userId
         self.roomState = .socketConnecting
         
-        self.device = Device()
+        self.device = MPDevice()
         self.mediaOutputManager = MediaOutputManager()
         self.roomPeersManager = MediasoupCallPeersManager(observer: self)
         ///192.168.3.66----27.124.45.160
-        self.signalManager.connectRoom(with: "wss://192.168.3.66:4443", roomId: roomId.transportString(), userId: self.userId!.transportString())
+        self.signalManager.connectRoom(with: "wss://27.124.45.160:4443", roomId: roomId.transportString(), userId: self.userId!.transportString())
         
 //        MediasoupService.requestRoomInfo(with: roomId.transportString(), uid: userId.transportString()) {[weak self] (roomInfo) in
 //            signalWorkQueue.async {
@@ -533,7 +533,7 @@ extension MediasoupRoomManager {
     }
     
     func setLocalVideo(state: VideoState) {
-        zmLog.info("Mediasoup::RoomManager--setLocalVideo--\(state)")
+        zmLog.info("Mediasoup::RoomManager--setLocalVideo--\(state)-thread:\(Thread.current)")
         signalWorkQueue.async {
             switch state {
             case .started:

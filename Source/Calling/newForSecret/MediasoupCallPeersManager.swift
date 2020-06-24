@@ -238,7 +238,7 @@ class MediasoupCallMember: ZMTimerClient {
                 self.connectState = .connected(videoState: .stopped)
                 self.stateObserver.callMemberVideoStateChange(peerId: self.peerId, videoState: .stopped)
             }
-            ///这里consumer不能主动的调用close，否则会造成二次开启视频之后接收方的崩溃
+            ///这里consumer不能主动的调用close，否则会造成二次开启视频之后接收方的崩溃，描述为Failed to set local answer sdp: Failed to process the bundled m= section.
             //self.consumers[index].close()
             zmLog.info("Mediasoup::removeConsumer--\(self.consumers.count)")
             self.consumers.remove(at: index)

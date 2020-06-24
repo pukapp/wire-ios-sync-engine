@@ -41,7 +41,7 @@ public class MediasoupSignalSocket {
     
     func createSocket() {
         zmLog.info("Mediasoup::Socket----url:\(url)")
-        self.socket = WebSocket(url: url, protocols: ["protoo"])//secret-media--protoo
+        self.socket = WebSocket(url: url, protocols: ["secret-media"])//secret-media--protoo
         self.socket!.disableSSLCertValidation = true
         self.socket!.callbackQueue = socketRecvQueue
         self.socket!.delegate = self

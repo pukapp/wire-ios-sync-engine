@@ -101,13 +101,13 @@ final class MediaOutputManager: NSObject {
     }
     
     func startVideoCapture() {
-        zmLog.info("mediasoup::--startVideoCapture")
+        zmLog.info("Mediasoup::--startVideoCapture")
         guard let capture = self.currentCapture else { return }
         self.videoCapturer?.startCapture(with: capture, format: capture.activeFormat, fps: MEDIA_VIDEO_FPS)
     }
     
     func stopVideoCapture() {
-        zmLog.info("mediasoup::--stopVideoCapture")
+        zmLog.info("Mediasoup::--stopVideoCapture-thread:\(Thread.current)")
         self.videoCapturer?.stopCapture()
     }
     
@@ -119,7 +119,7 @@ final class MediaOutputManager: NSObject {
     
     func changeVideoOutputFormat(with format: VideoOutputFormat) {
         if self.currentOutputFormat != format {
-            zmLog.info("mediasoup::MediaManagerShared--changeVideoOutputFormat:\(format)")
+            zmLog.info("Mediasoup::MediaManagerShared--changeVideoOutputFormat:\(format)")
             self.currentOutputFormat = format
             self.videoSource?.adaptOutputFormat(toWidth: format.width, height: format.height, fps: Int32(MEDIA_VIDEO_FPS))
         }
@@ -133,7 +133,7 @@ final class MediaOutputManager: NSObject {
             getVideoTracklock.unlock()
             return track
         }
-        zmLog.info("mediasoup::--getVideoTrack:\(format)")
+        zmLog.info("Mediasoup::--getVideoTrack:\(format)")
         
         self.currentOutputFormat = format
         
@@ -228,7 +228,7 @@ extension MediaOutputManager : RTCVideoCapturerDelegate {
                 try session.setCategory(category)
                 try session.setActive(true, options: .notifyOthersOnDeactivation)
             } catch _ {
-                zmLog.info("mediasoup::MediaManagerShared == set SpeakEnable failure")
+                zmLog.info("Mediasoup::MediaManagerShared == set SpeakEnable failure")
             }
         }
     }
