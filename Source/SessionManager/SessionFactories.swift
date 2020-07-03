@@ -29,6 +29,7 @@ open class AuthenticatedSessionFactory {
     let application : ZMApplication
     var environment: BackendEnvironmentProvider
     let reachability: ReachabilityProvider & TearDownCapable
+    weak var showContentDelegate: ShowContentDelegate?
 
     public init(
         appVersion: String,
@@ -37,7 +38,8 @@ open class AuthenticatedSessionFactory {
         flowManager: FlowManagerType,
         environment: BackendEnvironmentProvider,
         reachability: ReachabilityProvider & TearDownCapable,
-        analytics: AnalyticsType? = nil
+        analytics: AnalyticsType? = nil,
+        showContentDelegate: ShowContentDelegate? = nil
         ) {
         self.appVersion = appVersion
         self.mediaManager = mediaManager
@@ -46,6 +48,7 @@ open class AuthenticatedSessionFactory {
         self.application = application
         self.environment = environment
         self.reachability = reachability
+        self.showContentDelegate = showContentDelegate
     }
 
     func session(for account: Account, storeProvider: LocalStoreProviderProtocol) -> ZMUserSession? {
@@ -56,6 +59,7 @@ open class AuthenticatedSessionFactory {
             initialAccessToken: nil,
             applicationGroupIdentifier: nil
         )
+        
         /**
          * 新增需求 - 用户访问的ip地址由服务端进行分配，防止域名被封之后，导致所有用户无法使用
          * 登录和每次应用启动时去请求接口，获取对应ip，并保存在本地。
@@ -66,16 +70,21 @@ open class AuthenticatedSessionFactory {
             transportSession.baseURL = tributaryURL
             transportSession.websocketURL = tributaryURL
         }
-        
-        return ZMUserSession(
+
+        let userSession = ZMUserSession(
+            transportSession: transportSession,
             mediaManager: mediaManager,
             flowManager:flowManager,
             analytics: analytics,
-            transportSession: transportSession,
             application: application,
             appVersion: appVersion,
-            storeProvider: storeProvider
+            storeProvider: storeProvider,
+            showContentDelegate: showContentDelegate
         )
+        
+        userSession.startRequestLoopTracker()
+        
+        return userSession
     }
     
 }

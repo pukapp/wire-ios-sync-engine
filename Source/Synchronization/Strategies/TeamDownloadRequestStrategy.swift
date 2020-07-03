@@ -77,7 +77,7 @@ extension TeamDownloadRequestStrategy: ZMDownstreamTranscoder {
         }
         
         team.needsToBeUpdatedFromBackend = false
-        team.needsToRedownloadMembers = true
+        team.needsToDownloadRoles = true
         team.update(with: payload)
     }
 

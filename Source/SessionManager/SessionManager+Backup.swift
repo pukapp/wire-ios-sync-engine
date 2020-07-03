@@ -43,7 +43,7 @@ extension SessionManager {
 
     public func backupActiveAccount(password: String, completion: @escaping BackupResultClosure) {
         guard let userId = accountManager.selectedAccount?.userIdentifier,
-              let clientId = activeUserSession?.selfUserClient()?.remoteIdentifier,
+              let clientId = activeUserSession?.selfUserClient?.remoteIdentifier,
               let handle = activeUserSession.flatMap(ZMUser.selfUser)?.handle else { return completion(.failure(BackupError.noActiveAccount)) }
 
         StorageStack.backupLocalStorage(
@@ -168,9 +168,9 @@ extension SessionManager {
 
 fileprivate extension BackupMetadata {
     
-    fileprivate static let nameAppName = "Secret"
-    fileprivate static let nameFileName = "Backup"
-    fileprivate static let fileExtension = "ios_sbu"
+    static let nameAppName = "Secret"
+    static let nameFileName = "Backup"
+    static let fileExtension = "ios_sbu"
 
     private static let formatter: DateFormatter = {
        let formatter = DateFormatter()

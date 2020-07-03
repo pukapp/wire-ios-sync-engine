@@ -23,7 +23,6 @@
 @import WireDataModel;
 @import WireRequestStrategy;
 
-#import "ZMUserSession.h"
 #import "ZMUser+Testing.h"
 #import "WireSyncEngine_iOS_Tests-Swift.h"
 
@@ -120,7 +119,7 @@
     }];
     WaitForAllGroupsToBeEmpty(0.2);
     
-    XCTAssertEqualObjects(selfUser.displayName, @"Super");
+    XCTAssertEqualObjects(selfUser.name, @"Super Name");
     
     // initialize observers
     
@@ -141,14 +140,14 @@
     
     ZMUser *realUser = [self userForMockUser:extraUser];
     XCTAssertEqualObjects(realUser.name, @"Max Tester");
-    XCTAssertTrue([conversation.activeParticipants containsObject:realUser]);
+    XCTAssertTrue([conversation.localParticipants containsObject:realUser]);
     
     
     NSArray *userNotes = userObserver.notifications;
     XCTAssertEqual(userNotes.count, 0u);
     
-    XCTAssertEqualObjects(realUser.displayName, @"Max");
-    XCTAssertEqualObjects(selfUser.displayName, @"Super");
+    XCTAssertEqualObjects(realUser.name, @"Max Tester");
+    XCTAssertEqualObjects(selfUser.name, @"Super Name");
 }
 
 - (void)testThatClientsGetAddedAndDeletedForUserWhenRequested

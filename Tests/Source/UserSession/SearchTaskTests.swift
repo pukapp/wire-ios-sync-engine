@@ -20,23 +20,29 @@ import Foundation
 
 @testable import WireSyncEngine
 
-class SearchTaskTests : MessagingTest {
+class SearchTaskTests : DatabaseTest {
     
     var teamIdentifier: UUID!
+    var mockTransportSession: MockTransportSession!
 
     override func setUp() {
         super.setUp()
+        self.mockTransportSession = MockTransportSession(dispatchGroup: self.dispatchGroup)
         self.teamIdentifier = UUID()
-        performPretendingUiMocIsSyncMoc { [unowned self] in
+        
+        performPretendingUIMocIsSyncMoc { [unowned self] in
             let selfUser = ZMUser.selfUser(in: self.uiMOC)
             selfUser.remoteIdentifier = UUID()
+            selfUser.teamIdentifier = self.teamIdentifier
             guard let team = Team.fetchOrCreate(with: self.teamIdentifier, create: true, in: self.uiMOC, created: nil) else { XCTFail(); return }
             _ = Member.getOrCreateMember(for: selfUser, in: team, context: self.uiMOC)
+            uiMOC.saveOrRollback()
         }
     }
 
     override func tearDown() {
         self.teamIdentifier = nil
+        self.mockTransportSession = nil
         super.tearDown()
     }
 
@@ -56,8 +62,11 @@ class SearchTaskTests : MessagingTest {
     
     func createGroupConversation(withName name: String) -> ZMConversation {
         let conversation = ZMConversation.insertNewObject(in: uiMOC)
+        let selfUser = ZMUser.selfUser(in: uiMOC)
+        selfUser.name = "Me"
         conversation.userDefinedName = name
         conversation.conversationType = .group
+        conversation.addParticipantAndUpdateConversationState(user: selfUser, role: nil)
         
         uiMOC.saveOrRollback()
         
@@ -75,7 +84,7 @@ class SearchTaskTests : MessagingTest {
         }
         
         let request = SearchRequest(query: "bob", searchOptions: [.directory])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -105,14 +114,14 @@ class SearchTaskTests : MessagingTest {
         }
         
         // update self user locally
-        mockUserSession.syncManagedObjectContext.performGroupedBlockAndWait {
-            ZMUser.selfUser(in: self.mockUserSession.managedObjectContext).remoteIdentifier = selfUserID
-            self.mockUserSession.syncManagedObjectContext.saveOrRollback()
+        syncMOC.performGroupedBlockAndWait {
+            ZMUser.selfUser(in: self.syncMOC).remoteIdentifier = selfUserID
+            self.syncMOC.saveOrRollback()
         }
         
         let remoteResultArrived = expectation(description: "received remote result")
         let request = SearchRequest(query: "einstein", searchOptions: [.directory])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -134,12 +143,12 @@ class SearchTaskTests : MessagingTest {
         let user = createConnectedUser(withName: "userA")
         
         let request = SearchRequest(query: "userA", searchOptions: [.contacts])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertTrue(result.contacts.contains(user))
+            XCTAssertTrue(result.contacts.compactMap(\.user).contains(user))
         }
         
         // when
@@ -153,7 +162,7 @@ class SearchTaskTests : MessagingTest {
         _ = createConnectedUser(withName: "userA")
         
         let request = SearchRequest(query: "serA", searchOptions: [.contacts])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -172,12 +181,12 @@ class SearchTaskTests : MessagingTest {
         let user = createConnectedUser(withName: "userA")
         
         let request = SearchRequest(query: "user", searchOptions: [.contacts])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertTrue(result.contacts.contains(user))
+            XCTAssertTrue(result.contacts.compactMap(\.user).contains(user))
         }
         
         // when
@@ -193,12 +202,12 @@ class SearchTaskTests : MessagingTest {
         _ = createConnectedUser(withName: "Any Body")
         
         let request = SearchRequest(query: "Some Body", searchOptions: [.contacts])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertEqual(result.contacts, [user1])
+            XCTAssertEqual(result.contacts.compactMap(\.user), [user1])
         }
         
         // when
@@ -214,12 +223,12 @@ class SearchTaskTests : MessagingTest {
         _ = createConnectedUser(withName: "Bob")
         
         let request = SearchRequest(query: "Gr", searchOptions: [.contacts])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertEqual(result.contacts, [user1, user2])
+            XCTAssertEqual(result.contacts.compactMap(\.user), [user1, user2])
         }
         
         // when
@@ -233,12 +242,12 @@ class SearchTaskTests : MessagingTest {
         let user1 = createConnectedUser(withName: "Somebody")
         
         let request = SearchRequest(query: "someBodY", searchOptions: [.contacts])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertEqual(result.contacts, [user1])
+            XCTAssertEqual(result.contacts.compactMap(\.user), [user1])
         }
         
         // when
@@ -252,12 +261,12 @@ class SearchTaskTests : MessagingTest {
         let user1 = createConnectedUser(withName: "Sömëbodÿ")
         
         let request = SearchRequest(query: "Sømebôdy", searchOptions: [.contacts])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertEqual(result.contacts, [user1])
+            XCTAssertEqual(result.contacts.compactMap(\.user), [user1])
         }
         
         // when
@@ -275,12 +284,12 @@ class SearchTaskTests : MessagingTest {
         let user3 = createConnectedUser(withName: "Somebody")
         
         let request = SearchRequest(query: "Some", searchOptions: [.contacts])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertEqual(result.contacts, [user3])
+            XCTAssertEqual(result.contacts.compactMap(\.user), [user3])
         }
         
         // when
@@ -296,12 +305,12 @@ class SearchTaskTests : MessagingTest {
         let user = createConnectedUser(withName: "Somebody")
         
         let request = SearchRequest(query: "Some", searchOptions: [.contacts])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertEqual(result.contacts, [user])
+            XCTAssertEqual(result.contacts.compactMap(\.user), [user])
         }
         
         // when
@@ -309,9 +318,9 @@ class SearchTaskTests : MessagingTest {
         XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))
     }
     
-    // MARK: Team Member search
+    // MARK: Team member local search
     
-    func testThatItCanSearchForTeamMembers() {
+    func testThatItCanSearchForTeamMembersLocally() {
         // given
         let resultArrived = expectation(description: "received result")
         let team = Team.insertNewObject(in: uiMOC)
@@ -326,12 +335,12 @@ class SearchTaskTests : MessagingTest {
         uiMOC.saveOrRollback()
         
         let request = SearchRequest(query: "@member", searchOptions: [.teamMembers], team: team)
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertEqual(result.teamMembers, [member])
+            XCTAssertEqual(result.teamMembers.compactMap(\.user), [user])
         }
         
         // when
@@ -339,7 +348,7 @@ class SearchTaskTests : MessagingTest {
         XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))
     }
     
-    func testThatItCanExcludeNonActiveTeamMembers() {
+    func testThatItCanExcludeNonActiveTeamMembersLocally() {
         // given
         let resultArrived = expectation(description: "received result")
         let team = Team.insertNewObject(in: uiMOC)
@@ -351,8 +360,7 @@ class SearchTaskTests : MessagingTest {
         
         conversation.conversationType = .group
         conversation.remoteIdentifier = UUID()
-        conversation.internalAddParticipants([userA])
-        conversation.isSelfAnActiveMember = true
+        conversation.addParticipantsAndUpdateConversationState(users: Set([userA, ZMUser.selfUser(in:uiMOC)]), role: nil)
         
         userA.name = "Member A"
         userB.name = "Member B"
@@ -366,12 +374,12 @@ class SearchTaskTests : MessagingTest {
         uiMOC.saveOrRollback()
         
         let request = SearchRequest(query: "", searchOptions: [.teamMembers, .excludeNonActiveTeamMembers], team: team)
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertEqual(result.teamMembers, [memberA])
+            XCTAssertEqual(result.teamMembers.compactMap(\.user), [userA])
         }
         
         // when
@@ -379,7 +387,7 @@ class SearchTaskTests : MessagingTest {
         XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))
     }
     
-    func testThatItIncludesNonActiveTeamMembers_WhenSelfUserWasCreatedByThem() {
+    func testThatItIncludesNonActiveTeamMembersLocally_WhenSelfUserWasCreatedByThem() {
         // given
         let resultArrived = expectation(description: "received result")
         let team = Team.insertNewObject(in: uiMOC)
@@ -400,12 +408,12 @@ class SearchTaskTests : MessagingTest {
         uiMOC.saveOrRollback()
         
         let request = SearchRequest(query: "", searchOptions: [.teamMembers, .excludeNonActiveTeamMembers], team: team)
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertEqual(result.teamMembers, [memberA])
+            XCTAssertEqual(result.teamMembers.compactMap(\.user), [userA])
         }
         
         // when
@@ -413,7 +421,7 @@ class SearchTaskTests : MessagingTest {
         XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))
     }
     
-    func testThatItCanExcludeNonActivePartners() {
+    func testThatItCanExcludeNonActivePartnersLocally() {
         // given
         let resultArrived = expectation(description: "received result")
         let team = Team.insertNewObject(in: uiMOC)
@@ -427,8 +435,7 @@ class SearchTaskTests : MessagingTest {
         
         conversation.conversationType = .group
         conversation.remoteIdentifier = UUID()
-        conversation.internalAddParticipants([userA, userB])
-        conversation.isSelfAnActiveMember = true
+        conversation.addParticipantsAndUpdateConversationState(users: Set([userA, userB, ZMUser.selfUser(in: self.uiMOC)]), role: nil)
         
         userA.name = "Member A"
         userB.name = "Member B"
@@ -449,12 +456,12 @@ class SearchTaskTests : MessagingTest {
         uiMOC.saveOrRollback()
         
         let request = SearchRequest(query: "", searchOptions: [.teamMembers, .excludeNonActivePartners], team: team)
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertEqual(result.teamMembers, [memberA, memberB])
+            XCTAssertEqual(result.teamMembers.compactMap(\.user), [userA, userB])
         }
         
         // when
@@ -462,7 +469,7 @@ class SearchTaskTests : MessagingTest {
         XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))
     }
     
-    func testThatItIncludesNonActivePartners_WhenSearchingWithExactHandle() {
+    func testThatItIncludesNonActivePartnersLocally_WhenSearchingWithExactHandle() {
         // given
         let resultArrived = expectation(description: "received result")
         let team = Team.insertNewObject(in: uiMOC)
@@ -479,12 +486,12 @@ class SearchTaskTests : MessagingTest {
         uiMOC.saveOrRollback()
         
         let request = SearchRequest(query: "@abc", searchOptions: [.teamMembers, .excludeNonActivePartners], team: team)
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertEqual(result.teamMembers, [memberA])
+            XCTAssertEqual(result.teamMembers.compactMap(\.user), [userA])
         }
         
         // when
@@ -492,7 +499,7 @@ class SearchTaskTests : MessagingTest {
         XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))
     }
     
-    func testThatItIncludesNonActivePartners_WhenSelfUserCreatedPartner() {
+    func testThatItIncludesNonActivePartnersLocally_WhenSelfUserCreatedPartner() {
         // given
         let resultArrived = expectation(description: "received result")
         let team = Team.insertNewObject(in: uiMOC)
@@ -510,12 +517,12 @@ class SearchTaskTests : MessagingTest {
         uiMOC.saveOrRollback()
         
         let request = SearchRequest(query: "", searchOptions: [.teamMembers, .excludeNonActivePartners], team: team)
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
-            XCTAssertEqual(result.teamMembers, [memberA])
+            XCTAssertEqual(result.teamMembers.compactMap(\.user), [userA])
         }
         
         // when
@@ -531,7 +538,7 @@ class SearchTaskTests : MessagingTest {
         let conversation = createGroupConversation(withName: "Somebody")
         
         let request = SearchRequest(query: "Somebody", searchOptions: [.conversations])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -550,7 +557,7 @@ class SearchTaskTests : MessagingTest {
         _ = createGroupConversation(withName: "Somebody")
         
         let request = SearchRequest(query: "mebo", searchOptions: [.conversations])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -572,7 +579,7 @@ class SearchTaskTests : MessagingTest {
         _ = createGroupConversation(withName: "New Day Rising")
         
         let request = SearchRequest(query: "Records", searchOptions: [.conversations])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -591,7 +598,7 @@ class SearchTaskTests : MessagingTest {
         let conversation = createGroupConversation(withName: "SoMEBody")
         
         let request = SearchRequest(query: "someBodY", searchOptions: [.conversations])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -610,7 +617,7 @@ class SearchTaskTests : MessagingTest {
         let conversation = createGroupConversation(withName: "Sömëbodÿ")
         
         let request = SearchRequest(query: "Sømebôdy", searchOptions: [.conversations])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -635,7 +642,7 @@ class SearchTaskTests : MessagingTest {
         uiMOC.saveOrRollback()
         
         let request = SearchRequest(query: "Conversation", searchOptions: [.conversations])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -658,18 +665,18 @@ class SearchTaskTests : MessagingTest {
         let user2 = createConnectedUser(withName: "Asuka")
         let user3 = createConnectedUser(withName: "Rëï")
         
-        conversation.internalAddParticipants([user1, user2, user3])
+        conversation.addParticipantsAndUpdateConversationState(users: [user1, user2, user3], role: nil)
         
         uiMOC.saveOrRollback()
         
         let request = SearchRequest(query: "Rei", searchOptions: [.conversations, .contacts])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             resultArrived.fulfill()
             XCTAssertEqual(result.conversations, [conversation])
-            XCTAssertEqual(result.contacts, [user3])
+            XCTAssertEqual(result.contacts.compactMap(\.user), [user3])
         }
         
         // when
@@ -682,12 +689,12 @@ class SearchTaskTests : MessagingTest {
         let resultArrived = expectation(description: "received result")
         let conversation = createGroupConversation(withName: "Summertime")
         let user = createConnectedUser(withName: "Rëï")
-        conversation.internalAddParticipants([user])
+        conversation.addParticipantAndUpdateConversationState(user: user, role: nil)
         
         uiMOC.saveOrRollback()
         
         let request = SearchRequest(query: "Rei", searchOptions: [.conversations])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -708,7 +715,7 @@ class SearchTaskTests : MessagingTest {
         let conversation3 = createGroupConversation(withName: "FooB")
         
         let request = SearchRequest(query: "Foo", searchOptions: [.conversations])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -732,13 +739,13 @@ class SearchTaskTests : MessagingTest {
         let conversation3 = createGroupConversation(withName: "FooB")
         let conversation4 = createGroupConversation(withName: "Bar")
         
-        conversation2.internalAddParticipants([user1])
-        conversation4.internalAddParticipants([user1, user2])
+        conversation2.addParticipantAndUpdateConversationState(user: user1, role: nil)
+        conversation4.addParticipantsAndUpdateConversationState(users: [user1, user2], role: nil)
         
         uiMOC.saveOrRollback()
         
         let request = SearchRequest(query: "Foo", searchOptions: [.conversations])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -758,7 +765,7 @@ class SearchTaskTests : MessagingTest {
         _ = createGroupConversation(withName: "Landspeed Records")
         
         let request = SearchRequest(query: "@records", searchOptions: [.conversations])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -783,7 +790,7 @@ class SearchTaskTests : MessagingTest {
         uiMOC.saveOrRollback()
         
         let request = SearchRequest(query: "Beach", searchOptions: [.conversations], team: team)
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -801,7 +808,7 @@ class SearchTaskTests : MessagingTest {
     func testThatItSendsASearchRequest() {
         // given
         let request = SearchRequest(query: "Steve O'Hara & Söhne", searchOptions: [.directory])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // when
         task.performRemoteSearch()
@@ -814,7 +821,7 @@ class SearchTaskTests : MessagingTest {
     func testThatItDoesNotSendASearchRequestIfSeachingLocally() {
         // given
         let request = SearchRequest(query: "Steve O'Hara & Söhne", searchOptions: [.contacts])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // when
         task.performRemoteSearch()
@@ -827,7 +834,7 @@ class SearchTaskTests : MessagingTest {
     func testThatItEncodesAPlusCharacterInTheSearchURL() {
         // given
         let request = SearchRequest(query: "foo+bar@example.com", searchOptions: [.directory])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // when
         task.performRemoteSearch()
@@ -845,7 +852,7 @@ class SearchTaskTests : MessagingTest {
         
         // given
         let request = SearchRequest(query: "$&+,/:;=?@", searchOptions: [.directory])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // when
         task.performRemoteSearch()
@@ -859,7 +866,7 @@ class SearchTaskTests : MessagingTest {
         // given
         let resultArrived = expectation(description: "received result")
         let request = SearchRequest(query: "User", searchOptions: [.directory])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         mockTransportSession.performRemoteChanges { (remoteChanges) in
             remoteChanges.insertUser(withName: "User A")
@@ -876,12 +883,64 @@ class SearchTaskTests : MessagingTest {
         XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))
     }
     
+    // MARK: Directory Search - Membership lookup
+    
+    func testThatItMakesRequestToFetchTeamMembershipMetadata() {
+        // given
+        let request = SearchRequest(query: "User", searchOptions: [.directory, .teamMembers])
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
+        
+        mockTransportSession.performRemoteChanges { (remoteChanges) in
+            let team = remoteChanges.insertTeam(withName: "Team A", isBound: true)
+            team.identifier = self.teamIdentifier.transportString()
+            let userA = remoteChanges.insertUser(withName: "User A")
+            remoteChanges.insertMember(with: userA, in: team)
+        }
+        
+        // when
+        task.performRemoteSearch()
+        XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
+        
+        // then
+        XCTAssertEqual(mockTransportSession.receivedRequests().count, 2)
+        XCTAssertEqual(mockTransportSession.receivedRequests().first?.path, "/search/contacts?q=User&size=10")
+        XCTAssertEqual(mockTransportSession.receivedRequests().last?.path, "/teams/\(teamIdentifier.transportString())/get-members-by-ids-using-post")
+    }
+    
+    func testThatItCallsCompletionHandlerForTeamMemberDirectorySearch() {
+        // given
+        let resultArrived = expectation(description: "received result")
+        let request = SearchRequest(query: "User", searchOptions: [.directory, .teamMembers])
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
+        
+        mockTransportSession.performRemoteChanges { (remoteChanges) in
+            let team = remoteChanges.insertTeam(withName: "Team A", isBound: true)
+            team.identifier = self.teamIdentifier.transportString()
+            let userA = remoteChanges.insertUser(withName: "User A")
+            let selfUser = remoteChanges.insertSelfUser(withName: "Self User")
+            remoteChanges.insertMember(with: selfUser, in: team)
+            let member = remoteChanges.insertMember(with: userA, in: team)
+            member.permissions = .admin
+        }
+        
+        // expect
+        task.onResult { (result, _) in
+            resultArrived.fulfill()
+            XCTAssertEqual(result.teamMembers.first?.name, "User A")
+            XCTAssertEqual(result.teamMembers.first?.teamRole, .admin)
+        }
+        
+        // when
+        task.performRemoteSearch()
+        XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))
+    }
+    
     // MARK: Services search
     
     func testThatItSendsASearchServicesRequest() {
         // given
         let request = SearchRequest(query: "Steve O'Hara & Söhne", searchOptions: [.services])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // when
         task.performRemoteSearchForServices()
@@ -895,7 +954,7 @@ class SearchTaskTests : MessagingTest {
         // given
         let resultArrived = expectation(description: "received result")
         let request = SearchRequest(query: "Service", searchOptions: [.services])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         mockTransportSession.performRemoteChanges { (remoteChanges) in
             remoteChanges.insertService(withName: "Service A",
@@ -940,7 +999,7 @@ class SearchTaskTests : MessagingTest {
     func testThatItSendsAUserLookupRequest() {
         // given
         let userId = UUID()
-        let task = SearchTask(lookupUserId: userId, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(lookupUserId: userId, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // when
         task.performUserLookup()
@@ -959,7 +1018,7 @@ class SearchTaskTests : MessagingTest {
             let mockUser = remoteChanges.insertUser(withName: "User A")
             userId = UUID(uuidString: mockUser.identifier)!
         }
-        let task = SearchTask(lookupUserId: userId, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(lookupUserId: userId, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -984,12 +1043,12 @@ class SearchTaskTests : MessagingTest {
         }
         
         let request = SearchRequest(query: "user", searchOptions: [.contacts, .directory])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
             localResultArrived.fulfill()
-            XCTAssertTrue(result.contacts.contains(user))
+            XCTAssertTrue(result.contacts.compactMap(\.user).contains(user))
         }
         
         // when
@@ -1002,7 +1061,7 @@ class SearchTaskTests : MessagingTest {
         // expect
         task.onResult { (result, _) in
             remoteResultArrived.fulfill()
-            XCTAssertTrue(result.contacts.contains(user))
+            XCTAssertTrue(result.contacts.compactMap(\.user).contains(user))
         }
         
         // when
@@ -1020,7 +1079,7 @@ class SearchTaskTests : MessagingTest {
         }
         
         let request = SearchRequest(query: "user", searchOptions: [.contacts, .directory])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, _) in
@@ -1051,12 +1110,12 @@ class SearchTaskTests : MessagingTest {
         let localResultArrived = expectation(description: "received local result")
         let user = createConnectedUser(withName: "userA")
         let request = SearchRequest(query: "user", searchOptions: [.contacts])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, completed) in
             localResultArrived.fulfill()
-            XCTAssertTrue(result.contacts.contains(user))
+            XCTAssertTrue(result.contacts.compactMap(\.user).contains(user))
             XCTAssertTrue(completed)
         }
         
@@ -1073,7 +1132,7 @@ class SearchTaskTests : MessagingTest {
         }
         
         let request = SearchRequest(query: "user", searchOptions: [.directory])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, completed) in
@@ -1098,7 +1157,7 @@ class SearchTaskTests : MessagingTest {
         }
         
         let request = SearchRequest(query: "user", searchOptions: [.contacts, .directory])
-        let task = SearchTask(request: request, context: mockUserSession.managedObjectContext, session: mockUserSession)
+        let task = SearchTask(request: request, searchContext: searchMOC, contextProvider: contextDirectory!, transportSession: mockTransportSession)
         
         // expect
         task.onResult { (result, completed) in

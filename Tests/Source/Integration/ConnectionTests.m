@@ -21,9 +21,38 @@
 @import WireSyncEngine;
 @import WireDataModel;
 
-#import "ZMUserSession.h"
 #import "ZMConnectionTranscoder+Internal.h"
 #import "WireSyncEngine_iOS_Tests-Swift.h"
+
+////
+// TestObserver
+///
+
+@interface MockConnectionLimitObserver : NSObject <ZMConnectionLimitObserver>
+
+@property (nonatomic) id connectionLimitObserverToken;
+@property (nonatomic) BOOL reachedConnectionLimit;
+
+@end
+
+
+@implementation MockConnectionLimitObserver
+
+- (void)connectionLimitReached {
+    self.reachedConnectionLimit = YES;
+}
+
+- (instancetype)initWithManagedObjectContext:(NSManagedObjectContext *)moc {
+    self = [super init];
+    if  (self) {
+        self.reachedConnectionLimit = NO;
+        self.connectionLimitObserverToken = [ZMConnectionLimitNotification addConnectionLimitObserver:self context:moc];
+    }
+    return self;
+}
+
+
+@end
 
 @interface ConnectionTests : IntegrationTest
 
@@ -104,7 +133,7 @@
     // then
     NSArray *allConversations = [ZMConversationList conversationsInUserSession:self.userSession];
     ZMConversation *foundConversation = [allConversations firstObjectMatchingWithBlock:^BOOL(ZMConversation *conv) {
-        if([conv.connectedUser.displayName isEqualToString:@"Karl"]) {
+        if([conv.connectedUser.name isEqualToString:@"Karl McUser"]) {
             return YES;
         }
         return NO;
@@ -462,7 +491,7 @@
     (void)token2;
 }
 
-- (void)testThatConnectionRequestsToTwoUsersAreAddedToPending;
+- (void)testThatConnectionRequestsToTwoUsersAreAddedToPending
 {
     // given two remote users
     NSString *userName1 = @"Hans Von Üser";
@@ -901,12 +930,7 @@
     XCTAssertEqual(observer.notifications.count, 2u);
 }
 
-
-@end
-
-
-
-@implementation ConnectionTests (Pagination)
+#pragma mark - Pagination
 
 - (void)setupTestThatItPaginatesConnectionsRequests
 {
@@ -953,40 +977,7 @@
     ZMConnectionTranscoderPageSize = self.previousZMConnectionTranscoderPageSize;
 }
 
-@end
-
-
-////
-// TestObserver
-///
-
-@interface MockConnectionLimitObserver : NSObject <ZMConnectionLimitObserver>
-
-@property (nonatomic) id connectionLimitObserverToken;
-@property (nonatomic) BOOL reachedConnectionLimit;
-
-@end
-
-
-@implementation MockConnectionLimitObserver
-
-- (void)connectionLimitReached {
-    self.reachedConnectionLimit = YES;
-}
-
-- (instancetype)initWithManagedObjectContext:(NSManagedObjectContext *)moc {
-    self = [super init];
-    if  (self) {
-        self.reachedConnectionLimit = NO;
-        self.connectionLimitObserverToken = [ZMConnectionLimitNotification addConnectionLimitObserver:self context:moc];
-    }
-    return self;
-}
-
-@end
-
-
-@implementation ConnectionTests (ConnectionLimit)
+#pragma mark - ConnectionLimit
 
 - (ZMCustomResponseGeneratorBlock)responseBlockForConnectionLimit;
 {

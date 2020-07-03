@@ -19,10 +19,10 @@
 @testable import WireSyncEngine
 
 
-class MockTyping : ZMTyping {
-    var didTearDown : Bool = false
-    var typingUsers : [ZMConversation : Set<ZMUser>] = [:]
-    var didSetTypingUsers : Bool = false
+class MockTyping: WireSyncEngine.Typing {
+    var didTearDown: Bool = false
+    var typingUsers: [ZMConversation : Set<ZMUser>] = [:]
+    var didSetTypingUsers: Bool = false
     
     override func tearDown() {
         didTearDown = true
@@ -30,7 +30,7 @@ class MockTyping : ZMTyping {
         super.tearDown()
     }
     
-    override func setIs(_ isTyping: Bool, for user: ZMUser!, in conversation: ZMConversation!) {
+    override func setIsTyping(_ isTyping: Bool, for user: ZMUser!, in conversation: ZMConversation!) {
         didSetTypingUsers = true
         var newTypingUsers = typingUsers[conversation] ?? Set()
         if isTyping {
@@ -71,10 +71,10 @@ class TypingStrategyTests : MessagingTest {
     
     override func setUp() {
         super.setUp()
-        originalTimeout = ZMTypingDefaultTimeout
-        ZMTypingDefaultTimeout = 3.0
-        
-        self.typing = MockTyping()
+        originalTimeout = MockTyping.defaultTimeout
+        MockTyping.defaultTimeout = 3.0
+
+        self.typing = MockTyping(uiContext: uiMOC, syncContext: syncMOC)
         self.mockApplicationStatus = MockApplicationStatus()
         self.mockApplicationStatus.mockSynchronizationState = .eventProcessing
 
@@ -98,7 +98,7 @@ class TypingStrategyTests : MessagingTest {
         self.typing = nil
         self.sut = nil
         
-        ZMTypingDefaultTimeout = originalTimeout;
+        MockTyping.defaultTimeout = originalTimeout;
         super.tearDown()
     }
 
@@ -110,7 +110,7 @@ class TypingStrategyTests : MessagingTest {
     }
     
     func simulateTyping(){
-        typing.setIs(true, for: userA, in: conversationA)
+        typing.setIsTyping(true, for: userA, in: conversationA)
         XCTAssertTrue(typing.isUserTyping(user: userA, in: conversationA))
         typing.didSetTypingUsers = false
     }
@@ -201,7 +201,7 @@ extension TypingStrategyTests {
         // given
         
         //edit message is an allowed type that can fire a otr-message-add notification
-        let message = ZMGenericMessage.message(content: ZMMessageEdit.edit(with: ZMText.text(with: "demo"), replacingMessageId: UUID.create()))
+        let message = GenericMessage(content: MessageEdit(replacingMessageID: .create(), text: Text(content: "demo")))
         let payload = payloadForOTRMessageAdd(with: message) as ZMTransportData
         let event = ZMUpdateEvent(fromEventStreamPayload: payload as ZMTransportData, uuid: nil)!
         
@@ -218,7 +218,7 @@ extension TypingStrategyTests {
     func testThatDoesntForwardOTRMessageAddEventsForNonTextTypes() {
         // given
         // delete-message should not fire an Add Events notification
-        let message = ZMGenericMessage.message(content: ZMMessageDelete(messageID: UUID.create()))
+        let message = GenericMessage(content: MessageDelete(messageId: UUID.create()))
         tryToForwardOTRMessageWithoutReply(with: message)
     }
     
@@ -226,11 +226,11 @@ extension TypingStrategyTests {
         
         // given
         // confirmations should not fire an Add Events notification
-        let message = ZMGenericMessage.message(content: ZMConfirmation.confirm(messageId: UUID.create()))
+        let message = GenericMessage(content: Confirmation(messageId: UUID.create()))
         tryToForwardOTRMessageWithoutReply(with: message)
     }
     
-    func tryToForwardOTRMessageWithoutReply(with message: ZMGenericMessage) {
+    func tryToForwardOTRMessageWithoutReply(with message: GenericMessage) {
         let payload = payloadForOTRMessageAdd(with: message) as ZMTransportData
         let event = ZMUpdateEvent(fromEventStreamPayload: payload, uuid: nil)!
         
@@ -244,9 +244,10 @@ extension TypingStrategyTests {
         XCTAssertTrue(typing.isUserTyping(user: userA, in: conversationA)) //user is still typing
     }
     
-    func payloadForOTRMessageAdd(with message: ZMGenericMessage) -> [String:Any] {
+    func payloadForOTRMessageAdd(with message: GenericMessage) -> [String:Any] {
+        let data = try? message.serializedData().base64String()
         return ["conversation": conversationA.remoteIdentifier!.transportString(),
-                       "data": ["text":message.data().base64String()],
+                       "data": ["text":data],
                        "from": userA.remoteIdentifier!.transportString(),
                        "time": Date().transportString(),
                        "type": "conversation.otr-message-add",
@@ -538,7 +539,7 @@ extension TypingStrategyTests {
             TypingStrategy.notifyTranscoderThatUser(isTyping: $0, in: conversation)
             XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
             if delay == .delay {
-                let interval = (ZMTypingDefaultTimeout / (ZMTypingRelativeSendTimeout - 1.0))
+                let interval = (MockTyping.defaultTimeout / (MockTyping.relativeSendTimeout - 1.0))
                 Thread.sleep(forTimeInterval: interval)
             }
             
@@ -698,12 +699,12 @@ class TypingEventTests : MessagingTest {
 
     override func setUp() {
         super.setUp()
-        originalTimeout = ZMTypingDefaultTimeout
-        ZMTypingDefaultTimeout = 0.5
+        originalTimeout = MockTyping.defaultTimeout
+        MockTyping.defaultTimeout = 0.5
     }
     
     override func tearDown() {
-        ZMTypingDefaultTimeout = self.originalTimeout
+        MockTyping.defaultTimeout = self.originalTimeout
         super.tearDown()
     }
     
@@ -766,7 +767,7 @@ class TypingEventTests : MessagingTest {
         let eventACopy = TypingEvent.typingEvent(with: conversation.objectID, isTyping: true, ifDifferentFrom: eventA)
         let eventBCopy = TypingEvent.typingEvent(with: conversation.objectID, isTyping: false, ifDifferentFrom: eventB)
         
-        let interval = ZMTypingDefaultTimeout / (ZMTypingRelativeSendTimeout - 1.0)
+        let interval = MockTyping.defaultTimeout / (MockTyping.relativeSendTimeout - 1.0)
         Thread.sleep(forTimeInterval: interval)
 
         let eventADifferent = TypingEvent.typingEvent(with: conversation.objectID, isTyping: true, ifDifferentFrom: eventA)

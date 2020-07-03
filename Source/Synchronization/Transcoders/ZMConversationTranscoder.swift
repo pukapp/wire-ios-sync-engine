@@ -21,12 +21,100 @@ import Foundation
 private let log = ZMSLog(tag: "ConversationTranscoder")
 
 extension ZMConversationTranscoder {
+
+    @objc
+    static public let predicateForDownstreamSync: NSPredicate = {
+        let needsToBeSynced = NSPredicate(
+            format: "%K != nil AND needsToBeUpdatedFromBackend == YES",
+            argumentArray: [ZMConversation.remoteIdentifierDataKey()!]
+        )
+
+        let hasNoPendingOrIgnoredConnection = NSPredicate(
+            format: "connection == nil OR (connection.status != %d AND connection.status != %d)",
+            argumentArray: [ZMConnectionStatus.pending.rawValue, ZMConnectionStatus.ignored.rawValue]
+        )
+
+        // Some of the participants may have been deleted on the backend, so we should first let them sync
+        // before syncing the conversation.
+        let hasNoParticipantsWaitingToBeSynced = NSPredicate(
+            format: "SUBQUERY(participantRoles, $role, $role.user.needsToBeUpdatedFromBackend == YES).@count == 0"
+        )
+
+        let predicates = [needsToBeSynced, hasNoPendingOrIgnoredConnection, hasNoParticipantsWaitingToBeSynced]
+        return NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
+    }()
+    
+    @objc(appendSystemMessageForUpdateEvent:inConversation:)
+    public func appendSystemMessage(for event: ZMUpdateEvent, conversation: ZMConversation) {
+        if let systemMessage = ZMSystemMessage.createOrUpdate(from: event, in: self.managedObjectContext) {
+            self.localNotificationDispatcher?.process(systemMessage)
+        }
+    }
+    
+    @objc(processMemberUpdateEvent:forConversation:previousLastServerTimeStamp:)
+    public func processMemberUpdateEvent(
+        _ event: ZMUpdateEvent,
+        for conversation: ZMConversation?,
+        previousLastServerTimeStamp previousLastServerTimestamp: Date?) {
+        guard let dataPayload = (event.payload as NSDictionary).dictionary(forKey: "data"),
+            let conversation = conversation
+            else { return }
+        
+        let id = (dataPayload["target"] as? String).flatMap({ UUID.init(uuidString: $0)})
+        if id == nil || id == ZMUser.selfUser(in: self.managedObjectContext).remoteIdentifier {
+            conversation.updateSelfStatus(dictionary: dataPayload, timeStamp: event.timeStamp(), previousLastServerTimeStamp: previousLastServerTimestamp)
+        } else {
+            conversation.updateRoleFromEventPayload(dataPayload, userId: id!)
+        }
+    }
+
+    @objc(createConversationFromEvent:)
+    public func createConversation(from event: ZMUpdateEvent) {
+        guard let payloadData = (event.payload as NSDictionary).dictionary(forKey: "data") else {
+            log.error("Missing conversation payload in ZMUpdateEventConversationCreate")
+            return
+        }
+
+        guard let serverTimestamp = (event.payload as NSDictionary).date(for: "time") else {
+            log.error("serverTimeStamp is nil!")
+            return
+        }
+        
+        createConversation(from: payloadData,
+                           serverTimeStamp: serverTimestamp,
+                           source: .updateEvent)
+    }
+
+    @objc(createConversationFromTransportData:serverTimeStamp:source:)
+    @discardableResult
+    public func createConversation(from transportData: [AnyHashable : Any], serverTimeStamp: Date, source: ZMConversationSource) -> ZMConversation? {
+        // If the conversation is not a group conversation, we need to make sure that we check if there's any existing conversation without a remote identifier for that user.
+        // If it is a group conversation, we don't need to.
+        
+        guard let typeNumber: Int = (transportData as NSDictionary).number(forKey: "type") as? Int else {
+            return nil
+        }
+        
+        let type = BackendConversationType.clientConversationType(rawValue: typeNumber)
+        
+        if type == .group || type == .`self` {
+            return createGroupOrSelfConversation(from: transportData as NSDictionary, serverTimeStamp: serverTimeStamp, source: source)
+        } else {
+            return createOneOnOneConversation(fromTransportData: transportData, type: type, serverTimeStamp: serverTimeStamp)
+        }
+    }
+
     @objc(createGroupOrSelfConversationFromTransportData:serverTimeStamp:source:)
     public func createGroupOrSelfConversation(from transportData: NSDictionary,
-                                       serverTimeStamp: Date!,
+                                       serverTimeStamp: Date,
                                        source: ZMConversationSource) -> ZMConversation? {
         guard let convRemoteID = transportData.uuid(forKey: "id") else {
             log.error("Missing ID in conversation payload")
+            return nil
+        }
+        
+        guard let transportData = transportData as? [String : Any] else {
+            log.error("transportData can not be casted to [String : Any]")
             return nil
         }
 
@@ -34,18 +122,25 @@ extension ZMConversationTranscoder {
 
         guard let conversation = ZMConversation(remoteID: convRemoteID, createIfNeeded:
             true, in: managedObjectContext, created: &conversationCreated) else { return nil }
+        
 
-        conversation.update(withTransportData: transportData as? [AnyHashable : Any], serverTimeStamp: serverTimeStamp)
+        conversation.update(transportData: transportData, serverTimeStamp: serverTimeStamp)
+
+        let selfUser = ZMUser.selfUser(in: self.managedObjectContext)
+        let notInMyTeam = conversation.teamRemoteIdentifier == nil ||
+            selfUser.team?.remoteIdentifier != conversation.teamRemoteIdentifier
+        
+        if conversationCreated.boolValue,
+           conversation.conversationType == .group,
+           notInMyTeam {
+            conversation.needsToDownloadRoles = true
+        }
 
         if conversation.conversationType != ZMConversationType.`self` && conversationCreated.boolValue == true {
 
-            if serverTimeStamp == nil {
-                log.error("serverTimeStamp is nil!")
-            }
-
             // we just got a new conversation, we display new conversation header
             conversation.appendNewConversationSystemMessage(at: serverTimeStamp,
-                users: conversation.activeParticipants)
+                users: conversation.localParticipants)
 
             if source == .slowSync {
                 // Slow synced conversations should be considered read from the start
@@ -55,6 +150,59 @@ extension ZMConversationTranscoder {
 
         return conversation
     }
+    
+    @objc (processMemberJoinEvent:forConversation:)
+    public func processMemberJoinEvent(_ event: ZMUpdateEvent, conversation: ZMConversation) {
+        guard let dataPayload = event.payload["data"] as? [String: Any] else { return }
+        
+        let usersAndRoleAPI = dataPayload.keys.contains("users")
+        
+        if usersAndRoleAPI {
+            // new API: "user" object with role
+            processMemberJoinEvent_APIWithRoles(conversation: conversation, event: event)
+        } else {
+            // old API: "user_ids"
+            processMemberJoinEvent_APIWithUserIDs(conversation: conversation, event: event)
+        }
+        
+    }
+    
+    private func processMemberJoinEvent_APIWithRoles(
+        conversation: ZMConversation,
+        event: ZMUpdateEvent)
+    {
+        guard let dataPayload = event.payload["data"] as? [String: Any],
+            let usersAndRolesPayload = dataPayload["users"] as? [[String: Any]] else {
+            return
+        }
+        let usersAndRoles = ConversationParsing.parseUsersPayloadToUserAndRole(
+            payload: usersAndRolesPayload,
+            userIdKey: "id",
+            conversation: conversation)
+        
+        let selfUser = ZMUser.selfUser(in: self.managedObjectContext)
+        let users = Set(usersAndRoles.map { $0.0 })
+        
+        let newUsers = !users.subtracting(conversation.localParticipants).isEmpty
+        if users.contains(selfUser) || newUsers {
+            self.appendSystemMessage(for: event, conversation: conversation)
+        }
+        
+        conversation.addParticipantsAndUpdateConversationState(usersAndRoles: usersAndRoles)
+    }
+    
+    private func processMemberJoinEvent_APIWithUserIDs(
+        conversation: ZMConversation,
+        event: ZMUpdateEvent)
+    {
+        let users = event.usersFromUserIDs(in: self.managedObjectContext, createIfNeeded: true) as! Set<ZMUser>
+        let selfUser = ZMUser.selfUser(in: self.managedObjectContext)
+        if !users.isSubset(of: conversation.localParticipantsExcludingSelf) || users.contains(selfUser) {
+            self.appendSystemMessage(for: event, conversation: conversation)
+        }
+        conversation.addParticipantsAndUpdateConversationState(users: users, role: nil)
+    }
+    
 
     @objc (processAccessModeUpdateEvent:inConversation:)
     public func processAccessModeUpdate(event: ZMUpdateEvent, in conversation: ZMConversation) {
@@ -100,7 +248,9 @@ extension ZMConversationTranscoder {
     }
     
     @objc (processReceiptModeUpdate:inConversation:lastServerTimestamp:)
-    public func processReceiptModeUpdate(event: ZMUpdateEvent, in conversation: ZMConversation, lastServerTimestamp: Date) {
+    public func processReceiptModeUpdate(event: ZMUpdateEvent,
+                                         in conversation: ZMConversation,
+                                         lastServerTimestamp: Date?) {
         precondition(event.type == .conversationReceiptModeUpdate, "invalid update event type")
         
         guard let payload = event.payload["data"] as? [String : AnyHashable],
@@ -111,6 +261,7 @@ extension ZMConversationTranscoder {
         else { return }
         
         // Discard event if it has already been applied
+        guard let lastServerTimestamp = lastServerTimestamp else { return }
         guard serverTimestamp.compare(lastServerTimestamp) == .orderedDescending else { return }
         
         let newValue = readReceiptMode > 0
@@ -142,15 +293,15 @@ extension ZMConversation {
                 silencedChangedTimestamp = Date()
             }
             
-            payload[ZMConversationInfoOTRMutedValueKey] = mutedMessageTypes != .none
-            payload[ZMConversationInfoOTRMutedStatusValueKey] = mutedMessageTypes.rawValue
-            payload[ZMConversationInfoOTRMutedReferenceKey] = silencedChangedTimestamp?.transportString()
+            payload[ZMConversation.PayloadKeys.OTRMutedValueKey] = mutedMessageTypes != .none
+            payload[ZMConversation.PayloadKeys.OTRMutedStatusValueKey] = mutedMessageTypes.rawValue
+            payload[ZMConversation.PayloadKeys.OTRMutedReferenceKey] = silencedChangedTimestamp?.transportString()
             
             updatedKeys.insert(ZMConversationSilencedChangedTimeStampKey)
         }
         
         if hasLocalModifications(forKey: ZMConversationIsPlacedTopKey) {
-            payload[ZMConversationInfoPlaceTopKey] = isPlacedTop
+            payload["place_top"] = isPlacedTop
             updatedKeys.insert(ZMConversationIsPlacedTopKey)
         }
         
@@ -159,8 +310,8 @@ extension ZMConversation {
                 archivedChangedTimestamp = Date()
             }
             
-            payload[ZMConversationInfoOTRArchivedValueKey] = isArchived
-            payload[ZMConversationInfoOTRArchivedReferenceKey] = archivedChangedTimestamp?.transportString()
+            payload[ZMConversation.PayloadKeys.OTRArchivedValueKey] = isArchived
+            payload[ZMConversation.PayloadKeys.OTRArchivedReferenceKey] = archivedChangedTimestamp?.transportString()
             
             updatedKeys.insert(ZMConversationArchivedChangedTimeStampKey)
         }
@@ -172,5 +323,19 @@ extension ZMConversation {
         let path = NSString.path(withComponents: [ConversationsPath, remoteIdentifier.transportString(), "self"])
         let request = ZMTransportRequest(path: path, method: .methodPUT, payload: payload as NSDictionary)
         return ZMUpstreamRequest(keys: updatedKeys, transportRequest: request)
+    }
+    
+    fileprivate func updateRoleFromEventPayload(_ payload: [String: Any], userId: UUID) {
+        guard let roleName = payload["conversation_role"] as? String else { return }
+        
+        let user = ZMUser(remoteID: userId, createIfNeeded: true, in: self.managedObjectContext!)!
+        let teamOrConvo: TeamOrConversation = self.team != nil ?
+            TeamOrConversation.team(self.team!) : TeamOrConversation.conversation(self)
+        let role = self.getRoles().first(where: {$0.name == roleName }) ??
+            Role.create(
+                managedObjectContext: self.managedObjectContext!,
+                name: roleName,
+                teamOrConversation: teamOrConvo)
+        self.addParticipantAndUpdateConversationState(user: user, role: role)
     }
 }

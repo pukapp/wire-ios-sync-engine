@@ -76,7 +76,7 @@ import Foundation
                 return // Skip if conversation already has a .newConversation system message
             }
             
-            conversation.appendNewConversationSystemMessage(at: Date.distantPast, users: conversation.activeParticipants)
+            conversation.appendNewConversationSystemMessage(at: Date.distantPast, users: conversation.localParticipants)
         }
     }
     
@@ -176,13 +176,19 @@ import Foundation
     /// wireless guests feature
     public static func refetchTeamGroupConversations(_ context: NSManagedObjectContext) {
         // Batch update changes the underlying data in the persistent store and should be much more
-        let predicate = NSPredicate(format: "team != nil AND conversationType == %d", ZMConversationType.group.rawValue)
+        let predicate = NSPredicate(format: "team != nil AND %K == %d",
+                                    ZMConversationConversationTypeKey,
+                                    ZMConversationType.group.rawValue)
         refetchConversations(matching: predicate, in: context)
     }
     
     /// Marks all group conversations to be refetched.
     public static func refetchGroupConversations(_ context: NSManagedObjectContext) {
-        let predicate = NSPredicate(format: "conversationType == %d AND lastServerSyncedActiveParticipants CONTAINS %@", ZMConversationType.group.rawValue, ZMUser.selfUser(in: context))
+        let predicate = NSPredicate(format: "%K == %d AND ANY %K.user == %@",
+                                    ZMConversationConversationTypeKey,
+                                    ZMConversationType.group.rawValue,
+                                    ZMConversationParticipantRolesKey,
+                                    ZMUser.selfUser(in: context))
         refetchConversations(matching: predicate, in: context)
     }
     
@@ -192,7 +198,9 @@ import Foundation
     }
     
     public static func refetchTeamMembers(_ context: NSManagedObjectContext) {
-        ZMUser.selfUser(in: context).team?.needsToRedownloadMembers = true
+        ZMUser.selfUser(in: context).team?.members.forEach({ member in
+            member.needsToBeUpdatedFromBackend = true
+        })
     }
     
     /// Marks all conversations to be refetched.
@@ -210,5 +218,47 @@ import Foundation
     
     public static func refetchLabels(_ context: NSManagedObjectContext) {
         ZMUser.selfUser(in: context).needsToRefetchLabels = true
+    }
+    
+    public static func migrateBackendEnvironmentToSharedUserDefaults() {
+        guard let sharedUserDefaults = UserDefaults.shared() else { return }
+        
+        BackendEnvironment.migrate(from: .standard, to: sharedUserDefaults)
+    }
+    
+    public static func removeDeliveryReceiptsForDeletedMessages(_ context: NSManagedObjectContext) {
+        guard let predicate = ZMClientMessage.predicateForObjectsThatNeedToBeInsertedUpstream() else {
+            return
+        }
+        
+        let requestForInsertedMessages = ZMClientMessage.sortedFetchRequest(with: predicate)
+        
+        guard let possibleMatches = context.executeFetchRequestOrAssert(requestForInsertedMessages) as? [ZMClientMessage] else {
+            return
+        }
+        
+        let confirmationReceiptsForDeletedMessages = possibleMatches.filter({ candidate in
+            guard
+                let conversation = candidate.conversation,
+                let underlyingMessage = candidate.underlyingMessage,
+                underlyingMessage.hasConfirmation else {
+                    return false
+            }
+            
+            let originalMessageUUID = UUID(uuidString: underlyingMessage.confirmation.firstMessageID)
+            let originalConfirmedMessage = ZMMessage.fetch(withNonce: originalMessageUUID, for: conversation, in: context)
+            guard
+                let message = originalConfirmedMessage,
+                message.hasBeenDeleted || message.sender == nil else {
+                    return false
+            }
+            return true
+        })
+        
+        for message in confirmationReceiptsForDeletedMessages {
+            context.delete(message)
+        }
+        
+        context.saveOrRollback()
     }
 }

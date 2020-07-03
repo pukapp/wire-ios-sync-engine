@@ -41,6 +41,10 @@ extern NSString * _Nullable const ConversationUserConnection;
                  localNotificationDispatcher:(id<PushMessageHandler> _Nullable)localNotificationDispatcher
                                   syncStatus:(SyncStatus * _Nullable)syncStatus;
 
+- (ZMConversation *_Nullable)createOneOnOneConversationFromTransportData:(NSDictionary *_Nullable)transportData
+                                                           type:(ZMConversationType const)type
+                                                         serverTimeStamp:(NSDate *_Nullable)serverTimeStamp;
+
 @property (nonatomic) NSUInteger conversationPageSize;
 @property (nonatomic, weak, readonly) id<PushMessageHandler> _Nullable localNotificationDispatcher;
 

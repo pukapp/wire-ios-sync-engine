@@ -49,10 +49,16 @@ final class DummyServiceUser: NSObject, ServiceUser {
     
     var readReceiptsEnabled: Bool = true
     
+    var isVerified: Bool = false
+    
     var richProfile: [UserRichProfileField] = []
     
-    var canCreateConversation: Bool = false
-    
+    /// Whether the user can create conversations.
+    @objc
+    func canCreateConversation(type: ZMConversationType) -> Bool {
+        return true
+    }
+
     var canCreateService: Bool = false
     
     var canManageTeam: Bool = false
@@ -100,6 +106,18 @@ final class DummyServiceUser: NSObject, ServiceUser {
     func canModifyTitle(in conversation: ZMConversation) -> Bool {
         return false
     }
+
+    func canModifyOtherMember(in conversation: ZMConversation) -> Bool {
+        return false
+    }
+
+    func canLeave(_ conversation: ZMConversation) -> Bool {
+        return false
+    }
+
+    func isGroupAdmin(in conversation: ZMConversation) -> Bool {
+        return false
+    }
     
     var previewImageData: Data? = nil
     
@@ -114,6 +132,8 @@ final class DummyServiceUser: NSObject, ServiceUser {
     var handle: String? = "service"
     
     var emailAddress: String? = "dummy@email.com"
+
+    var phoneNumber: String? = nil
     
     var isSelfUser: Bool = false
     
@@ -166,6 +186,18 @@ final class DummyServiceUser: NSObject, ServiceUser {
     }
     
     func refreshData() {
+        
+    }
+
+    func refreshRichProfile() {
+
+    }
+
+    func refreshMembership() {
+        
+    }
+
+    func refreshTeamData() {
         
     }
     
@@ -225,11 +257,10 @@ final class ServiceUserTests : IntegrationTest {
         let conversation = self.conversation(for: self.groupConversation)!
         
         // when
-        conversation.add(serviceUser: service, in: self.userSession!, completion: { error in
-            // expect
-            XCTAssertNil(error)
+        conversation.add(serviceUser: service, in: userSession!) { (result) in
+            XCTAssertNil(result.error)
             jobIsDone.fulfill()
-        })
+        }
         XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
 
         // then
@@ -242,8 +273,8 @@ final class ServiceUserTests : IntegrationTest {
         let service = self.createService()
        
         // when
-        self.userSession!.startConversation(with: service) { conversation in
-            XCTAssertNotNil(conversation)
+        service.createConversation(in: userSession!) { (result) in
+            XCTAssertNotNil(result.value)
             jobIsDone.fulfill()
         }
         XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
@@ -251,16 +282,7 @@ final class ServiceUserTests : IntegrationTest {
         // then
         XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))
     }
-    
-    func testThatItDetectsTheSuccessResponse() {
-        // GIVEN
-        let response = ZMTransportResponse(payload: nil, httpStatus: 201, transportSessionError: nil)
-        // WHEN
-        let error = AddBotError(response: response)
-        // THEN
-        XCTAssertEqual(error, nil)
-    }
-    
+        
     func testThatItDetectsTheConversationFullResponse() {
         // GIVEN
         let response = ZMTransportResponse(payload: nil, httpStatus: 403, transportSessionError: nil)

@@ -39,20 +39,10 @@ class CallParticipantsSnapshot {
         self.members = type(of: self).removeDuplicateMembers(members)
     }
     
+    // Remove duplicates see: https://wearezeta.atlassian.net/browse/ZIOS-8610
     static func removeDuplicateMembers(_ members: [AVSCallMember]) -> OrderedSetState<AVSCallMember> {
-        // remove duplicates see: https://wearezeta.atlassian.net/browse/ZIOS-8610
-        // When a user joins with two devices, we would have a duplicate entry for this user in the member array returned from AVS
-        // For now, we will keep the one with "the highest state", meaning if one entry has `audioEstablished == false` and the other one `audioEstablished == true`, we keep the one with `audioEstablished == true`
         let callMembers = members.reduce([AVSCallMember]()){ (filtered, member) in
-            var newFiltered = filtered
-            if let idx = newFiltered.index(of: member) {
-                if !newFiltered[idx].audioEstablished && member.audioEstablished {
-                    newFiltered[idx] = member
-                }
-            } else {
-                newFiltered.append(member)
-            }
-            return newFiltered
+            filtered + (filtered.contains(member) ? [] : [member])
         }
         
         return callMembers.toOrderedSetState()
@@ -62,46 +52,51 @@ class CallParticipantsSnapshot {
         members = type(of:self).removeDuplicateMembers(participants)
         notifyChange()
     }
-    
-    func callParticpantVideoStateChanged(userId: UUID, videoState: VideoState) {
-        guard let callMember = members.array.first(where: { $0.remoteId == userId }) else { return }
-        
-        update(updatedMember: AVSCallMember(userId: userId, audioEstablished: callMember.audioEstablished, videoState: videoState))
+
+    func callParticpantVideoStateChanged(userId: UUID, clientId: String, videoState: VideoState) {
+        guard let callMember = findMember(userId: userId, clientId: clientId) else { return }
+
+        update(updatedMember: AVSCallMember(userId: userId, clientId: clientId, audioState: callMember.audioState, videoState: videoState))
     }
-    
+
     func callParticpantAudioEstablished(userId: UUID) {
         guard let callMember = members.array.first(where: { $0.remoteId == userId }) else { return }
-        
-        update(updatedMember: AVSCallMember(userId: userId, audioEstablished: true, videoState: callMember.videoState))
+
+        update(updatedMember: AVSCallMember(userId: userId, clientId: callMember.clientId, audioState: .established, videoState: callMember.videoState))
     }
 
     func callParticpantNetworkQualityChanged(userId: UUID, networkQuality: NetworkQuality) {
         guard let callMember = members.array.first(where: { $0.remoteId == userId }) else { return }
 
-        update(updatedMember: AVSCallMember(userId: userId, audioEstablished: callMember.audioEstablished, videoState: callMember.videoState, networkQuality: networkQuality))
+        update(updatedMember: AVSCallMember(userId: userId, clientId: callMember.clientId, audioState: callMember.audioState, videoState: callMember.videoState, networkQuality: networkQuality))
     }
     
     func update(updatedMember: AVSCallMember) {
+        guard let targetMember = findMember(userId: updatedMember.remoteId, clientId: updatedMember.clientId) else { return }
+
         members = OrderedSetState(array: members.array.map({ member in
-            if member.remoteId == updatedMember.remoteId {
-                return updatedMember
-            } else {
-                return member
-            }
+            member == targetMember ? updatedMember : member
         }))
-        notifyChange()
     }
-    
+
     func notifyChange() {
-        if let context = callCenter.uiMOC {
-            WireCallCenterCallParticipantNotification(conversationId: conversationId, participants: members.map({ ($0.remoteId, $0.callParticipantState) })).post(in: context.notificationContext)
-        }
+        guard let context = callCenter.uiMOC else { return }
         
+        let participants = members.map { CallParticipant(member: $0, context: context) }.compactMap(\.self)
+        WireCallCenterCallParticipantNotification(conversationId: conversationId, participants: participants).post(in: context.notificationContext)
     }
-    
+
     public func callParticipantState(forUser userId: UUID) -> CallParticipantState {
         guard let callMember = members.array.first(where: { $0.remoteId == userId }) else { return .unconnected }
         
         return callMember.callParticipantState
+    }
+
+    /// Tries to find the call member with the matching userId and clientId, otherwise the first member
+    /// with the matching userId.
+    ///
+    private func findMember(userId: UUID, clientId: String?) -> AVSCallMember? {
+        let participantsByUser = members.array.filter { $0.remoteId == userId }
+        return participantsByUser.first { $0.clientId == clientId } ?? participantsByUser.first
     }
 }

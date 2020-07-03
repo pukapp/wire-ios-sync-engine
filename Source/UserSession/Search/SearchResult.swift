@@ -19,12 +19,12 @@
 import Foundation
 
 public struct SearchResult {
-    public let contacts:      [ZMUser]
-    public let teamMembers:   [Member]
-    public let addressBook:   [ZMSearchUser]
-    public let directory:     [ZMSearchUser]
-    public let conversations: [ZMConversation]
-    public let services:      [ServiceUser]
+    public var contacts:      [ZMSearchUser]
+    public var teamMembers:   [ZMSearchUser]
+    public var addressBook:   [ZMSearchUser]
+    public var directory:     [ZMSearchUser]
+    public var conversations: [ZMConversation]
+    public var services:      [ServiceUser]
 }
 
 extension SearchResult {
@@ -55,7 +55,8 @@ extension SearchResult {
         services = []
     }
     
-    public init?(payload: [AnyHashable : Any], query: String, userSession: ZMUserSession) {
+    
+    public init?(payload: [AnyHashable : Any], query: String, searchOptions: SearchOptions, contextProvider: ZMManagedObjectContextProvider) {
         guard let documents = payload["documents"] as? [[String : Any]] else {
             return nil
         }
@@ -70,22 +71,28 @@ extension SearchResult {
             return !isHandleQuery || name?.hasPrefix("@") ?? true || handle?.contains(queryWithoutAtSymbol) ?? false
         }
         
-        let searchUsers = ZMSearchUser.searchUsers(from: filteredDocuments, contextProvider: userSession)
+        let searchUsers = ZMSearchUser.searchUsers(from: filteredDocuments, contextProvider: contextProvider)
         
         contacts = []
-        teamMembers = []
         addressBook = []
         directory = searchUsers.filter({ !$0.isConnected && !$0.isTeamMember })
         conversations = []
         services = []
+        
+        if searchOptions.contains(.teamMembers) &&
+           searchOptions.isDisjoint(with: .excludeNonActiveTeamMembers) {
+            teamMembers = searchUsers.filter({ $0.isTeamMember })
+        } else {
+            teamMembers = []
+        }
     }
     
-    public init?(servicesPayload servicesFullPayload: [AnyHashable : Any], query: String, userSession: ZMUserSession) {
+    public init?(servicesPayload servicesFullPayload: [AnyHashable : Any], query: String, contextProvider: ZMManagedObjectContextProvider) {
         guard let servicesPayload = servicesFullPayload["services"] as? [[String : Any]] else {
             return nil
         }
         
-        let searchUsersServices = ZMSearchUser.searchUsers(from: servicesPayload, contextProvider: userSession)
+        let searchUsersServices = ZMSearchUser.searchUsers(from: servicesPayload, contextProvider: contextProvider)
         
         contacts = []
         teamMembers = []
@@ -95,9 +102,9 @@ extension SearchResult {
         services = searchUsersServices
     }
     
-    public init?(userLookupPayload: [AnyHashable : Any], userSession: ZMUserSession) {
+    public init?(userLookupPayload: [AnyHashable : Any], contextProvider: ZMManagedObjectContextProvider) {
         guard let userLookupPayload = userLookupPayload as? [String : Any],
-              let searchUser = ZMSearchUser.searchUser(from: userLookupPayload, contextProvider: userSession),
+              let searchUser = ZMSearchUser.searchUser(from: userLookupPayload, contextProvider: contextProvider),
               searchUser.user == nil ||
               searchUser.user?.isTeamMember == false else {
             return nil
@@ -111,13 +118,35 @@ extension SearchResult {
         services = []
     }
     
+    mutating func extendWithMembershipPayload(payload: MembershipListPayload) {
+        payload.members.forEach { (membershipPayload) in
+            let searchUser = teamMembers.first(where: { $0.remoteIdentifier == membershipPayload.userID })
+            let permissions = membershipPayload.permissions.flatMap({ Permissions(rawValue: $0.selfPermissions) })
+            searchUser?.updateWithTeamMembership(permissions: permissions, createdBy: membershipPayload.createdBy)
+        }
+    }
+    
+    mutating func filterBy(searchOptions: SearchOptions,
+                           query: String,
+                           contextProvider: ZMManagedObjectContextProvider) {
+        guard searchOptions.contains(.excludeNonActivePartners) else { return }
+        
+        let selfUser = ZMUser.selfUser(in: contextProvider.managedObjectContext)
+        let isHandleQuery = query.hasPrefix("@")
+        let queryWithoutAtSymbol = (isHandleQuery ? String(query[query.index(after: query.startIndex)...]) : query).lowercased()
+        
+        teamMembers = teamMembers.filter({
+            $0.teamRole != .partner ||
+            $0.teamCreatedBy == selfUser.remoteIdentifier ||
+            isHandleQuery && $0.handle == queryWithoutAtSymbol
+        })
+    }
+    
     func copy(on context: NSManagedObjectContext) -> SearchResult {
         
-        let copiedContacts = contacts.compactMap { context.object(with: $0.objectID) as? ZMUser }
-        let copiedTeamMembers = teamMembers.compactMap { context.object(with: $0.objectID) as? Member }
         let copiedConversations = conversations.compactMap { context.object(with: $0.objectID) as? ZMConversation }
         
-        return SearchResult(contacts: copiedContacts, teamMembers: copiedTeamMembers, addressBook: addressBook, directory: directory, conversations: copiedConversations, services: services)
+        return SearchResult(contacts: contacts, teamMembers: teamMembers, addressBook: addressBook, directory: directory, conversations: copiedConversations, services: services)
     }
     
     func union(withLocalResult result: SearchResult) -> SearchResult {
@@ -135,7 +164,7 @@ extension SearchResult {
     
     func union(withDirectoryResult result: SearchResult) -> SearchResult {
         return SearchResult(contacts: contacts,
-                            teamMembers: teamMembers,
+                            teamMembers: Array(Set(teamMembers).union(result.teamMembers)),
                             addressBook: addressBook,
                             directory: result.directory,
                             conversations: conversations,

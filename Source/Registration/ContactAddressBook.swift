@@ -19,8 +19,10 @@
 import Foundation
 import Contacts
 
+private let zmLog = ZMSLog(tag: "ContactAddressBook")
+
 /// iOS Contacts-based address book
-class ContactAddressBook : AddressBook {
+final class ContactAddressBook : AddressBook {
     
     let store = CNContactStore()
 }
@@ -58,17 +60,21 @@ extension ContactAddressBook : AddressBookAccessor {
     
     /// Enumerates the contacts, invoking the block for each contact.
     /// If the block returns false, it will stop enumerating them.
-    internal func enumerateRawContacts(block: @escaping (ContactRecord) -> (Bool)) {
+    func enumerateRawContacts(block: @escaping (ContactRecord) -> (Bool)) {
         let request = CNContactFetchRequest(keysToFetch: ContactAddressBook.keysToFetch)
         request.sortOrder = .userDefault
-        try! store.enumerateContacts(with: request) { (contact, stop) in
-            let shouldContinue = block(contact)
-            stop.initialize(to: ObjCBool(!shouldContinue))
+        do {
+            try store.enumerateContacts(with: request) { (contact, stop) in
+                let shouldContinue = block(contact)
+                stop.initialize(to: ObjCBool(!shouldContinue))
+            }
+        } catch {
+            zmLog.error(error.localizedDescription)
         }
     }
 
     /// Number of contacts in the address book
-    internal var numberOfContacts: UInt {
+    var numberOfContacts: UInt {
         return 0
     }
 }

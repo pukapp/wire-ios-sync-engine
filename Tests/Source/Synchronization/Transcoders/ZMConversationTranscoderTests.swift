@@ -46,6 +46,7 @@ class ZMConversationTranscoderTests_Swift: ObjectTranscoderTests {
     var localNotificationDispatcher: MockPushMessageHandler!
     var conversation: ZMConversation!
     var user: ZMUser!
+    var user2: ZMUser!
     var mockSyncStatus : MockSyncStatus!
     
     override func setUp() {
@@ -108,12 +109,47 @@ class ZMConversationTranscoderTests_Swift: ObjectTranscoderTests {
         }
     }
     
+    func testThatItAddsUsersWithRolesToAConversationAfterAPushEvent() {
+        
+        self.syncMOC.performAndWait {
+            // GIVEN
+            self.user2 = ZMUser.insertNewObject(in: self.syncMOC)
+            self.user2.remoteIdentifier = UUID.create()
+            let payload = [
+                "from": self.user.remoteIdentifier!.transportString(),
+                "conversation": self.conversation.remoteIdentifier!.transportString(),
+                "time": NSDate().transportString(),
+                "data": [
+                    "user_ids": [self.user2.remoteIdentifier!.transportString()],
+                    "users": [[
+                        "id": self.user2.remoteIdentifier!.transportString(),
+                        "conversation_role": "wire_admin"
+                        ]]
+                ],
+                "type": "conversation.member-join"
+                ] as [String: Any]
+            let event = ZMUpdateEvent(fromEventStreamPayload: payload as ZMTransportData, uuid: nil)!
+            
+            // WHEN
+            conversation.addParticipantsAndUpdateConversationState(users: [user], role: nil)
+            XCTAssertEqual(conversation.localParticipants.count, 1)
+            self.sut.processEvents([event], liveEvents: true, prefetchResult: nil)
+            
+            // THEN
+            XCTAssertEqual(conversation.localParticipants.count, 2)
+            let admins = conversation.participantRoles.filter({ (participantRole) -> Bool in
+                participantRole.role?.name == "wire_admin"
+            })
+            XCTAssertEqual(admins.count, 1)
+        }
+    }
+    
     func testThatItIgnoresMemberJoinEventsIfMemberIsAlreadyPartOfConversation() {
         
         self.syncMOC.performAndWait {
             
             // GIVEN
-            self.conversation.internalAddParticipants([user])
+            self.conversation.addParticipantAndUpdateConversationState(user: user, role: nil)
             
             let payload = [
                 "from": self.user.remoteIdentifier!.transportString(),
@@ -140,7 +176,7 @@ class ZMConversationTranscoderTests_Swift: ObjectTranscoderTests {
         self.syncMOC.performAndWait {
             
             // GIVEN
-            self.conversation.internalAddParticipants([user])
+            self.conversation.addParticipantAndUpdateConversationState(user: user, role: nil)
             
             let payload = [
                 "from": self.user.remoteIdentifier!.transportString(),
@@ -317,7 +353,7 @@ class ZMConversationTranscoderTests_Swift: ObjectTranscoderTests {
                 return team
             }()
             
-            let conversation = ZMConversation.insertGroupConversation(into: moc, withParticipants: [], name: self.name, in: team, allowGuests: allowGuests)
+            let conversation = ZMConversation.insertGroupConversation(moc: moc, participants: [], name: self.name, team: team, allowGuests: allowGuests)
             guard let inserted = conversation else { return XCTFail("no conversation", file: file, line: line) }
             XCTAssert(moc.saveOrRollback())
             
@@ -374,6 +410,133 @@ extension ZMConversationTranscoderTests_Swift : ZMSyncStateDelegate {
 // MARK: - Update events
 
 extension ZMConversationTranscoderTests_Swift {
+    
+    // MARK: Conversation creation
+    
+    private func conversationCreationPayload(
+        conversationID: UUID,
+        selfUserID: UUID,
+        teamID: UUID? = nil) -> [String: Any] {
+        let payload: [String: Any] = [
+            "conversation" : conversationID.transportString(),
+            "data" : [
+                "id" : conversationID.transportString(),
+                "members" : [
+                    "others" : [
+                        
+                    ],
+                    "self" : [
+                        "id" : selfUserID.transportString(),
+                        "conversation_role" : "wire_admin",
+                        "otr_archived" : false,
+                        "status_time" : "1970-01-01T00:00:00.000Z",
+                        "otr_muted" : false,
+                        "status_ref" : "0.0",
+                        "hidden" : false,
+                        "status" : 0,
+                    ]
+                ],
+                "access" : [
+                    "invite",
+                    "code"
+                ],
+                "type" : 0,
+                "team" : (teamID?.transportString() ?? NSNull()) as Any,
+            ],
+            "type" : "conversation.create",
+            "time" : "2019-12-19T17:12:07.901Z",
+            "from" : "d52f7fe5-e143-40ef-bc86-ada5f785f4ef"
+        ]
+        return payload
+    }
+    
+    func testThatItNeedsToDowloadRolesWhenCreatingAConversationNotInTeam() {
+        
+        self.syncMOC.performGroupedBlockAndWait {
+
+            // Given
+            let selfUser = ZMUser.selfUser(in: self.syncMOC)
+            selfUser.remoteIdentifier = UUID.create()
+            let conversationID = UUID.create()
+            let payload = self.conversationCreationPayload(
+                conversationID: conversationID,
+                selfUserID: selfUser.remoteIdentifier,
+                teamID: nil)
+            self.syncMOC.saveOrRollback()
+            
+            let event = ZMUpdateEvent(fromEventStreamPayload: payload as ZMTransportData, uuid: nil)!
+            
+            // when
+            self.sut.processEvents([event], liveEvents: true, prefetchResult: nil)
+            
+            // then
+            guard let conversation = ZMConversation.fetch(withRemoteIdentifier: conversationID, in: self.syncMOC) else {
+                return XCTFail("No conversation created")
+            }
+            XCTAssertTrue(conversation.needsToDownloadRoles)
+        }
+    }
+    
+    func testThatItNeedsToDowloadRolesWhenCreatingAConversationInAnotherTeam() {
+        
+        self.syncMOC.performGroupedBlockAndWait {
+            
+            // Given
+            let selfUser = ZMUser.selfUser(in: self.syncMOC)
+            selfUser.remoteIdentifier = UUID.create()
+            let conversationID = UUID.create()
+            let team = Team.insertNewObject(in: self.syncMOC)
+            team.remoteIdentifier = UUID.create()
+            _ = Member.getOrCreateMember(for: selfUser, in: team, context: self.syncMOC)
+            let payload = self.conversationCreationPayload(
+                conversationID: conversationID,
+                selfUserID: selfUser.remoteIdentifier,
+                teamID: UUID.create())
+            self.syncMOC.saveOrRollback()
+            
+            let event = ZMUpdateEvent(fromEventStreamPayload: payload as ZMTransportData, uuid: nil)!
+            
+            // when
+            self.sut.processEvents([event], liveEvents: true, prefetchResult: nil)
+            
+            // then
+            guard let conversation = ZMConversation.fetch(withRemoteIdentifier: conversationID, in: self.syncMOC) else {
+                return XCTFail("No conversation created")
+            }
+            XCTAssertTrue(conversation.needsToDownloadRoles)
+        }
+    }
+    
+    func testThatItDoesNotNeedsToDowloadRolesWhenCreatingAConversationTeam() {
+        
+        self.syncMOC.performGroupedBlockAndWait {
+            
+            // Given
+            let selfUser = ZMUser.selfUser(in: self.syncMOC)
+            selfUser.remoteIdentifier = UUID.create()
+            let conversationID = UUID.create()
+            let team = Team.insertNewObject(in: self.syncMOC)
+            team.remoteIdentifier = UUID.create()
+            _ = Member.getOrCreateMember(for: selfUser, in: team, context: self.syncMOC)
+            let payload = self.conversationCreationPayload(
+                conversationID: conversationID,
+                selfUserID: selfUser.remoteIdentifier,
+                teamID: team.remoteIdentifier!)
+            self.syncMOC.saveOrRollback()
+            
+            let event = ZMUpdateEvent(fromEventStreamPayload: payload as ZMTransportData, uuid: nil)!
+            
+            // when
+            self.sut.processEvents([event], liveEvents: true, prefetchResult: nil)
+            
+            // then
+            guard let conversation = ZMConversation.fetch(withRemoteIdentifier: conversationID, in: self.syncMOC) else {
+                return XCTFail("No conversation created")
+            }
+            XCTAssertFalse(conversation.needsToDownloadRoles)
+        }
+    }
+    
     
     // MARK: Receipt Mode
     
@@ -686,6 +849,133 @@ extension ZMConversationTranscoderTests_Swift {
             XCTAssertTrue(self.conversation.isDeleted)
         }
     }
+    
+    // MARK: Participants update
+    
+    func testThatItAddsAUserReceivedWithAMemberUpdate() {
+        
+        syncMOC.performAndWait {
+            
+            let userId = UUID.create()
+            let selfUser = ZMUser.selfUser(in: self.syncMOC)
+            selfUser.remoteIdentifier = UUID.create()
+            
+            // GIVEN
+            let payload: [String: Any] = [
+                "from": selfUser.remoteIdentifier!.transportString(),
+                "conversation": self.conversation!.remoteIdentifier!.transportString(),
+                "time": NSDate(timeIntervalSinceNow: 100).transportString(),
+                "data": [
+                    "target": userId.transportString(),
+                    "conversation_role": "new"
+                ],
+                "type": "conversation.member-update"
+            ]
+            
+            // WHEN
+            let event = ZMUpdateEvent(fromEventStreamPayload: payload as ZMTransportData, uuid: nil)!
+            self.sut?.processEvents([event], liveEvents: true, prefetchResult: nil)
+            
+            // THEN
+            guard let participant = self.conversation.participantRoles
+                .first(where: {$0.user.remoteIdentifier == userId}) else {
+                    return XCTFail("No user in convo")
+            }
+            XCTAssertEqual(participant.role?.name, "new")
+        }
+    }
+    
+    func testThatItChangesRoleAfterMemberUpdate() {
+        
+        syncMOC.performAndWait {
+            
+            let userId = UUID.create()
+            
+            let user = ZMUser.insertNewObject(in: self.syncMOC)
+            user.remoteIdentifier = userId
+            
+            let selfUser = ZMUser.selfUser(in: self.syncMOC)
+            selfUser.remoteIdentifier = UUID.create()
+            
+            let oldRole = Role.insertNewObject(in: self.syncMOC)
+            oldRole.name = "old"
+            oldRole.conversation = self.conversation
+            
+            self.conversation.addParticipantAndUpdateConversationState(user: user, role: oldRole)
+            
+            let newRole = Role.insertNewObject(in: self.syncMOC)
+            newRole.name = "new"
+            newRole.conversation = self.conversation
+            self.syncMOC.saveOrRollback()
+            
+            // GIVEN
+            let payload: [String: Any] = [
+                "from": selfUser.remoteIdentifier!.transportString(),
+                "conversation": self.conversation!.remoteIdentifier!.transportString(),
+                "time": NSDate(timeIntervalSinceNow: 100).transportString(),
+                "data": [
+                    "target": userId.transportString(),
+                    "conversation_role": "new"
+                ],
+                "type": "conversation.member-update"
+            ]
+            
+            // WHEN
+            let event = ZMUpdateEvent(fromEventStreamPayload: payload as ZMTransportData, uuid: nil)!
+            self.sut?.processEvents([event], liveEvents: true, prefetchResult: nil)
+            
+            // THEN
+            guard let participant = self.conversation.participantRoles
+                .first(where: {$0.user == user}) else {
+                    return XCTFail("No user in convo")
+            }
+            XCTAssertEqual(participant.role, newRole)
+        }
+    }
+    
+    func testThatItChangesSelfRoleAfterMemberUpdate() {
+        
+        syncMOC.performAndWait {
+            
+            let selfUser = ZMUser.selfUser(in: self.syncMOC)
+            selfUser.remoteIdentifier = UUID.create()
+            
+            let oldRole = Role.insertNewObject(in: self.syncMOC)
+            oldRole.name = "old"
+            oldRole.conversation = self.conversation
+            
+            self.conversation.addParticipantAndUpdateConversationState(user: selfUser, role: oldRole)
+            
+            let newRole = Role.insertNewObject(in: self.syncMOC)
+            newRole.name = "new"
+            newRole.conversation = self.conversation
+            self.syncMOC.saveOrRollback()
+            
+            // GIVEN
+            let payload: [String: Any] = [
+                "from": selfUser.remoteIdentifier!.transportString(),
+                "conversation": self.conversation!.remoteIdentifier!.transportString(),
+                "time": NSDate(timeIntervalSinceNow: 100).transportString(),
+                "data": [
+                    "target": selfUser.remoteIdentifier.transportString(),
+                    "conversation_role": "new"
+                ],
+                "type": "conversation.member-update"
+            ]
+            
+            // WHEN
+            let event = ZMUpdateEvent(fromEventStreamPayload: payload as ZMTransportData, uuid: nil)!
+            self.sut?.processEvents([event], liveEvents: true, prefetchResult: nil)
+            
+            // THEN
+            guard let participant = self.conversation.participantRoles
+                .first(where: {$0.user == selfUser}) else {
+                    return XCTFail("No user in convo")
+            }
+            XCTAssertEqual(participant.role, newRole)
+        }
+    }
+    
 }
 
 

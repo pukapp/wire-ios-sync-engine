@@ -22,6 +22,7 @@ import WireTransport
 import WireUtilities
 import CallKit
 import PushKit
+import UserNotifications
 
 
 private let log = ZMSLog(tag: "SessionManager")
@@ -47,25 +48,18 @@ public typealias LaunchOptions = [UIApplication.LaunchOptionsKey : Any]
     func sessionManagerDidBlacklistJailbrokenDevice()
 }
 
-@objc
-public protocol UserSessionSource: class {
-    var activeUserSession: ZMUserSession? { get }
-    var activeUnauthenticatedSession: UnauthenticatedSession { get }
-    var isSelectedAccountAuthenticated: Bool { get }
-}
+/// The public interface for the session manager.
 
 @objc
-public protocol SessionManagerType : class {
+public protocol SessionManagerType: class {
     
     var accountManager : AccountManager { get }
-    var backgroundUserSessions: [UUID: ZMUserSession] { get }
     
     weak var foregroundNotificationResponder: ForegroundNotificationResponder? { get }
     
-    var callKitDelegate : CallKitDelegate? { get }
+    var callKitManager : CallKitManager? { get }
     var callNotificationStyle: CallNotificationStyle { get }
     
-    func withSession(for account: Account, perform completion: @escaping (ZMUserSession)->())
     func updateAppIconBadge(accountID: UUID, unreadCount: Int)
     
     /// Will update the push token for the session if it has changed
@@ -96,6 +90,7 @@ public protocol SessionManagerType : class {
     /// Needs to be called before we try to register another device because API requires password
     func update(credentials: ZMCredentials) -> Bool
     
+    func passwordVerificationDidFail(with failCount: Int)
 }
 
 @objc
@@ -172,7 +167,12 @@ public protocol ForegroundNotificationResponder: class {
 ///
 
 
-@objcMembers public class SessionManager : NSObject, SessionManagerType, UserSessionSource {
+@objcMembers
+public final class SessionManager : NSObject, SessionManagerType {
+    
+    public enum AccountError: Error {
+        case accountLimitReached
+    }
     
     /// Maximum number of accounts which can be logged in simultanously
     public static let maxNumberAccounts = 3
@@ -182,7 +182,7 @@ public protocol ForegroundNotificationResponder: class {
     public weak var delegate: SessionManagerDelegate? = nil
     public let accountManager: AccountManager
     public fileprivate(set) var activeUserSession: ZMUserSession?
-    public var urlHandler: SessionManagerURLHandler!
+    public weak var urlActionDelegate: URLActionDelegate?
 
     public fileprivate(set) var backgroundUserSessions: [UUID: ZMUserSession] = [:]
     public internal(set) var unauthenticatedSession: UnauthenticatedSession? {
@@ -213,6 +213,7 @@ public protocol ForegroundNotificationResponder: class {
     var pushRegistry: PushRegistry
     let notificationsTracker: NotificationsTracker?
     let configuration: SessionManagerConfiguration
+    var pendingURLAction: URLAction?
     
     var notificationCenter: UserNotificationCenter = UNUserNotificationCenter.current()
     
@@ -235,7 +236,7 @@ public protocol ForegroundNotificationResponder: class {
     fileprivate var memoryWarningObserver: NSObjectProtocol?
     fileprivate var isSelectingAccount : Bool = false
         
-    public var callKitDelegate : CallKitDelegate?
+    public var callKitManager : CallKitManager?
 
     public var isSelectedAccountAuthenticated: Bool {
         guard let selectedAccount = accountManager.selectedAccount else {
@@ -249,6 +250,8 @@ public protocol ForegroundNotificationResponder: class {
         return unauthenticatedSession ?? createUnauthenticatedSession()
     }
     
+    private static var avsLogObserver: AVSLogObserver?
+
     /// The entry point for SessionManager; call this instead of the initializers.
     ///
     public static func create(
@@ -256,6 +259,7 @@ public protocol ForegroundNotificationResponder: class {
         mediaManager: MediaManagerType,
         analytics: AnalyticsType?,
         delegate: SessionManagerDelegate?,
+        showContentDelegate: ShowContentDelegate?,
         application: ZMApplication,
         environment: BackendEnvironmentProvider,
         configuration: SessionManagerConfiguration,
@@ -269,6 +273,7 @@ public protocol ForegroundNotificationResponder: class {
                 mediaManager: mediaManager,
                 analytics: analytics,
                 delegate: delegate,
+                showContentDelegate: showContentDelegate,
                 application: application,
                 environment: environment,
                 configuration: configuration,
@@ -286,6 +291,7 @@ public protocol ForegroundNotificationResponder: class {
         mediaManager: MediaManagerType,
         analytics: AnalyticsType?,
         delegate: SessionManagerDelegate?,
+        showContentDelegate: ShowContentDelegate?,
         application: ZMApplication,
         environment: BackendEnvironmentProvider,
         configuration: SessionManagerConfiguration = SessionManagerConfiguration(),
@@ -305,7 +311,8 @@ public protocol ForegroundNotificationResponder: class {
             flowManager: flowManager,
             environment: environment,
             reachability: reachability,
-            analytics: analytics
+            analytics: analytics,
+            showContentDelegate: showContentDelegate
           )
 
         self.init(
@@ -424,7 +431,6 @@ public protocol ForegroundNotificationResponder: class {
         // register for voIP push notifications
         self.pushRegistry.delegate = self
         self.pushRegistry.desiredPushTypes = Set(arrayLiteral: PKPushType.voIP)
-        self.urlHandler = SessionManagerURLHandler(userSessionSource: self)
 
         postLoginAuthenticationToken = PostLoginAuthenticationNotification.addObserver(self, queue: self.groupQueue)
         callCenterObserverToken = WireCallCenterV3.addGlobalCallStateObserver(observer: self)
@@ -461,19 +467,21 @@ public protocol ForegroundNotificationResponder: class {
 
     private func selectInitialAccount(_ account: Account?, launchOptions: LaunchOptions) {
         if let url = launchOptions[UIApplication.LaunchOptionsKey.url] as? URL {
-            if URLAction(url: url)?.causesLogout == true {
+            if (try? URLAction(url: url))?.causesLogout == true {
                 // Do not log in if the launch URL action causes a logout
                 return
             }
         }
         
-        guard !logoutAfterRebootIfNeeded() else { return }
+        guard !shouldPerformPostRebootLogout() else {
+            performPostRebootLogout()
+            return
+        }
         
         loadSession(for: account) { [weak self] session in
             guard let `self` = self, let session = session else { return }
             self.updateCurrentAccount(in: session.managedObjectContext)
-            session.application(self.application, didFinishLaunchingWithOptions: launchOptions)
-            (launchOptions[.url] as? URL).apply(session.didLaunch)
+            session.application(self.application, didFinishLaunching: launchOptions)
         }
     }
     
@@ -580,7 +588,7 @@ public protocol ForegroundNotificationResponder: class {
                 self?.environment.cookieStorage(for: account).deleteKeychainItems()
             }
             
-            self?.activeUserSession?.closeAndDeleteCookie(deleteCookie)
+            self?.activeUserSession?.close(deleteCookie: deleteCookie)
             self?.activeUserSession = nil
             /*
              StorageStack.reset ----->  managedObjectContextDirectory?.tearDown
@@ -598,7 +606,7 @@ public protocol ForegroundNotificationResponder: class {
             }
         })
     }
-
+    
     /**
      Loads a session for a given account
      
@@ -606,7 +614,7 @@ public protocol ForegroundNotificationResponder: class {
          - account: account for which to load the session
          - completion: called when session is loaded or when session fails to load
      */
-    internal func loadSession(for account: Account?, completion: @escaping (ZMUserSession?) -> Void) {
+    func loadSession(for account: Account?, completion: @escaping (ZMUserSession?) -> Void) {
         guard let authenticatedAccount = account, environment.isAuthenticated(authenticatedAccount) else {
             completion(nil)
             
@@ -621,6 +629,50 @@ public protocol ForegroundNotificationResponder: class {
         }
         
         activateSession(for: authenticatedAccount, completion: completion)
+    }
+    
+    fileprivate func activateSession(for account: Account, completion: @escaping (ZMUserSession) -> Void) {
+        self.withSession(for: account) { session in
+            self.activeUserSession = session
+            
+            log.debug("Activated ZMUserSession for account \(String(describing: account.userName)) — \(account.userIdentifier)")
+            completion(session)
+            self.delegate?.sessionManagerActivated(userSession: session)
+            
+            // Configure user notifications if they weren't already previously configured.
+            self.configureUserNotifications()
+            self.processPendingURLAction()
+        }
+    }
+    
+    // Loads user session for @c account given and executes the @c action block.
+    func withSession(for account: Account, perform completion: @escaping (ZMUserSession)->()) {
+        log.debug("Request to load session for \(account)")
+        let group = self.dispatchGroup
+        group?.enter()
+        self.sessionLoadingQueue.serialAsync(do: { onWorkDone in
+            
+            if let session = self.backgroundUserSessions[account.userIdentifier] {
+                log.debug("Session for \(account) is already loaded")
+                completion(session)
+                onWorkDone()
+                group?.leave()
+            }
+            else {
+                LocalStoreProvider.createStack(
+                    applicationContainer: self.sharedContainerURL,
+                    userIdentifier: account.userIdentifier,
+                    dispatchGroup: self.dispatchGroup,
+                    migration: { [weak self] in self?.delegate?.sessionManagerWillMigrateAccount(account) },
+                    completion: { provider in
+                        let userSession = self.startBackgroundSession(for: account, with: provider)
+                        completion(userSession)
+                        onWorkDone()
+                        group?.leave()
+                }
+                )
+            }
+        })
     }
  
     fileprivate func deleteAccountData(for account: Account) {
@@ -639,25 +691,11 @@ public protocol ForegroundNotificationResponder: class {
         }
     }
     
-    fileprivate func activateSession(for account: Account, completion: @escaping (ZMUserSession) -> Void) {
-        self.withSession(for: account) { session in
-            self.activeUserSession = session
-            
-            log.debug("Activated ZMUserSession for account \(String(describing: account.userName)) — \(account.userIdentifier)")
-            completion(session)
-            self.delegate?.sessionManagerActivated(userSession: session)
-            self.urlHandler.sessionManagerActivated(userSession: session)
-            
-            // Configure user notifications if they weren't already previously configured.
-            self.configureUserNotifications()
-        }
-    }
-
     fileprivate func registerObservers(account: Account, session: ZMUserSession) {
         
         let selfUser = ZMUser.selfUser(inUserSession: session)
         let teamObserver = TeamChangeInfo.add(observer: self, for: nil, managedObjectContext: session.managedObjectContext)
-        let selfObserver = UserChangeInfo.add(observer: self, for: selfUser, managedObjectContext: session.managedObjectContext)
+        let selfObserver = UserChangeInfo.add(observer: self, for: selfUser, in: session.managedObjectContext)
         let conversationListObserver = ConversationListChangeInfo.add(observer: self, for: ZMConversationList.conversations(inUserSession: session), userSession: session)
         let connectionRequestObserver = ConversationListChangeInfo.add(observer: self, for: ZMConversationList.pendingConnectionConversations(inUserSession: session), userSession: session)
         let unreadCountObserver = NotificationInContext.addObserver(name: .AccountUnreadCountDidChangeNotification,
@@ -691,51 +729,6 @@ public protocol ForegroundNotificationResponder: class {
         updatePushToken(for: userSession)
         registerObservers(account: account, session: userSession)
     }
-    
-    // Loads user session for @c account given and executes the @c action block.
-    public func withSession(for account: Account, perform completion: @escaping (ZMUserSession)->()) {
-        log.debug("Request to load session for \(account)")
-        let group = self.dispatchGroup
-        group?.enter()
-        self.sessionLoadingQueue.serialAsync(do: { onWorkDone in
-
-            if let session = self.backgroundUserSessions[account.userIdentifier] {
-                log.debug("Session for \(account) is already loaded")
-                completion(session)
-                onWorkDone()
-                group?.leave()
-            }
-            else {
-                LocalStoreProvider.createStack(
-                    applicationContainer: self.sharedContainerURL,
-                    userIdentifier: account.userIdentifier,
-                    dispatchGroup: self.dispatchGroup,
-                    migration: { [weak self] in self?.delegate?.sessionManagerWillMigrateAccount(account) },
-                    completion: { provider in
-                        let userSession = self.startBackgroundSession(for: account, with: provider)
-                        completion(userSession)
-                        onWorkDone()
-                        group?.leave()
-                    }
-                )
-            }
-        })
-    }
-    
-    public func withSession(forLoginedAccount account: Account, perform completion: @escaping (ZMUserSession) -> Void) {
-        log.debug("Request to load session for \(account)")
-        let group = self.dispatchGroup
-        group?.enter()
-        sessionLoadingQueue.serialAsync { onWorkDone in
-            if let session = self.backgroundUserSessions[account.userIdentifier] {
-                log.debug("Session for \(account) is already loaded")
-                completion(session)
-                onWorkDone()
-                group?.leave()
-            }
-        }
-    }
-    
     
     private func deleteMessagesOlderThanRetentionLimit(provider: LocalStoreProviderProtocol) {
         guard let messageRetentionInternal = configuration.messageRetentionInterval else { return }
@@ -772,7 +765,7 @@ public protocol ForegroundNotificationResponder: class {
             log.error("No session to tear down for \(accountId), known sessions: \(self.backgroundUserSessions)")
             return
         }
-        userSession.closeAndDeleteCookie(false)
+        userSession.close(deleteCookie: false)
         self.tearDownObservers(account: accountId)
         self.backgroundUserSessions[accountId] = nil
         notifyUserSessionDestroyed(accountId)
@@ -780,11 +773,13 @@ public protocol ForegroundNotificationResponder: class {
     
     // Tears down and releases all background user sessions.
     internal func tearDownAllBackgroundSessions() {
-        self.backgroundUserSessions.forEach { (accountId, session) in
-            if self.activeUserSession != session {
-                self.tearDownBackgroundSession(for: accountId)
-            }
+        let backgroundSessions = backgroundUserSessions.filter { (_, session) -> Bool in
+            return activeUserSession != session
         }
+        
+        backgroundSessions.keys.forEach({ sessionID in
+            tearDownBackgroundSession(for: sessionID)
+        })
     }
     
     fileprivate func tearDownObservers(account: UUID) {
@@ -805,8 +800,8 @@ public protocol ForegroundNotificationResponder: class {
     }
 
     func updateProfileImage(imageData: Data) {
-        activeUserSession?.enqueueChanges {
-            self.activeUserSession?.profileUpdate.updateImage(imageData: imageData)
+        activeUserSession?.enqueue {
+            self.activeUserSession?.userProfileImage?.updateImage(imageData: imageData)
         }
     }
 
@@ -819,19 +814,19 @@ public protocol ForegroundNotificationResponder: class {
     }
     
     @objc public func updateCallKitConfiguration() {
-        callKitDelegate?.updateConfiguration()
+        callKitManager?.updateConfiguration()
     }
     
     private func updateCallNotificationStyle() {
         switch callNotificationStyle {
         case .pushNotifications:
             authenticatedSessionFactory.mediaManager.setUiStartsAudio(false)
-            callKitDelegate = nil
+            callKitManager = nil
         case .callKit:
             // Should be set to true when CallKit is used. Then AVS will not start
             // the audio before the audio session is active
             authenticatedSessionFactory.mediaManager.setUiStartsAudio(true)
-            callKitDelegate = CallKitDelegate(sessionManager: self, mediaManager: authenticatedSessionFactory.mediaManager)
+            callKitManager = CallKitManager(delegate: self, mediaManager: authenticatedSessionFactory.mediaManager)
         }
     }
     
@@ -854,27 +849,39 @@ public protocol ForegroundNotificationResponder: class {
         }
     }
     
-    @discardableResult
-    internal func logoutAfterRebootIfNeeded() -> Bool {
-        guard configuration.authenticateAfterReboot else { return false }
-        
-        let systemBootTime = ProcessInfo.processInfo.systemBootTime
-        var didLogoutCurrentSession = false
-        
-        if let previousSystemBootTime = SessionManager.previousSystemBootTime, abs(systemBootTime.timeIntervalSince(previousSystemBootTime)) > 1.0  {
-            log.debug("Logout caused by device reboot at \(systemBootTime)")
-            let error = NSError(code: .needsAuthenticationAfterReboot, userInfo: accountManager.selectedAccount?.loginCredentials?.dictionaryRepresentation)
-            self.logoutCurrentSession(deleteCookie: true, error: error)
-            didLogoutCurrentSession = true
-        }
-        
-        return didLogoutCurrentSession
+    func shouldPerformPostRebootLogout() -> Bool {
+        guard configuration.authenticateAfterReboot,
+            accountManager.selectedAccount != nil,
+            let systemBootTime = ProcessInfo.processInfo.bootTime(),
+            let previousSystemBootTime = SessionManager.previousSystemBootTime,
+            abs(systemBootTime.timeIntervalSince(previousSystemBootTime)) > 1.0
+        else { return false }
+
+        log.debug("Will logout due to device reboot. Previous boot time: \(previousSystemBootTime). Current boot time: \(systemBootTime)")
+        return true
     }
     
-    internal func updateSystemBootTimeIfNeeded() {
-        guard configuration.authenticateAfterReboot else { return }
+    func performPostRebootLogout() {
+        let error = NSError(code: .needsAuthenticationAfterReboot, userInfo: accountManager.selectedAccount?.loginCredentials?.dictionaryRepresentation)
+        self.logoutCurrentSession(deleteCookie: true, error: error)
+        log.debug("Logout caused by device reboot.")
+    }
+    
+    func updateSystemBootTimeIfNeeded() {
+        guard configuration.authenticateAfterReboot, let bootTime = ProcessInfo.processInfo.bootTime() else {
+            return
+        }
         
-        SessionManager.previousSystemBootTime = ProcessInfo.processInfo.systemBootTime
+        SessionManager.previousSystemBootTime = bootTime
+        log.debug("Updated system boot time: \(bootTime)")
+    }
+    
+    public func passwordVerificationDidFail(with failCount: Int) {
+        guard let count = configuration.failedPasswordThresholdBeforeWipe,
+            failCount >= count, let account = accountManager.selectedAccount else {
+                return
+        }
+        delete(account: account, reason: .failedPasswordLimitReached)
     }
 }
 
@@ -945,6 +952,11 @@ extension SessionManager {
 }
 
 extension SessionManager: UnauthenticatedSessionDelegate {
+    
+    public func sessionIsAllowedToCreateNewAccount(_ session: UnauthenticatedSession) -> Bool {
+        return accountManager.accounts.count < SessionManager.maxNumberAccounts
+    }
+    
     public func session(session: UnauthenticatedSession, isExistingAccount account: Account) -> Bool {
         return accountManager.accounts.contains(account)
     }
@@ -979,7 +991,7 @@ extension SessionManager: UnauthenticatedSessionDelegate {
                 userSession.setEmailCredentials(emailCredentials)
                 userSession.syncManagedObjectContext.registeredOnThisDevice = registered
                 userSession.syncManagedObjectContext.registeredOnThisDeviceBeforeConversationInitialization = registered
-                userSession.accountStatus.didCompleteLogin()
+                userSession.applicationStatusDirectory?.accountStatus.didCompleteLogin()
                 ZMMessage.deleteOldEphemeralMessages(userSession.syncManagedObjectContext)
             }
         }
@@ -1045,9 +1057,6 @@ extension SessionManager: PostLoginAuthenticationObserver {
 
 }
 
-extension SessionManager {
-}
-
 // MARK: - Application lifetime notifications
 
 extension SessionManager {
@@ -1064,7 +1073,7 @@ extension SessionManager {
     @objc fileprivate func applicationWillResignActive(_ note: Notification) {
         ///应用进入后台，保存一下万人群信息
         for (_, session) in backgroundUserSessions {
-            if session.isAuthenticated() {
+            if session.isAuthenticated {
                 session.saveHugeGroup()
             }
         }
@@ -1120,9 +1129,9 @@ extension SessionManager: ZMConversationListObserver {
 
 extension SessionManager : WireCallCenterCallStateObserver {
     
-    public func callCenterDidChange(callState: CallState, conversation: ZMConversation, caller: ZMUser, timestamp: Date?, previousCallState: CallState?) {
+    public func callCenterDidChange(callState: CallState, conversation: ZMConversation, caller: UserType, timestamp: Date?, previousCallState: CallState?) {
         guard let moc = conversation.managedObjectContext else { return }
-    
+
         switch callState {
         case .answered, .outgoing:
             for (_, session) in backgroundUserSessions where session.managedObjectContext == moc && activeUserSession != session {
@@ -1232,7 +1241,7 @@ extension SessionManager {
         self.accountManager.accounts.forEach { account in
             group.enter()
             self.withSession(for: account) { userSession in
-                userSession.performChanges {
+                userSession.perform {
                     userSession.markAllConversationsAsRead()
                 }
                 
@@ -1259,4 +1268,15 @@ extension SessionManager {
         })
     }
     
+}
+
+// MARK: - AVS Logging
+extension SessionManager {
+    public static func startAVSLogging() {
+        avsLogObserver = AVSLogObserver()
+    }
+
+    public static func stopAVSLogging() {
+        avsLogObserver = nil
+    }
 }

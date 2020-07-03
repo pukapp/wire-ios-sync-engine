@@ -166,11 +166,10 @@ class CompanyLoginRequestDetectorTests: XCTestCase {
         XCTAssertNil(detectedCode)
     }
     
-    func testThatItSetsIsNewOnTheResultIfTheChangeCountIncreased() {
+    func testThatItSetsIsNewOnTheResultIfTheCodeHasChanged() {
         // GIVEN
         let code = "wire-81DD91BA-B3D0-46F0-BC29-E491938F0A54"
         pasteboard.text = code
-        pasteboard.changeCount = 41
         
         do {
             let detectionExpectation = expectation(description: "Detector returns a result")
@@ -197,7 +196,8 @@ class CompanyLoginRequestDetectorTests: XCTestCase {
         }
 
         // WHEN
-        pasteboard.changeCount = 42
+        let changedCode = "wire-81DD91BA-B3D0-46F0-BC29-E491938F0A55"
+        pasteboard.text = changedCode
         
         // THEN
         do {
@@ -205,7 +205,7 @@ class CompanyLoginRequestDetectorTests: XCTestCase {
             
             detector.detectCopiedRequestCode {
                 XCTAssertEqual($0?.isNew, true)
-                XCTAssertEqual($0?.code, code)
+                XCTAssertEqual($0?.code, changedCode)
                 detectionExpectation.fulfill()
             }
             
@@ -213,11 +213,10 @@ class CompanyLoginRequestDetectorTests: XCTestCase {
         }
     }
     
-    func testThatItDoesNotSetIsNewOnTheResultIfTheChangeCountDidNotIncrease() {
+    func testThatItDoesNotSetIsNewOnTheResultIfTheCodeHasChanged() {
         // GIVEN
         let code = "wire-81DD91BA-B3D0-46F0-BC29-E491938F0A54"
         pasteboard.text = code
-        pasteboard.changeCount = 42
         
         // WHEN
         do {
@@ -259,4 +258,52 @@ class CompanyLoginRequestDetectorTests: XCTestCase {
         }
     }
 
+    func testThatParseReturnsSSOCodeCaseIfInputIsSSO() {
+        // GIVEN
+        let code = "wire-81DD91BA-B3D0-46F0-BC29-E491938F0A54"
+        var valuesEqual: Bool = false
+
+        // WHEN
+        let result = CompanyLoginRequestDetector.parse(input: code)
+        if case CompanyLoginRequestDetector.ParserResult.ssoCode = result {
+            valuesEqual = true
+        }
+        
+        // THEN
+        XCTAssertTrue(valuesEqual)
+    }
+    
+    func testThatParseReturnsDomainCaseIfInputIsEmail() {
+        // GIVEN
+        let email = "bob@wire.com"
+        var valuesEqual: Bool = false
+        var resultDomain: String? = nil
+        
+        // WHEN
+        let result = CompanyLoginRequestDetector.parse(input: email)
+        if case CompanyLoginRequestDetector.ParserResult.domain(let domain) = result {
+            resultDomain = domain
+            valuesEqual = true
+        }
+        
+        // THEN
+        XCTAssertTrue(valuesEqual)
+        XCTAssertNotNil(resultDomain)
+        XCTAssertEqual(resultDomain, "wire.com")
+    }
+    
+    func testThatParseReturnsUnknownCaseIfInputIsInvalid() {
+        // GIVEN
+        let input = "123pho567"
+        var valuesEqual: Bool = false
+
+        // WHEN
+        let result = CompanyLoginRequestDetector.parse(input: input)
+        if case CompanyLoginRequestDetector.ParserResult.unknown = result {
+            valuesEqual = true
+        }
+        
+        // THEN
+        XCTAssertTrue(valuesEqual)
+    }
 }

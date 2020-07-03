@@ -75,13 +75,14 @@ final class MockAuthenticatedSessionFactory: AuthenticatedSessionFactory {
 
     override func session(for account: Account, storeProvider: LocalStoreProviderProtocol) -> ZMUserSession? {
         return ZMUserSession(
+            transportSession: transportSession,
             mediaManager: mediaManager,
             flowManager: flowManager,
             analytics: analytics,
-            transportSession: transportSession,
             application: application,
             appVersion: appVersion,
-            storeProvider: storeProvider
+            storeProvider: storeProvider,
+            showContentDelegate: showContentDelegate
         )
     }
 
@@ -114,6 +115,9 @@ extension IntegrationTest {
     
     @objc
     func _setUp() {
+        
+        UserClientRequestFactory._test_overrideNumberOfKeys = 1
+        
         sharedContainerDirectory = Bundle.main.appGroupIdentifier.map(FileManager.sharedContainerDirectory)
         deleteSharedContainerContent()
         ZMPersistentCookieStorage.setDoNotPersistToKeychain(!useRealKeychain)
@@ -146,6 +150,7 @@ extension IntegrationTest {
     
     @objc
     func _tearDown() {
+        UserClientRequestFactory._test_overrideNumberOfKeys = nil
         destroyTimers()
         sharedSearchDirectory?.tearDown()
         sharedSearchDirectory = nil
@@ -386,7 +391,7 @@ extension IntegrationTest {
             user2.accentID = 1
             self.teamUser2 = user2
 
-            let team = session.insertTeam(withName: "A Team", isBound: true, users: [user1, user2])
+            let team = session.insertTeam(withName: "A Team", isBound: true, users: [self.selfUser, user1, user2])
             self.team = team
 
             let bot = session.insertUser(withName: "Botty the Bot")
@@ -401,11 +406,14 @@ extension IntegrationTest {
             groupConversation.changeName(by:self.selfUser, name:"Group conversation with bot")
             self.groupConversationWithServiceUser = groupConversation
 
-            let teamConversation = session.insertGroupConversation(withSelfUser:self.selfUser, otherUsers: [self.teamUser1, self.teamUser2])
+            let teamConversation = session.insertGroupConversation(withSelfUser:self.selfUser, otherUsers: [self.teamUser1!, self.teamUser2!])
             teamConversation.team = team
             teamConversation.creator = self.selfUser
             teamConversation.changeName(by:self.selfUser, name:"Team Group conversation")
             self.groupConversationWithWholeTeam = teamConversation
+            MockRole.createConversationRoles(context: self.mockTransportSession.managedObjectContext)
+            let pc = MockParticipantRole.insert(in: self.mockTransportSession.managedObjectContext, conversation: groupConversation, user: self.selfUser)
+            pc.role = MockRole.adminRole            
         })
     }
     
@@ -452,7 +460,7 @@ extension IntegrationTest {
     @objc(prefetchRemoteClientByInsertingMessageInConversation:)
     func prefetchClientByInsertingMessage(in mockConversation: MockConversation) {
         guard let convo = conversation(for: mockConversation) else { return }
-        userSession?.performChanges {
+        userSession?.perform {
             convo.append(text: "hum, t'es sûr?")
         }
 
@@ -567,7 +575,7 @@ extension IntegrationTest {
     }
     
     func performSlowSync() {
-        userSession?.applicationStatusDirectory.syncStatus.forceSlowSync()
+        userSession?.applicationStatusDirectory?.syncStatus.forceSlowSync()
         RequestAvailableNotification.notifyNewRequestsAvailable(nil)
         XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
     }
@@ -577,17 +585,25 @@ extension IntegrationTest {
 extension IntegrationTest {
     @objc(remotelyAppendSelfConversationWithZMClearedForMockConversation:atTime:)
     func remotelyAppendSelfConversationWithZMCleared(for mockConversation: MockConversation, at time: Date) {
-        let genericMessage = ZMGenericMessage.message(content: ZMCleared(timestamp: time, conversationRemoteID: UUID(uuidString: mockConversation.identifier)!))
+        let genericMessage = GenericMessage(content: Cleared(timestamp: time, conversationID: UUID(uuidString: mockConversation.identifier)!))
         mockTransportSession.performRemoteChanges { session in
-            self.selfConversation.insertClientMessage(from: self.selfUser, data: genericMessage.data())
+            do {
+                self.selfConversation.insertClientMessage(from: self.selfUser, data: try genericMessage.serializedData())
+            } catch {
+                XCTFail()
+            }
         }
     }
     
     @objc(remotelyAppendSelfConversationWithZMLastReadForMockConversation:atTime:)
     func remotelyAppendSelfConversationWithZMLastRead(for mockConversation: MockConversation, at time: Date) {
-        let genericMessage = ZMGenericMessage.message(content: ZMLastRead(timestamp: time, conversationRemoteID: UUID(uuidString: mockConversation.identifier)!))
+        let genericMessage = GenericMessage(content: LastRead(conversationID: UUID(uuidString: mockConversation.identifier)!, lastReadTimestamp: time))
         mockTransportSession.performRemoteChanges { session in
-            self.selfConversation.insertClientMessage(from: self.selfUser, data: genericMessage.data())
+            do {
+                self.selfConversation.insertClientMessage(from: self.selfUser, data: try genericMessage.serializedData())
+            } catch {
+                XCTFail()
+            }
         }
     }
 }
@@ -602,7 +618,7 @@ extension IntegrationTest : SessionManagerDelegate {
         self.userSession = userSession
         
         if let notificationCenter = self.notificationCenter {
-            self.userSession?.localNotificationDispatcher.notificationCenter = notificationCenter
+            self.userSession?.localNotificationDispatcher?.notificationCenter = notificationCenter
         }
         
         userSession.syncManagedObjectContext.performGroupedBlock {

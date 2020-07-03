@@ -128,7 +128,7 @@ extension CallingRequestStrategy : ZMEventConsumer {
         for event in events {
             guard event.type == .conversationOtrMessageAdd else { continue }
             
-            if let genericMessage = ZMGenericMessage(from: event), genericMessage.hasCalling() {
+            if let genericMessage = GenericMessage(from: event), genericMessage.hasCalling {
                 
                 guard
                     let payload = genericMessage.calling.content.data(using: .utf8, allowLossyConversion: false),
@@ -179,10 +179,10 @@ extension CallingRequestStrategy : WireCallCenterTransport {
                 return
             }
             
-            self.zmLog.debug("sending calling message")
+            self.zmLog.debug("schedule calling message")
             
-            let genericMessage = ZMGenericMessage.message(content: ZMCalling.calling(message: dataString))
-            
+            let genericMessage = GenericMessage(content: Calling(content: dataString))
+
             self.genericMessageStrategy.schedule(message: genericMessage, inConversation: conversation) { (response) in
                 if response.httpStatus == 201 {
                     completionHandler(response.httpStatus)

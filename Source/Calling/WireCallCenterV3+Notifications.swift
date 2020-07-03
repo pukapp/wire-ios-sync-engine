@@ -18,23 +18,6 @@
 
 import Foundation
 
-@objc
-public enum ReceivedVideoState : UInt {
-    /// Sender is not sending video
-    case stopped
-    /// Sender is sending video
-    case started
-    /// Sender is sending video but currently has a bad connection
-    case badConnection
-}
-
-@objc
-public protocol ReceivedVideoObserver : class {
-    
-    @objc(callCenterDidChangeReceivedVideoState:user:)
-    func callCenterDidChange(receivedVideoState: ReceivedVideoState, user: ZMUser)
-    
-}
 
 protocol SelfPostingNotification {
     static var notificationName : Notification.Name { get }
@@ -73,6 +56,18 @@ struct WireCallCenterCBRNotification : SelfPostingNotification {
     public let enabled: Bool
 }
 
+// MARK:- Mute state observer
+
+public protocol MuteStateObserver : class {
+    func callCenterDidChange(muted: Bool)
+}
+
+struct WireCallCenterMutedNotification : SelfPostingNotification {
+    static let notificationName = Notification.Name("WireCallCenterMutedNotification")
+    
+    public let muted: Bool
+}
+
 // MARK:- Call state observer
 
 public protocol WireCallCenterCallStateObserver : class {
@@ -85,7 +80,7 @@ public protocol WireCallCenterCallStateObserver : class {
      - parameter caller: user which initiated the call
      - parameter timestamp: when the call state change occured
      */
-    func callCenterDidChange(callState: CallState, conversation: ZMConversation, caller: ZMUser, timestamp: Date?, previousCallState: CallState?)
+    func callCenterDidChange(callState: CallState, conversation: ZMConversation, caller: UserType, timestamp: Date?, previousCallState: CallState?)
 }
 
 public struct WireCallCenterCallStateNotification : SelfPostingNotification {
@@ -102,7 +97,7 @@ public struct WireCallCenterCallStateNotification : SelfPostingNotification {
 // MARK:- Missed call observer
 
 public protocol WireCallCenterMissedCallObserver : class {
-    func callCenterMissedCall(conversation: ZMConversation, caller: ZMUser, timestamp: Date, video: Bool)
+    func callCenterMissedCall(conversation: ZMConversation, caller: UserType, timestamp: Date, video: Bool)
 }
 
 public struct WireCallCenterMissedCallNotification : SelfPostingNotification {
@@ -138,7 +133,7 @@ public protocol WireCallCenterCallParticipantObserver : class {
      - parameter conversation: where the call is ongoing
      - parameter particpants: updated list of call participants
      */
-    func callParticipantsDidChange(conversation: ZMConversation, participants: [(UUID, CallParticipantState)])
+    func callParticipantsDidChange(conversation: ZMConversation, participants: [CallParticipant])
 }
 
 public struct WireCallCenterCallParticipantNotification : SelfPostingNotification {
@@ -146,9 +141,9 @@ public struct WireCallCenterCallParticipantNotification : SelfPostingNotificatio
     static let notificationName = Notification.Name("VoiceChannelParticipantNotification")
     
     let conversationId : UUID
-    let participants: [(UUID, CallParticipantState)]
+    let participants: [CallParticipant]
     
-    init(conversationId: UUID, participants: [(UUID, CallParticipantState)]) {
+    init(conversationId: UUID, participants: [CallParticipant]) {
         self.conversationId = conversationId
         self.participants = participants
     }
@@ -159,7 +154,7 @@ public struct WireCallCenterCallParticipantNotification : SelfPostingNotificatio
 
 @objc
 public protocol VoiceGainObserver : class {
-    func voiceGainDidChange(forParticipant participant: ZMUser, volume: Float)
+    func voiceGainDidChange(forParticipant participant: UserType, volume: Float)
 }
 
 @objcMembers
@@ -307,17 +302,14 @@ extension WireCallCenterV3 {
     /// Add observer of call particpants in a conversation. Returns a token which needs to be retained as long as the observer should be active.
     /// Returns a token which needs to be retained as long as the observer should be active.
     internal class func addCallParticipantObserver(observer: WireCallCenterCallParticipantObserver, for conversation: ZMConversation, context: NSManagedObjectContext) -> Any {
-        let remoteID = conversation.remoteIdentifier!
-        
         return NotificationInContext.addObserver(name: WireCallCenterCallParticipantNotification.notificationName, context: context.notificationContext, queue: .main) { [weak observer] note in
-            guard let note = note.userInfo[WireCallCenterCallParticipantNotification.userInfoKey] as? WireCallCenterCallParticipantNotification,
-                  let observer = observer,
-                  note.conversationId == conversation.remoteIdentifier
-            else { return }
-            
-            if note.conversationId == remoteID {
-                observer.callParticipantsDidChange(conversation: conversation, participants: note.participants)
-            }
+            guard
+                let note = note.userInfo[WireCallCenterCallParticipantNotification.userInfoKey] as? WireCallCenterCallParticipantNotification,
+                let observer = observer,
+                note.conversationId == conversation.remoteIdentifier
+                else { return }
+
+            observer.callParticipantsDidChange(conversation: conversation, participants: note.participants)
         }
     }
     
@@ -356,4 +348,22 @@ extension WireCallCenterV3 {
             }
         }
     }
+    
+    /// Add observer of mute state. Returns a token which needs to be retained as long as the observer should be active.
+    /// Returns a token which needs to be retained as long as the observer should be active.
+    public class func addMuteStateObserver(observer: MuteStateObserver, userSession: ZMUserSession) -> Any {
+        return addMuteStateObserver(observer: observer, context: userSession.managedObjectContext)
+    }
+    
+    /// Add observer of mute state. Returns a token which needs to be retained as long as the observer should be active.
+    /// Returns a token which needs to be retained as long as the observer should be active.
+    internal class func addMuteStateObserver(observer: MuteStateObserver, context: NSManagedObjectContext) -> Any {
+        return NotificationInContext.addObserver(name: WireCallCenterMutedNotification.notificationName, context: context.notificationContext, object: nil, queue: .main) { [weak observer] note in
+            guard let note = note.userInfo[WireCallCenterMutedNotification.userInfoKey] as? WireCallCenterMutedNotification,
+                let observer = observer
+                else { return }
+            observer.callCenterDidChange(muted: note.muted)
+        }
+    }
+
 }

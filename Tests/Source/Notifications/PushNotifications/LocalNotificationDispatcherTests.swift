@@ -16,11 +16,14 @@
 // along with this program. If not, see http://www.gnu.org/licenses/.
 //
 
+import XCTest
+import UserNotifications
 
 @testable import WireSyncEngine
-import XCTest
 
-class LocalNotificationDispatcherTests: MessagingTest {
+class LocalNotificationDispatcherTests: DatabaseTest {
+
+    typealias ZMLocalNotification = WireSyncEngine.ZMLocalNotification
     
     var sut: LocalNotificationDispatcher!
     var conversation1: ZMConversation!
@@ -50,8 +53,6 @@ class LocalNotificationDispatcherTests: MessagingTest {
          self.sut.messageNotifications,
          self.sut.callingNotifications].forEach { $0.notificationCenter = notificationCenter }
         
-        self.mockUserSession.operationStatus.isInBackground = true
-        
         syncMOC.performGroupedBlockAndWait {
             self.user1 = ZMUser.insertNewObject(in: self.syncMOC)
             self.user2 = ZMUser.insertNewObject(in: self.syncMOC)
@@ -66,9 +67,9 @@ class LocalNotificationDispatcherTests: MessagingTest {
             [self.conversation1!, self.conversation2!].forEach {
                 $0.conversationType = .group
                 $0.remoteIdentifier = UUID.create()
-                $0.internalAddParticipants([self.user1])
+                $0.addParticipantAndUpdateConversationState(user: self.user1, role: nil)
             }
-            self.conversation2.internalAddParticipants([self.user2])
+            self.conversation2.addParticipantAndUpdateConversationState(user: self.user2, role: nil)
             
             self.selfUser.remoteIdentifier = UUID.create()
         }
@@ -82,7 +83,6 @@ class LocalNotificationDispatcherTests: MessagingTest {
         self.user2 = nil
         self.conversation1 = nil
         self.conversation2 = nil
-        self.sut.tearDown()
         self.sut = nil
         super.tearDown()
     }
@@ -165,7 +165,7 @@ extension LocalNotificationDispatcherTests {
 
     func testThatItDoesNotCreateANotificationForAnUnsupportedEventType() {
         // GIVEN
-        let event = self.event(withPayload: nil, in: self.conversation1, type: EventConversationTyping)!
+        let event = self.event(withPayload: nil, type: .conversationTyping, in: self.conversation1, user: self.user1)
 
         // WHEN
         self.sut.didReceive(events: [event], conversationMap: [:])
@@ -348,8 +348,8 @@ extension LocalNotificationDispatcherTests {
 
         let message = conversation.append(text: "text") as! ZMClientMessage
         
-        let reaction1 = ZMGenericMessage.message(content: ZMReaction(emoji: "❤️", messageID: message.nonce!))
-        let reaction2 = ZMGenericMessage.message(content: ZMReaction(emoji: "", messageID: message.nonce!))
+        let reaction1 = GenericMessage(content: WireProtos.Reaction(emoji: "❤️", messageID: message.nonce!))
+        let reaction2 = GenericMessage(content: WireProtos.Reaction(emoji: "", messageID: message.nonce!))
 
         let event1 = createUpdateEvent(UUID.create(), conversationID: conversation.remoteIdentifier!, genericMessage: reaction1, senderID: sender.remoteIdentifier!)
         let event2 = createUpdateEvent(UUID.create(), conversationID: conversation.remoteIdentifier!, genericMessage: reaction2, senderID: sender.remoteIdentifier!)
@@ -396,14 +396,14 @@ extension LocalNotificationDispatcherTests {
 extension LocalNotificationDispatcherTests {
     
     func payloadForEncryptedOTRMessage(text: String, nonce: UUID) -> [String: Any] {
-        let message = ZMGenericMessage.message(content: ZMText.text(with: text), nonce: nonce)
+        let message = GenericMessage(content: Text(content: text), nonce: nonce)
         return self.payloadForOTRAsset(with: message)
     }
     
-    func payloadForOTRAsset(with message: ZMGenericMessage) -> [String: Any] {
+    func payloadForOTRAsset(with message: GenericMessage) -> [String: Any] {
         return [
             "data": [
-                "info": message.data().base64String()
+                "info": try? message.serializedData().base64String()
             ],
             "conversation": self.conversation1.remoteIdentifier!.transportString(),
             "type": EventConversationAddOTRAsset,
@@ -411,10 +411,10 @@ extension LocalNotificationDispatcherTests {
         ]
     }
 
-    func payloadForOTRMessage(with message: ZMGenericMessage) -> [String: Any] {
+    func payloadForOTRMessage(with message: GenericMessage) -> [String: Any] {
         return [
             "data": [
-                "text": message.data().base64String()
+                "text": try? message.serializedData().base64String()
             ],
             "conversation": self.conversation1.remoteIdentifier!.transportString(),
             "type": EventConversationAddOTRAsset,
@@ -422,13 +422,13 @@ extension LocalNotificationDispatcherTests {
         ]
     }
     
-    func createUpdateEvent(_ nonce: UUID, conversationID: UUID, genericMessage: ZMGenericMessage, senderID: UUID = UUID.create()) -> ZMUpdateEvent {
+    func createUpdateEvent(_ nonce: UUID, conversationID: UUID, genericMessage: GenericMessage, senderID: UUID = UUID.create()) -> ZMUpdateEvent {
         let payload : [String : Any] = [
             "id": UUID.create().transportString(),
             "conversation": conversationID.transportString(),
             "from": senderID.transportString(),
             "time": Date().transportString(),
-            "data": ["text": genericMessage.data().base64String()],
+            "data": ["text": try? genericMessage.serializedData().base64String()],
             "type": "conversation.otr-message-add"
         ]
         

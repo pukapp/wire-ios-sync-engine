@@ -20,7 +20,27 @@ import XCTest
 
 @testable import WireSyncEngine
 
-class Conversation_ParticipantsTests: MessagingTest {
+class Conversation_ParticipantsTests: DatabaseTest {
+    
+    var mockTransportSession: MockTransportSession!
+    var mockUpdateEventProcessor: MockUpdateEventProcessor!
+    
+    override func setUp() {
+        super.setUp()
+        
+        mockTransportSession = MockTransportSession(dispatchGroup: dispatchGroup)
+        mockUpdateEventProcessor = MockUpdateEventProcessor()
+    }
+    
+    override func tearDown() {
+        _ = waitForAllGroupsToBeEmpty(withTimeout: 0.5)
+        
+        mockTransportSession.cleanUp()
+        mockTransportSession = nil
+        mockUpdateEventProcessor = nil
+        
+        super.tearDown()
+    }
     
     func responsePayloadForUserEventInConversation(_ conversationId: UUID, senderId: UUID, usersIds: [UUID], eventType: String, time: Date = Date()) -> ZMTransportData {
         return ["conversation": conversationId.transportString(),
@@ -58,7 +78,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let user = ZMUser.insertNewObject(in: uiMOC)
         user.remoteIdentifier = UUID()
         
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [])!
         conversation.remoteIdentifier = UUID()
         conversation.conversationType = .group
         
@@ -72,7 +92,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let receivedSuccess = expectation(description: "received success")
         
         // when
-        conversation.addParticipants(Set(arrayLiteral: user), userSession: mockUserSession) { result in
+        conversation.addParticipants([user], transportSession: mockTransportSession, eventProcessor: mockUpdateEventProcessor, contextProvider: contextDirectory!) { result in
             switch result {
             case .success:
                 receivedSuccess.fulfill()
@@ -83,8 +103,8 @@ class Conversation_ParticipantsTests: MessagingTest {
         XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
         
         // then
-        XCTAssertEqual(processedUpdateEvents.count, 1);
-        XCTAssertEqual((processedUpdateEvents.firstObject as? ZMUpdateEvent)?.type, ZMUpdateEventType.conversationMemberJoin)
+        XCTAssertEqual(mockUpdateEventProcessor.processedEvents.count, 1);
+        XCTAssertEqual(mockUpdateEventProcessor.processedEvents.first?.type, .conversationMemberJoin)
         
         mockTransportSession.responseGeneratorBlock = nil
         mockTransportSession.resetReceivedRequests()
@@ -96,14 +116,14 @@ class Conversation_ParticipantsTests: MessagingTest {
         let selfUser = ZMUser.selfUser(in: uiMOC)
         selfUser.remoteIdentifier = UUID()
         
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [])!
         conversation.remoteIdentifier = UUID()
         conversation.conversationType = .group
         
         let receivedError = expectation(description: "received error")
         
         // when
-        conversation.addParticipants(Set(arrayLiteral: selfUser), userSession: mockUserSession) { result in
+        conversation.addParticipants([selfUser], transportSession: mockTransportSession, eventProcessor: mockUpdateEventProcessor, contextProvider: contextDirectory!) { result in
             switch result {
             case .failure(let error):
                 if case ConversationAddParticipantsError.invalidOperation = error {
@@ -123,14 +143,14 @@ class Conversation_ParticipantsTests: MessagingTest {
         user.remoteIdentifier = UUID()
         
         for conversationType in [ZMConversationType.connection, ZMConversationType.oneOnOne, ZMConversationType.`self`, ZMConversationType.invalid] {
-            let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [])!
+            let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [])!
             conversation.remoteIdentifier = UUID()
             conversation.conversationType = conversationType
             
             let receivedError = expectation(description: "received error")
             
             // when
-            conversation.addParticipants(Set(arrayLiteral: user), userSession: mockUserSession) { result in
+            conversation.addParticipants([user], transportSession: mockTransportSession, eventProcessor: mockUpdateEventProcessor, contextProvider: contextDirectory!) { result in
                 switch result {
                 case .failure(let error):
                     if case ConversationAddParticipantsError.invalidOperation = error {
@@ -150,7 +170,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let user = ZMUser.insertNewObject(in: uiMOC)
         user.remoteIdentifier = UUID()
         
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [])!
         conversation.remoteIdentifier = UUID()
         conversation.conversationType = .group
         
@@ -163,7 +183,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let receivedError = expectation(description: "received error")
         
         // when
-        conversation.addParticipants(Set(arrayLiteral: user), userSession: mockUserSession) { result in
+        conversation.addParticipants([user], transportSession: mockTransportSession, eventProcessor: mockUpdateEventProcessor, contextProvider: contextDirectory!) { result in
             switch result {
             case .failure(let error):
                 if case ConversationAddParticipantsError.invalidOperation = error {
@@ -184,7 +204,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let user = ZMUser.insertNewObject(in: uiMOC)
         user.remoteIdentifier = UUID()
         
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [user])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [user])!
         conversation.remoteIdentifier = UUID()
         conversation.conversationType = .group
         
@@ -198,7 +218,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let receivedError = expectation(description: "received error")
         
         // when
-        conversation.addParticipants(Set(arrayLiteral: user), userSession: mockUserSession) { result in
+        conversation.addParticipants([user], transportSession: mockTransportSession, eventProcessor: mockUpdateEventProcessor, contextProvider: contextDirectory!) { result in
             switch result {
             case .failure(let error):
                 if case ConversationAddParticipantsError.conversationNotFound = error {
@@ -211,6 +231,59 @@ class Conversation_ParticipantsTests: MessagingTest {
         XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))
         mockTransportSession.responseGeneratorBlock = nil
         mockTransportSession.resetReceivedRequests()
+    }
+    
+    func testThatAddParticipantsRefetchTeamUsersOnInvalidOperation() {
+        
+        // given
+        let team = Team.insertNewObject(in: self.uiMOC)
+        team.name = "Wire Amazing Team"
+        
+        let selfUser = ZMUser.selfUser(in: self.uiMOC)
+        
+        let teamUser = ZMUser.insertNewObject(in: uiMOC)
+        teamUser.remoteIdentifier = UUID()
+        teamUser.needsToBeUpdatedFromBackend = false
+        
+        let nonTeamUser = ZMUser.insertNewObject(in: uiMOC)
+        nonTeamUser.remoteIdentifier = UUID()
+        nonTeamUser.needsToBeUpdatedFromBackend = false
+        
+        self.performPretendingUIMocIsSyncMoc {
+            _ = Member.getOrCreateMember(for: selfUser, in: team, context: self.uiMOC)
+            _ = Member.getOrCreateMember(for: teamUser, in: team, context: self.uiMOC)
+        }
+        
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [])!
+        conversation.remoteIdentifier = UUID()
+        conversation.conversationType = .group
+        
+        mockTransportSession.responseGeneratorBlock = { request in
+            guard request.path == "/conversations/\(conversation.remoteIdentifier!.transportString())/members" else { return nil }
+            
+            return ZMTransportResponse(payload: ["label": "invalid-op"] as ZMTransportData, httpStatus: 403, transportSessionError: nil)
+        }
+        
+        let receivedError = expectation(description: "received error")
+        
+        // when
+        conversation.addParticipants([teamUser, nonTeamUser], transportSession: mockTransportSession, eventProcessor: mockUpdateEventProcessor, contextProvider: contextDirectory!) { result in
+            switch result {
+            case .failure(let error):
+                if case ConversationAddParticipantsError.invalidOperation = error {
+                    receivedError.fulfill()
+                }
+            default: break
+            }
+        }
+        
+        XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))
+        mockTransportSession.responseGeneratorBlock = nil
+        mockTransportSession.resetReceivedRequests()
+        
+        // then
+        XCTAssertTrue(teamUser.needsToBeUpdatedFromBackend)
+        XCTAssertFalse(nonTeamUser.needsToBeUpdatedFromBackend)
     }
     
     // MARK: - Removing participant
@@ -239,7 +312,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let user = ZMUser.insertNewObject(in: uiMOC)
         user.remoteIdentifier = UUID()
         
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [user])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [user])!
         conversation.remoteIdentifier = UUID()
         conversation.conversationType = .group
         
@@ -253,7 +326,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let receivedSuccess = expectation(description: "received success")
         
         // when
-        conversation.removeParticipant(user, userSession: mockUserSession) { result in
+        conversation.removeParticipant(user, transportSession: mockTransportSession, eventProcessor: mockUpdateEventProcessor, contextProvider: contextDirectory!) { result in
             switch result {
             case .success:
                 receivedSuccess.fulfill()
@@ -273,14 +346,14 @@ class Conversation_ParticipantsTests: MessagingTest {
         user.remoteIdentifier = UUID()
         
         for conversationType in [ZMConversationType.connection, ZMConversationType.oneOnOne, ZMConversationType.`self`, ZMConversationType.invalid] {
-            let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [])!
+            let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [])!
             conversation.remoteIdentifier = UUID()
             conversation.conversationType = conversationType
             
             let receivedError = expectation(description: "received error")
             
             // when
-            conversation.removeParticipant(user, userSession: mockUserSession) { result in
+            conversation.removeParticipant(user, transportSession: mockTransportSession, eventProcessor: mockUpdateEventProcessor, contextProvider: contextDirectory!) { result in
                 switch result {
                 case .failure(let error):
                     if case ConversationRemoveParticipantError.invalidOperation = error {
@@ -300,7 +373,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let user = ZMUser.insertNewObject(in: uiMOC)
         user.remoteIdentifier = UUID()
         
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [user])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [user])!
         conversation.remoteIdentifier = UUID()
         conversation.conversationType = .group
         
@@ -314,7 +387,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let receivedError = expectation(description: "received error")
         
         // when
-        conversation.removeParticipant(user, userSession: mockUserSession) { result in
+        conversation.removeParticipant(user, transportSession: mockTransportSession, eventProcessor: mockUpdateEventProcessor, contextProvider: contextDirectory!) { result in
             switch result {
             case .failure(let error):
                 if case ConversationRemoveParticipantError.invalidOperation = error {
@@ -335,7 +408,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let user = ZMUser.insertNewObject(in: uiMOC)
         user.remoteIdentifier = UUID()
         
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [user])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [user])!
         conversation.remoteIdentifier = UUID()
         conversation.conversationType = .group
         
@@ -349,7 +422,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let receivedError = expectation(description: "received error")
         
         // when
-        conversation.removeParticipant(user, userSession: mockUserSession) { result in
+        conversation.removeParticipant(user, transportSession: mockTransportSession, eventProcessor: mockUpdateEventProcessor, contextProvider: contextDirectory!) { result in
             switch result {
             case .failure(let error):
                 if case ConversationRemoveParticipantError.conversationNotFound = error {
@@ -370,7 +443,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let user = ZMUser.insertNewObject(in: uiMOC)
         user.remoteIdentifier = UUID()
 
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [user])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [user])!
         conversation.remoteIdentifier = UUID()
         conversation.conversationType = .group
 
@@ -384,7 +457,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let receivedSuccess = expectation(description: "received success")
 
         // when
-        conversation.removeParticipant(user, userSession: mockUserSession) { result in
+        conversation.removeParticipant(user, transportSession: mockTransportSession, eventProcessor: mockUpdateEventProcessor, contextProvider: contextDirectory!) { result in
             switch result {
             case .success:
                 receivedSuccess.fulfill()
@@ -395,8 +468,8 @@ class Conversation_ParticipantsTests: MessagingTest {
         XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
         
         // then
-        XCTAssertEqual(processedUpdateEvents.count, 1);
-        XCTAssertEqual((processedUpdateEvents.firstObject as? ZMUpdateEvent)?.type, ZMUpdateEventType.conversationMemberLeave)
+        XCTAssertEqual(mockUpdateEventProcessor.processedEvents.count, 1);
+        XCTAssertEqual(mockUpdateEventProcessor.processedEvents.first?.type, .conversationMemberLeave)
         
         mockTransportSession.responseGeneratorBlock = nil
         mockTransportSession.resetReceivedRequests()
@@ -412,7 +485,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         selfUser.remoteIdentifier = UUID()
         
         let conversationId = UUID()
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [user])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [user])!
         conversation.remoteIdentifier = conversationId
         conversation.conversationType = .group;
 
@@ -435,7 +508,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         }
         
         // when
-        conversation.removeParticipant(selfUser, userSession: mockUserSession) { result in
+        conversation.removeParticipant(selfUser, transportSession: mockTransportSession, eventProcessor: mockUpdateEventProcessor, contextProvider: contextDirectory!) { result in
             switch result {
             case .success:
                 receivedSuccess.fulfill()
@@ -466,7 +539,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         selfUser.remoteIdentifier = UUID()
         
         let conversationId = UUID()
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [user])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [user])!
         conversation.remoteIdentifier = conversationId
         conversation.conversationType = .group;
         
@@ -490,7 +563,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         }
         
         // when
-        conversation.removeParticipant(user, userSession: mockUserSession) { result in
+        conversation.removeParticipant(user, transportSession: mockTransportSession, eventProcessor: mockUpdateEventProcessor, contextProvider: contextDirectory!) { result in
             switch result {
             case .success:
                 receivedSuccess.fulfill()
@@ -521,7 +594,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         service.providerIdentifier = "123"
         service.serviceIdentifier = "123"
         
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [service])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [service])!
         conversation.remoteIdentifier = UUID()
         
         // when
@@ -538,7 +611,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let user = ZMUser.insertNewObject(in: uiMOC)
         user.remoteIdentifier = UUID()
         
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [user])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [user])!
         conversation.remoteIdentifier = UUID()
         
         // when
@@ -558,7 +631,7 @@ class Conversation_ParticipantsTests: MessagingTest {
         let user2 = ZMUser.insertNewObject(in: uiMOC)
         user2.remoteIdentifier = UUID()
         
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [])!
         conversation.remoteIdentifier = UUID()
         
         // when
@@ -567,9 +640,15 @@ class Conversation_ParticipantsTests: MessagingTest {
         // then
         XCTAssertEqual(request.method, .methodPOST)
         XCTAssertEqual(request.path, "/conversations/\(conversation.remoteIdentifier!.transportString())/members")
-        
-        let usersIdsInPayload = request.payload?.asDictionary()?["users"] as! [String]
+
+        let payload = request.payload?.asDictionary()
+        XCTAssertNotNil(payload)
+
+        let usersIdsInPayload = payload!["users"] as! [String]
         XCTAssertEqual(Set(usersIdsInPayload), Set(arrayLiteral: user1.remoteIdentifier!.transportString(), user2.remoteIdentifier!.transportString()))
+
+        let conversationRole = payload!["conversation_role"] as! String
+        XCTAssertEqual(conversationRole, ZMConversation.defaultMemberRoleName)
     }
     
 }

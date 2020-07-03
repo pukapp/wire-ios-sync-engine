@@ -49,16 +49,15 @@ public protocol CallProperties : NSObjectProtocol {
     var callStartDate: Date? { get }
     
     /// Voice channel participants. May be a subset of conversation participants.
-    var participants: NSOrderedSet { get }
+    var participants: [CallParticipant] { get }
     
     /// Voice channel is sending audio using a contant bit rate
     var isConstantBitRateAudioActive: Bool { get }
     var isVideoCall: Bool { get }
-    var initiator: ZMUser? { get }
+    var initiator: UserType? { get }
     var videoState: VideoState { get set }
     var networkQuality: NetworkQuality { get }
     
-    func state(forParticipant: ZMUser) -> CallParticipantState
     func setVideoCaptureDevice(_ device: CaptureDevice) throws
 }
 

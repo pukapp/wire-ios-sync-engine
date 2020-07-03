@@ -19,7 +19,22 @@
 import XCTest
 @testable import WireSyncEngine
 
-class Conversation_DeletionTests: MessagingTest {
+class Conversation_DeletionTests: DatabaseTest {
+    
+    var mockTransportSession: MockTransportSession!
+    
+    override func setUp() {
+        super.setUp()
+        
+        mockTransportSession = MockTransportSession(dispatchGroup: dispatchGroup)
+    }
+    
+    override func tearDown() {
+        mockTransportSession.cleanUp()
+        mockTransportSession = nil
+        
+        super.tearDown()
+    }
 
     func testThatItParsesAllKnownConversationDeletionErrorResponses() {
         
@@ -41,13 +56,13 @@ class Conversation_DeletionTests: MessagingTest {
     
     func testItThatReturnsFailure_WhenAttempingToDeleteNonTeamConveration() {
         // GIVEN
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [])!
         conversation.remoteIdentifier = UUID()
         conversation.conversationType = .group
         let invalidOperationfailure = expectation(description: "Invalid Operation")
         
         // WHEN
-        conversation.delete(in: mockUserSession) { (result) in
+        conversation.delete(in: contextDirectory!, transportSession: mockTransportSession) { (result) in
             if case .failure(let error) = result {
                 if case ConversationDeletionError.invalidOperation = error {
                     invalidOperationfailure.fulfill()
@@ -61,13 +76,13 @@ class Conversation_DeletionTests: MessagingTest {
     
     func testItThatReturnsFailure_WhenAttempingToDeleteLocalConveration() {
         // GIVEN
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [])!
         conversation.conversationType = .group
         conversation.teamRemoteIdentifier = UUID()
         let invalidOperationfailure = expectation(description: "Invalid Operation")
         
         // WHEN
-        conversation.delete(in: mockUserSession) { (result) in
+        conversation.delete(in: contextDirectory!, transportSession: mockTransportSession) { (result) in
             if case .failure(let error) = result {
                 if case ConversationDeletionError.invalidOperation = error {
                     invalidOperationfailure.fulfill()
@@ -83,7 +98,7 @@ class Conversation_DeletionTests: MessagingTest {
     
     func testThatItGeneratesRequest_ForDeletingTeamConveration() {
         // GIVEN
-        let conversation = ZMConversation.insertGroupConversation(into: uiMOC, withParticipants: [])!
+        let conversation = ZMConversation.insertGroupConversation(moc: uiMOC, participants: [])!
         conversation.remoteIdentifier = UUID()
         conversation.conversationType = .group
         conversation.teamRemoteIdentifier = UUID()

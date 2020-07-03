@@ -101,7 +101,13 @@ public class PreLoginAuthenticationNotificationRecorder : NSObject {
 final class TestUnauthenticatedTransportSession: NSObject, UnauthenticatedTransportSessionProtocol {
 
     public var cookieStorage = ZMPersistentCookieStorage()
+    
     var nextEnqueueResult: EnqueueResult = .nilRequest
+    var lastEnqueuedRequest: ZMTransportRequest?
+    
+    func enqueueOneTime(_ request: ZMTransportRequest) {
+        lastEnqueuedRequest = request
+    }
 
     func enqueueRequest(withGenerator generator: () -> ZMTransportRequest?) -> EnqueueResult {
         return nextEnqueueResult
@@ -147,6 +153,7 @@ final class MockUnauthenticatedSessionDelegate: NSObject, UnauthenticatedSession
     var createdAccounts = [Account]()
     var didUpdateCredentials : Bool = false
     var willAcceptUpdatedCredentials = false
+    var isAllowedToCreatingNewAccounts = true
 
     func session(session: UnauthenticatedSession, createdAccount account: Account) {
         createdAccounts.append(account)
@@ -159,6 +166,10 @@ final class MockUnauthenticatedSessionDelegate: NSObject, UnauthenticatedSession
     func session(session: UnauthenticatedSession, updatedCredentials credentials: ZMCredentials) -> Bool {
         didUpdateCredentials = true
         return willAcceptUpdatedCredentials
+    }
+    
+    func sessionIsAllowedToCreateNewAccount(_ session: UnauthenticatedSession) -> Bool {
+        return isAllowedToCreatingNewAccounts
     }
 
 }

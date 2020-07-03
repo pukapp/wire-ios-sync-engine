@@ -16,9 +16,11 @@
 // along with this program. If not, see http://www.gnu.org/licenses/.
 //
 
+import UserNotifications
+
 @testable import WireSyncEngine
 
-class LocalNotificationDispatcherCallingTests : MessagingTest {
+class LocalNotificationDispatcherCallingTests: DatabaseTest {
     
     var sut : LocalNotificationDispatcher!
     var notificationCenter : UserNotificationCenterMock!
@@ -38,8 +40,6 @@ class LocalNotificationDispatcherCallingTests : MessagingTest {
         sut.notificationCenter = notificationCenter
         sut.callingNotifications.notificationCenter = notificationCenter
         
-        self.mockUserSession.operationStatus.isInBackground = true
-        
         syncMOC.performGroupedBlockAndWait {
             let sender = ZMUser.insertNewObject(in: self.syncMOC)
             sender.name = "Callie"
@@ -50,7 +50,7 @@ class LocalNotificationDispatcherCallingTests : MessagingTest {
             let conversation = ZMConversation.insertNewObject(in: self.syncMOC)
             conversation.conversationType = .oneOnOne
             conversation.remoteIdentifier = UUID()
-            conversation.internalAddParticipants([sender])
+            conversation.addParticipantAndUpdateConversationState(user: sender, role: nil)
             
             self.conversation = conversation
             
@@ -59,7 +59,6 @@ class LocalNotificationDispatcherCallingTests : MessagingTest {
     }
     
     override func tearDown() {
-        sut.tearDown()
         sut = nil
         notificationCenter = nil
         sender = nil

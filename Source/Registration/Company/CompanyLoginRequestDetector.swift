@@ -35,9 +35,21 @@ public final class CompanyLoginRequestDetector: NSObject {
         public let isNew: Bool  // Weather or not the code changed since the last check.
     }
 
+    
+    /// An enum describing the parsing result of a presumed SSO code / email
+    ///
+    /// - ssoCode: SSO code
+    /// - domain: Domain extracted from the email
+    /// - unknown: Not matching an email or SSO code
+    public enum ParserResult {
+        case ssoCode(UUID)
+        case domain(String)
+        case unknown
+    }
+    
     private let pasteboard: Pasteboard
     private let processQueue = DispatchQueue(label: "WireSyncEngine.SharedIdentitySessionRequestDetector")
-    private var previousChangeCount: Int?
+    private var previouslyDetectedSSOCode: String?
     
     // MARK: - Initialization
 
@@ -60,22 +72,46 @@ public final class CompanyLoginRequestDetector: NSObject {
 
     public func detectCopiedRequestCode(_ completionHandler: @escaping (DetectorResult?) -> Void) {
         func complete(_ result: DetectorResult?) {
-            previousChangeCount = pasteboard.changeCount
+            previouslyDetectedSSOCode = result?.code
             DispatchQueue.main.async {
                 completionHandler(result)
             }
         }
 
-        processQueue.async { [pasteboard, previousChangeCount] in
+        processQueue.async { [pasteboard, previouslyDetectedSSOCode] in
             guard let text = pasteboard.text else { return complete(nil) }
             guard let code = CompanyLoginRequestDetector.requestCode(in: text) else { return complete(nil) }
 
-            let validText = "wire-" + code.uuidString
-            let isNew = pasteboard.changeCount != previousChangeCount
-            complete(.init(code: validText, isNew: isNew))
+            let validSSOCode = "wire-" + code.uuidString
+            let isNew = validSSOCode != previouslyDetectedSSOCode
+            complete(.init(code: validSSOCode, isNew: isNew))
         }
     }
 
+    
+    /// Parses the input and returns its type (.ssoCode, .domain or .unknown)
+    ///
+    /// - Parameter input: to be parsed
+    /// - Returns: type of input with its eventual associated value
+    public static func parse(input: String) -> ParserResult {
+        if let domain = domain(from: input) {
+            return .domain(domain)
+        } else if let code = requestCode(in: input) {
+            return .ssoCode(code)
+        } else {
+            return .unknown
+        }
+    }
+    
+    /// Tries to extract the domain from a given email
+    ///
+    /// - Parameter email: the email to extract the domain from. e.g. bob@domain.com
+    /// - Returns: domain. e.g. domain.com
+    private static func domain(from email: String) -> String? {
+        guard ZMEmailAddressValidator.isValidEmailAddress(email) else { return nil }
+        return email.components(separatedBy: "@").last
+    }
+    
     /**
      * Tries to extract the request ID from the contents of the text.
      */

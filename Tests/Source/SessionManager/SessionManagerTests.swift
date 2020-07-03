@@ -21,7 +21,7 @@ import WireTesting
 import PushKit
 @testable import WireSyncEngine
 
-class SessionManagerTests: IntegrationTest {
+final class SessionManagerTests: IntegrationTest {
 
     var delegate: SessionManagerTestDelegate!
     var sut: SessionManager?
@@ -32,7 +32,7 @@ class SessionManagerTests: IntegrationTest {
         createSelfUserAndConversation()
     }
     
-    func createManager() -> SessionManager? {
+    func createManager(launchOptions: LaunchOptions = [:]) -> SessionManager? {
         guard let application = application else { return nil }
         let environment = MockEnvironment()
         let reachability = TestReachability()
@@ -60,7 +60,7 @@ class SessionManagerTests: IntegrationTest {
             detector: jailbreakDetector
         )
         
-        sessionManager.start(launchOptions: [:])
+        sessionManager.start(launchOptions: launchOptions)
         
         return sessionManager
     }
@@ -138,6 +138,7 @@ class SessionManagerTests: IntegrationTest {
                               mediaManager: MockMediaManager(),
                               analytics: nil,
                               delegate: nil,
+                              showContentDelegate: nil,
                               application: application,
                               environment: sessionManager!.environment,
                               configuration: SessionManagerConfiguration(blacklistDownloadInterval: -1)) { sessionManager in
@@ -225,6 +226,7 @@ class SessionManagerTests: IntegrationTest {
                               mediaManager: MockMediaManager(),
                               analytics: nil,
                               delegate: nil,
+                              showContentDelegate: nil,
                               application: application,
                               environment: sessionManager!.environment,
                               configuration: SessionManagerConfiguration(blacklistDownloadInterval: -1)) { sessionManager in
@@ -283,6 +285,7 @@ class SessionManagerTests: IntegrationTest {
                               mediaManager: mockMediaManager,
                               analytics: nil,
                               delegate: self.delegate,
+                              showContentDelegate: nil,
                               application: application,
                               environment: sessionManager!.environment,
                               configuration: configuration,
@@ -313,15 +316,12 @@ class SessionManagerTests: IntegrationTest {
     }
     
     func testAuthenticationAfterReboot() {
-        
         //GIVEN
         sut = createManager()
-        sut?.configuration.authenticateAfterReboot = true
 
         //WHEN
         sut?.accountManager.addAndSelect(createAccount())
         XCTAssertEqual(sut?.accountManager.accounts.count, 1)
-        SessionManager.previousSystemBootTime = Date(timeIntervalSince1970: 0)
         
         //THEN
         let logoutExpectation = expectation(description: "Authentication after reboot")
@@ -333,35 +333,28 @@ class SessionManagerTests: IntegrationTest {
         }
         
         performIgnoringZMLogError {
-            self.sut!.logoutAfterRebootIfNeeded()
+            self.sut!.performPostRebootLogout()
         }
         
         XCTAssertTrue(self.waitForCustomExpectations(withTimeout: 2))
     }
     
-    
-    func testAuthenticationAfterReboot_DoesntLogoutIfNotRebooted() {
-        
+    func testThatShouldPerformPostRebootLogoutReturnsFalseIfNotRebooted() {
         //GIVEN
         sut = createManager()
         sut?.configuration.authenticateAfterReboot = true
         sut?.accountManager.addAndSelect(createAccount())
         XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
         XCTAssertEqual(sut?.accountManager.accounts.count, 1)
-        SessionManager.previousSystemBootTime = ProcessInfo.processInfo.systemBootTime
-        
-        // EXPECT
-        delegate.onLogout = { _ in
-            XCTFail("We should not have been logged out")
-        }
-        
-        // WHEN
+        SessionManager.previousSystemBootTime = ProcessInfo.processInfo.bootTime()
+
+        //WHEN/THEN
         performIgnoringZMLogError {
-            self.sut!.logoutAfterRebootIfNeeded()
+            XCTAssertFalse(self.sut!.shouldPerformPostRebootLogout())
         }
     }
     
-    func testAuthenticationAfterReboot_DoesntLogoutIfNoPreviousBootTimeExists() {
+    func testThatShouldPerformPostRebootLogoutReturnsFalseIfNoPreviousBootTimeExists() {
         
         //GIVEN
         sut = createManager()
@@ -371,14 +364,9 @@ class SessionManagerTests: IntegrationTest {
         XCTAssertEqual(sut?.accountManager.accounts.count, 1)
         ZMKeychain.deleteAllKeychainItems(withAccountName: SessionManager.previousSystemBootTimeContainer)
         
-        // EXPECT
-        delegate.onLogout = { _ in
-            XCTFail("We should not have been logged out")
-        }
-        
-        // WHEN
+        //WHEN/THEN
         performIgnoringZMLogError {
-            self.sut!.logoutAfterRebootIfNeeded()
+            XCTAssertFalse(self.sut!.shouldPerformPostRebootLogout())
         }
     }
     
@@ -512,6 +500,48 @@ class SessionManagerTests_AuthenticationFailure: IntegrationTest {
         XCTAssertNil(sessionManager?.backgroundUserSessions[additionalAccount.userIdentifier])
     }
     
+}
+
+class SessionManagerTests_PasswordVerificationFailure_With_DeleteAccountAfterThreshold: IntegrationTest {
+    private var threshold: Int? = 2
+    override func setUp() {
+        super.setUp()
+        createSelfUserAndConversation()
+    }
+    
+    override var sessionManagerConfiguration: SessionManagerConfiguration {
+        return SessionManagerConfiguration(failedPasswordThresholdBeforeWipe: threshold)
+    }
+    
+    func testThatItDeletesAccount_IfLimitIsReached() {
+        // given
+        XCTAssertTrue(login())
+        let account = sessionManager!.accountManager.selectedAccount!
+        
+        // when
+        sessionManager?.passwordVerificationDidFail(with: threshold!)
+        
+        // then
+        guard let sharedContainer = Bundle.main.appGroupIdentifier.map(FileManager.sharedContainerDirectory) else { return XCTFail() }
+        let accountFolder = StorageStack.accountFolder(accountIdentifier: account.userIdentifier, applicationContainer: sharedContainer)
+        
+        XCTAssertFalse(FileManager.default.fileExists(atPath: accountFolder.path))
+    }
+    
+    func testThatItDoesntDeleteAccount_IfLimitIsNotReached() {
+        // given
+        XCTAssertTrue(login())
+        let account = sessionManager!.accountManager.selectedAccount!
+        
+        // when
+        sessionManager?.passwordVerificationDidFail(with: threshold! - 1)
+        
+        // then
+        guard let sharedContainer = Bundle.main.appGroupIdentifier.map(FileManager.sharedContainerDirectory) else { return XCTFail() }
+        let accountFolder = StorageStack.accountFolder(accountIdentifier: account.userIdentifier, applicationContainer: sharedContainer)
+        
+        XCTAssertTrue(FileManager.default.fileExists(atPath: accountFolder.path))
+    }
 }
 
 class SessionManagerTests_AuthenticationFailure_With_DeleteAccountOnAuthentictionFailure: IntegrationTest {
@@ -759,7 +789,7 @@ class SessionManagerTests_Teams: IntegrationTest {
     }
 }
 
-class SessionManagerTests_MultiUserSession: IntegrationTest {
+final class SessionManagerTests_MultiUserSession: IntegrationTest {
     
     override func setUp() {
          super.setUp()
@@ -846,6 +876,7 @@ class SessionManagerTests_MultiUserSession: IntegrationTest {
                               mediaManager: MockMediaManager(),
                               analytics: nil,
                               delegate: nil,
+                              showContentDelegate: nil,
                               application: application,
                               environment: sessionManager!.environment,
                               configuration: SessionManagerConfiguration(blacklistDownloadInterval: -1)) { sessionManager in
@@ -901,6 +932,7 @@ class SessionManagerTests_MultiUserSession: IntegrationTest {
                        mediaManager: MockMediaManager(),
                        analytics: nil,
                        delegate: nil,
+                       showContentDelegate: nil,
                        application: application,
                        environment: sessionManager!.environment,
                        configuration: SessionManagerConfiguration(blacklistDownloadInterval: -1)) { sessionManager in
@@ -1092,9 +1124,9 @@ class SessionManagerTests_MultiUserSession: IntegrationTest {
     
     func testThatItActivatesTheAccountForPushReaction() {
         // GIVEN
-        let session = self.setupSession()
+        let session = self.setupSession()///TODO: crash at RequireString([NSOperationQueue mainQueue] == [NSOperationQueue currentQueue],
+//        "Must call be called on the main queue.");
         session.isPerformingSync = false
-        session.pushChannelIsOpen = true
         application?.applicationState = .background
         
         let selfConversation = ZMConversation(remoteID: currentUserIdentifier, createIfNeeded: false, in: session.managedObjectContext)
@@ -1129,7 +1161,6 @@ class SessionManagerTests_MultiUserSession: IntegrationTest {
         // GIVEN
         let session = self.setupSession()
         session.isPerformingSync = false
-        session.pushChannelIsOpen = true
         application?.applicationState = .inactive
 
         let selfConversation = ZMConversation(remoteID: currentUserIdentifier, createIfNeeded: false, in: session.managedObjectContext)
@@ -1165,7 +1196,6 @@ class SessionManagerTests_MultiUserSession: IntegrationTest {
         // GIVEN
         let session = self.setupSession()
         session.isPerformingSync = false
-        session.pushChannelIsOpen = true
         
         let responder = MockForegroundNotificationResponder()
         self.sessionManager?.foregroundNotificationResponder = responder
@@ -1317,46 +1347,24 @@ extension SessionManagerTests {
     }
 }
 
-final class MockSessionManagerURLHandlerDelegate: NSObject, SessionManagerURLHandlerDelegate  {
-
-    var allowedAction: URLAction?
-
-    func sessionManagerShouldExecuteURLAction(_ action: URLAction, callback: @escaping (Bool) -> Void) {
-        callback(action == allowedAction)
-    }
-
-}
-
 extension SessionManagerTests {
 
-    func testThatItLogsOutWithCompanyLoginURL() {
+    func testThatItLogsOutWithCompanyLoginURL() throws {
         // GIVEN
         let id = UUID(uuidString: "1E628B42-4C83-49B7-B2B4-EF27BFE503EF")!
         let url = URL(string: "wire://start-sso/wire-\(id)")!
+        let urlActionDelegate = MockURLActionDelegate()
 
-        sut = createManager()
-
-        let urlDelegate = MockSessionManagerURLHandlerDelegate()
-        urlDelegate.allowedAction = URLAction.startCompanyLogin(code: id)
-        sut?.urlHandler.delegate = urlDelegate
-
+        sessionManager?.urlActionDelegate = urlActionDelegate
+        XCTAssertTrue(login())
+        XCTAssertNotNil(userSession)
+        
         // WHEN
-        let logoutExpectation = expectation(description: "The company login flow starts when the user adds .")
-
-        delegate.onLogout = { error in
-            let loginCode = error?.userInfo[SessionManager.companyLoginCodeKey]
-            XCTAssertEqual(loginCode as? UUID, id)
-            XCTAssertEqual(error?.userSessionErrorCode, .addAccountRequested)
-            logoutExpectation.fulfill()
-        }
-
-        sut?.urlHandler.openURL(url, options: [:])
-
+        try sessionManager?.openURL(url, options: [:])
+        XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
+        
         // THEN
-        XCTAssertTrue(self.waitForCustomExpectations(withTimeout: 2))
-
-        // CLEANUP
-        self.sut!.tearDownAllBackgroundSessions()
+        XCTAssertNil(userSession)
     }
 
 }

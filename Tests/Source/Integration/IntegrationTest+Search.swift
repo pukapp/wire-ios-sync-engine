@@ -95,12 +95,12 @@ extension IntegrationTest {
         XCTAssertTrue(waitForCustomExpectations(withTimeout: 0.5))
         XCTAssertNotNil(searchResult)
         
-        return searchResult?.contacts.first
+        return searchResult?.contacts.compactMap(\.user).first
     }
     
     @objc
     public func connect(withUser user: UserType) {
-        userSession?.performChanges {
+        userSession?.perform {
             user.connect(message: "Hola")
         }
         XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.5))

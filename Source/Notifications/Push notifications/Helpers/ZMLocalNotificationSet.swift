@@ -19,29 +19,30 @@
 
 import UIKit
 import WireTransport
+import UserNotifications
 
 
 @objc public protocol ZMSynchonizableKeyValueStore : KeyValueStore {
     func enqueueDelayedSave()
 }
 
-@objc public final class ZMLocalNotificationSet : NSObject  {
+@objc final class ZMLocalNotificationSet : NSObject  {
     
     let archivingKey : String
     let keyValueStore : ZMSynchonizableKeyValueStore
     var notificationCenter: UserNotificationCenter = UNUserNotificationCenter.current()
     
-    public fileprivate(set) var notifications = Set<ZMLocalNotification>() {
+    fileprivate(set) var notifications = Set<ZMLocalNotification>() {
         didSet { updateArchive() }
     }
 
-    public private(set) var oldNotifications = [NotificationUserInfo]()
+    private(set) var oldNotifications = [NotificationUserInfo]()
 
     private var allNotifications: [NotificationUserInfo] {
         return notifications.compactMap { $0.userInfo } + oldNotifications
     }
     
-    public init(archivingKey: String, keyValueStore: ZMSynchonizableKeyValueStore) {
+    init(archivingKey: String, keyValueStore: ZMSynchonizableKeyValueStore) {
         self.archivingKey = archivingKey
         self.keyValueStore = keyValueStore
         super.init()
@@ -64,21 +65,21 @@ import WireTransport
         keyValueStore.enqueueDelayedSave() // we need to save otherwise changes might not be stored
     }
     
-    @discardableResult public func remove(_ notification: ZMLocalNotification) -> ZMLocalNotification? {
+    @discardableResult func remove(_ notification: ZMLocalNotification) -> ZMLocalNotification? {
         return notifications.remove(notification)
     }
     
-    public func addObject(_ notification: ZMLocalNotification) {
+    func addObject(_ notification: ZMLocalNotification) {
         notifications.insert(notification)
     }
     
-    public func replaceObject(_ toReplace: ZMLocalNotification, newObject: ZMLocalNotification) {
+    func replaceObject(_ toReplace: ZMLocalNotification, newObject: ZMLocalNotification) {
         notifications.remove(toReplace)
         notifications.insert(newObject)
     }
     
     /// Cancels all notifications
-    public func cancelAllNotifications() {
+    func cancelAllNotifications() {
         let ids = allNotifications.compactMap { $0.requestID?.uuidString }
         notificationCenter.removeAllNotifications(withIdentifiers: ids)
         notifications = Set()
@@ -86,13 +87,13 @@ import WireTransport
     }
     
     /// This cancels all notifications of a specific conversation
-    public func cancelNotifications(_ conversation: ZMConversation) {
+    func cancelNotifications(_ conversation: ZMConversation) {
         cancelOldNotifications(conversation)
         cancelCurrentNotifications(conversation)
     }
     
     /// Cancel all notifications created in this run
-    internal func cancelCurrentNotifications(_ conversation: ZMConversation) {
+    func cancelCurrentNotifications(_ conversation: ZMConversation) {
         guard notifications.count > 0 else { return }
         let toRemove = notifications.filter { $0.conversationID == conversation.remoteIdentifier }
         notificationCenter.removeAllNotifications(withIdentifiers: toRemove.map { $0.id.uuidString })
@@ -100,7 +101,7 @@ import WireTransport
     }
     
     /// Cancels all notifications created in previous runs
-    internal func cancelOldNotifications(_ conversation: ZMConversation) {
+    func cancelOldNotifications(_ conversation: ZMConversation) {
         guard oldNotifications.count > 0 else { return }
         
         oldNotifications = oldNotifications.filter { userInfo in
@@ -115,7 +116,7 @@ import WireTransport
     }
     
     /// Cancal all notifications with the given message nonce
-    internal func cancelCurrentNotifications(messageNonce: UUID) {
+    func cancelCurrentNotifications(messageNonce: UUID) {
         guard notifications.count > 0 else { return }
         let toRemove = notifications.filter { $0.messageNonce == messageNonce }
         notificationCenter.removeAllNotifications(withIdentifiers: toRemove.map { $0.id.uuidString })
@@ -125,9 +126,9 @@ import WireTransport
 
 
 // Event Notifications
-public extension ZMLocalNotificationSet {
+extension ZMLocalNotificationSet {
 
-    public func cancelNotificationForIncomingCall(_ conversation: ZMConversation) {
+    func cancelNotificationForIncomingCall(_ conversation: ZMConversation) {
         let toRemove = notifications.filter {
             $0.conversationID == conversation.remoteIdentifier && $0.isCallingNotification
         }

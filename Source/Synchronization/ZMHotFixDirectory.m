@@ -19,7 +19,6 @@
 
 @import WireDataModel;
 #import "ZMHotFixDirectory.h"
-#import "ZMUserSession.h"
 #import <WireTransport/WireTransport.h>
 #import <WireSyncEngine/WireSyncEngine-Swift.h>
 
@@ -189,6 +188,12 @@ static NSString* ZMLogTag ZM_UNUSED = @"HotFix";
                      patchCode:^(NSManagedObjectContext *context) {
                          [ZMHotFixDirectory refetchLabels:context];
                      }],
+                    
+                    /// We need to migrate the backend environment to the shared user defaults for it to work with the share extension.
+                    [ZMHotFixPatch
+                     patchWithVersion:@"295.1.0" patchCode:^(__unused NSManagedObjectContext *context) {
+                         [ZMHotFixDirectory migrateBackendEnvironmentToSharedUserDefaults];
+                     }],
                     ];
     });
     return patches;
@@ -197,7 +202,7 @@ static NSString* ZMLogTag ZM_UNUSED = @"HotFix";
 
 + (void)resetPushTokens
 {
-    [[NSNotificationCenter defaultCenter] postNotificationName:ZMUserSessionResetPushTokensNotificationName object:nil];
+    [[NSNotificationCenter defaultCenter] postNotificationName:ZMUserSession.registerCurrentPushTokenNotificationName object:nil];
 }
 
 + (void)removeSharingExtension
@@ -213,35 +218,6 @@ static NSString* ZMLogTag ZM_UNUSED = @"HotFix";
     
     [[NSFileManager defaultManager] removeItemAtURL:imageURL error:nil];
     [[NSFileManager defaultManager] removeItemAtURL:conversationUrl error:nil];
-}
-
-+ (void)removeDeliveryReceiptsForDeletedMessages:(NSManagedObjectContext *)context {
-    NSFetchRequest *requestForInsertedMessages = [ZMClientMessage sortedFetchRequestWithPredicate:[ZMClientMessage predicateForObjectsThatNeedToBeInsertedUpstream]];
-    NSArray *possibleMatches = [context executeFetchRequestOrAssert:requestForInsertedMessages];
-    
-    NSArray *confirmationReceiptsForDeletedMessages = [possibleMatches filterWithBlock:^BOOL(ZMClientMessage *candidateConfirmationReceipt) {
-        if (candidateConfirmationReceipt.genericMessage.hasConfirmation &&
-            candidateConfirmationReceipt.genericMessage.confirmation.firstMessageId) {
-            ZMClientMessage *confirmationReceipt = candidateConfirmationReceipt;
-            
-            NSUUID *originalMessageUUID = [NSUUID uuidWithTransportString:confirmationReceipt.genericMessage.confirmation.firstMessageId];
-            
-            ZMMessage *originalConfirmedMessage = [ZMMessage fetchMessageWithNonce:originalMessageUUID
-                                                                   forConversation:confirmationReceipt.conversation
-                                                            inManagedObjectContext:context];
-            
-            if (nil != originalConfirmedMessage && (originalConfirmedMessage.hasBeenDeleted || originalConfirmedMessage.sender == nil)) {
-                return YES;
-            }
-        }
-        return NO;
-    }];
-    
-    for (ZMClientMessage *message in confirmationReceiptsForDeletedMessages) {
-        [context deleteObject:message];
-    }
-    
-    [context saveOrRollback];
 }
 
 @end

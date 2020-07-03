@@ -20,6 +20,8 @@ import XCTest
 @testable import WireSyncEngine
 
 class ZMLocalNotificationTests_ExpiredMessage: MessagingTest {
+
+    typealias ZMLocalNotification = WireSyncEngine.ZMLocalNotification
     
     var userWithNoName: ZMUser!
     var userWithName: ZMUser!
@@ -151,7 +153,7 @@ class ZMLocalNotificationTests_ExpiredMessage: MessagingTest {
             
             // then
             XCTAssertNotNil(note)
-            XCTAssertEqual(note!.title, self.userWithName.displayName)
+            XCTAssertEqual(note!.title, self.userWithName.name)
             XCTAssertEqual(note!.body, "Unable to send a message")
         }
     }

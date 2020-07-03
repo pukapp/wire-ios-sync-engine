@@ -21,8 +21,6 @@
 @import WireDataModel;
 
 #import "NSError+ZMUserSessionInternal.h"
-#import "ZMUserSession+Internal.h"
-#import "ZMUserSession+OTR.h"
 #import <WireSyncEngine/WireSyncEngine-Swift.h>
 #import "WireSyncEngine_iOS_Tests-Swift.h"
 
@@ -554,7 +552,7 @@ extern NSTimeInterval DebugLoginFailureTimerOverride;
             
             ZMEmailCredentials *credentials = [ZMEmailCredentials credentialsWithEmail:email password:password];
             [self.userSession performChanges:^{
-                [self.userSession.userProfileUpdateStatus requestSettingEmailAndPasswordWithCredentials:credentials error:nil];
+                [self.userSession.userProfile requestSettingEmailAndPasswordWithCredentials:credentials error:nil];
             }];
             
             [self.mockTransportSession performRemoteChanges:^(MockTransportSession<MockTransportSessionObjectCreation> *session) {

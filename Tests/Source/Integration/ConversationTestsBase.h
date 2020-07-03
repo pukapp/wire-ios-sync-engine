@@ -21,8 +21,6 @@
 @import WireSyncEngine;
 @import WireDataModel;
 
-#import "ZMUserSession.h"
-#import "ZMUserSession+Internal.h"
 #import "NotificationObservers.h"
 #import "ZMConversationTranscoder+Internal.h"
 #import <WireSyncEngine/WireSyncEngine-Swift.h>
@@ -50,6 +48,8 @@
                                 verifyWithObserver:(void(^)(ZMConversation *, ConversationChangeObserver *))verifyConversation;
 
 - (NSURL *)createTestFile:(NSString *)name;
+- (void)makeConversationSecured:(ZMConversation *)conversation;
+- (void)setupInitialSecurityLevel:(ZMConversationSecurityLevel)initialSecurityLevel inConversation:(ZMConversation *)conversation;
 
 @property (nonatomic) MockConversation *groupConversationWithOnlyConnected;
 @property (nonatomic) MockConversation *emptyGroupConversation;

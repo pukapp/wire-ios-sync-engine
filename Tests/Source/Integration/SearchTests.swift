@@ -80,7 +80,7 @@ class SearchTests : IntegrationTest {
         
         // then
         XCTAssertTrue(newUser.isConnected)
-        XCTAssertTrue(oneToOneConversation.activeParticipants.contains(newUser))
+        XCTAssertTrue(oneToOneConversation.localParticipants.contains(newUser))
     }
     
     func testThatTheSelfUserCanAcceptAConnectionRequest() {
@@ -95,7 +95,7 @@ class SearchTests : IntegrationTest {
             user?.phone = ""
             user?.identifier = remoteIdentifier.transportString()
             
-            let connection = changes.createConnectionRequest(from: user!, to: self.selfUser, message: "Holo")
+            let connection = changes.createConnectionRequest(from: self.selfUser, to:user! , message: "Holo")
             connection.status = "pending"
             
         }
@@ -123,7 +123,7 @@ class SearchTests : IntegrationTest {
         guard let searchUser = searchForDirectoryUser(withName: userName, searchQuery: "Johnny") else { XCTFail(); return }
         
         // then
-        var token = UserChangeInfo.add(observer: self, for: searchUser, userSession: userSession!)
+        var token = UserChangeInfo.add(observer: self, for: searchUser, in: userSession!)
         XCTAssertNotNil(token)
         XCTAssertNil(searchUser.user)
         XCTAssertEqual(userNotifications.count, 0)
@@ -159,7 +159,7 @@ class SearchTests : IntegrationTest {
         guard let searchUser = searchForDirectoryUser(withName: userName, searchQuery: "Johnny") else { XCTFail(); return }
         
         // then
-        var token = UserChangeInfo.add(observer: self, for: searchUser, userSession: userSession!)
+        var token = UserChangeInfo.add(observer: self, for: searchUser, in: userSession!)
         XCTAssertNotNil(token)
         XCTAssertNotNil(searchUser.user)
         XCTAssertEqual(userNotifications.count, 0)
@@ -266,7 +266,7 @@ class SearchTests : IntegrationTest {
         guard let searchQuery = userName?.components(separatedBy: " ").last else { XCTFail(); return }
         guard let searchUser = searchForDirectoryUser(withName: userName!, searchQuery: searchQuery) else { XCTFail(); return }
         searchUser.requestPreviewProfileImage()
-        var token = UserChangeInfo.add(observer: self, for: searchUser, userSession: userSession!)
+        var token = UserChangeInfo.add(observer: self, for: searchUser, in: userSession!)
         XCTAssertNotNil(token)
         
         // when
@@ -348,7 +348,7 @@ class SearchTests : IntegrationTest {
         guard let searchQuery = userName?.components(separatedBy: " ").last else { XCTFail(); return }
         guard let searchUser = searchForDirectoryUser(withName: userName!, searchQuery: searchQuery) else { XCTFail(); return }
         searchUser.requestPreviewProfileImage()
-        var token = UserChangeInfo.add(observer: self, for: searchUser, userSession: userSession!)
+        var token = UserChangeInfo.add(observer: self, for: searchUser, in: userSession!)
         XCTAssertNotNil(token)
         
         // when small profile image response arrives

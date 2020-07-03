@@ -26,7 +26,6 @@
 
 
 #import "MessagingTest.h"
-#import "ZMUserSession+Internal.h"
 #import "ZMSyncStrategy+Internal.h"
 #import "ZMSyncStrategy+ManagedObjectChanges.h"
 #import "ZMUpdateEventsBuffer.h"
@@ -81,6 +80,7 @@
 @property (nonatomic) id userTranscoder;
 @property (nonatomic) id clientMessageTranscoder;
 @property (nonatomic) id connectionTranscoder;
+@property (nonatomic) id teamRolesDownloadRequestStrategy;
 @property (nonatomic) ApplicationStatusDirectory *applicationStatusDirectory;
 
 @property (nonatomic) BOOL shouldStubContextChangeTrackers;
@@ -132,7 +132,6 @@
     [self.syncMOC saveOrRollback];
     
     self.mockDispatcher = [OCMockObject mockForClass:[LocalNotificationDispatcher class]];
-    [(LocalNotificationDispatcher *)[self.mockDispatcher stub] tearDown];
     [(LocalNotificationDispatcher *)[self.mockDispatcher stub] processEvents:OCMOCK_ANY liveEvents:YES prefetchResult:OCMOCK_ANY];
     self.mockUpstreamSync1 = [OCMockObject mockForClass:[ZMUpstreamModifiedObjectSync class]];
     self.mockUpstreamSync2 = [OCMockObject mockForClass:[ZMUpstreamModifiedObjectSync class]];
@@ -169,6 +168,11 @@
     (void) [[[clientMessageTranscoder expect] andReturn:clientMessageTranscoder] initIn:OCMOCK_ANY localNotificationDispatcher:self.mockDispatcher applicationStatus:OCMOCK_ANY];
     self.clientMessageTranscoder = clientMessageTranscoder;
     
+    id teamRolesRequestStrategy = [OCMockObject mockForClass:TeamRolesDownloadRequestStrategy.class];
+    [[[[teamRolesRequestStrategy expect] andReturn:teamRolesRequestStrategy] classMethod] alloc];
+    (void) [[[teamRolesRequestStrategy expect] andReturn:teamRolesRequestStrategy] initWithManagedObjectContext:OCMOCK_ANY applicationStatus:OCMOCK_ANY syncStatus:OCMOCK_ANY];
+    self.teamRolesDownloadRequestStrategy = teamRolesRequestStrategy;
+    
     id connectionTranscoder = [OCMockObject mockForClass:ZMConnectionTranscoder.class];
     [[[[connectionTranscoder expect] andReturn:connectionTranscoder] classMethod] alloc];
     (void) [[[connectionTranscoder stub] andReturn:connectionTranscoder] initWithManagedObjectContext:OCMOCK_ANY applicationStatus:OCMOCK_ANY syncStatus:OCMOCK_ANY];
@@ -184,6 +188,7 @@
                          self.userTranscoder,
                          self.conversationTranscoder,
                          clientMessageTranscoder,
+                         self.teamRolesDownloadRequestStrategy
     ];
     
     for(ZMObjectSyncStrategy *strategy in self.syncObjects) {
@@ -269,6 +274,9 @@
     [self.syncStatusMock stopMocking];
     self.syncStatusMock = nil;
     self.storeProvider = nil;
+    [self.teamRolesDownloadRequestStrategy tearDown];
+    [self.teamRolesDownloadRequestStrategy stopMocking];
+    self.teamRolesDownloadRequestStrategy = nil;
     [self.sut tearDown];
     for (id syncObject in self.syncObjects) {
         if ([syncObject respondsToSelector:@selector(tearDown)]) {
@@ -602,6 +610,7 @@
 - (void)testThatCallingNextRequestFetchesObjectsAndDistributesThemToTheChangeTracker
 {
     // given
+    [[[self.syncStatusMock stub] andReturnValue:@(SyncPhaseDone)] currentSyncPhase];
     __block ZMUser *user;
     __block ZMConversation *conversation;
     [self.syncMOC performGroupedBlockAndWait:^{

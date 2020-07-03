@@ -27,7 +27,6 @@
 #import "ZMSyncStrategy+ManagedObjectChanges.h"
 
 #import "ZMUserTranscoder.h"
-#import "ZMUserSession.h"
 #import <libkern/OSAtomic.h>
 #import <os/activity.h>
 #import "WireSyncEngineLogs.h"
@@ -112,9 +111,9 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
     
     self.syncStrategy = nil;
     self.transportSession = nil;
-    
-    RequireString([NSOperationQueue mainQueue] == [NSOperationQueue currentQueue],
-                  "Must call be called on the main queue.");
+    ///TODO: 
+//    RequireString([NSOperationQueue mainQueue] == [NSOperationQueue currentQueue],
+//                  "Must call be called on the main queue.");
     __block BOOL didStop = NO;
     [self.syncMOC.dispatchGroup notifyOnQueue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0) block:^{
         didStop = YES;

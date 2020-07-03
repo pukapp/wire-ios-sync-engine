@@ -18,18 +18,9 @@
 
 
 import XCTest
+@testable import WireSyncEngine
 
 class UserSessionGiphyRequestStateTests: ZMUserSessionTestsBase {
-
-    override func setUp() {
-        super.setUp()
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-    }
-    
-    override func tearDown() {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-        super.tearDown()
-    }
 
     func testThatMakingRequestAddsPendingRequest() {
         
@@ -43,11 +34,11 @@ class UserSessionGiphyRequestStateTests: ZMUserSessionTestsBase {
         }
         
         //when
-        self.sut.proxiedRequest(withPath: url.absoluteString, method:.methodGET, type:.giphy, callback: callback)
+        self.sut.proxiedRequest(path: url.absoluteString, method: .methodGET, type: .giphy, callback: callback)
         
         //then
         XCTAssertTrue(self.waitForAllGroupsToBeEmpty(withTimeout: 0.5))
-        let request = self.sut.proxiedRequestStatus.pendingRequests.first
+        let request = self.sut.applicationStatusDirectory?.proxiedRequestStatus.pendingRequests.first
         XCTAssert(request != nil)
         XCTAssertEqual(request!.path, path)
         XCTAssert(request!.callback != nil)
@@ -67,7 +58,7 @@ class UserSessionGiphyRequestStateTests: ZMUserSessionTestsBase {
         let callback: (Data?, URLResponse?, Error?) -> Void = { (_, _, _) -> Void in }
         
         //when
-        self.sut.proxiedRequest(withPath: url.absoluteString, method:.methodGET, type:.giphy, callback: callback)
+        self.sut.proxiedRequest(path: url.absoluteString, method: .methodGET, type: .giphy, callback: callback)
         
         //then
         XCTAssertTrue(self.waitForCustomExpectations(withTimeout: 0.5))
@@ -89,10 +80,10 @@ class UserSessionGiphyRequestStateTests: ZMUserSessionTestsBase {
         }
 
         //when
-        self.sut.proxiedRequest(withPath: url.absoluteString, method:.methodGET, type:.giphy, callback: callback)
+        self.sut.proxiedRequest(path: url.absoluteString, method: .methodGET, type: .giphy, callback: callback)
         
         //then
-        var request = self.sut.proxiedRequestStatus.pendingRequests.first
+        var request = self.sut.applicationStatusDirectory?.proxiedRequestStatus.pendingRequests.first
         XCTAssertTrue(request == nil)
 
         //when
@@ -101,8 +92,8 @@ class UserSessionGiphyRequestStateTests: ZMUserSessionTestsBase {
         XCTAssertTrue(self.waitForAllGroupsToBeEmpty(withTimeout: 0.5))
 
         //then
-        request = self.sut.proxiedRequestStatus.pendingRequests.first
+        request = self.sut.applicationStatusDirectory?.proxiedRequestStatus.pendingRequests.first
         XCTAssert(request != nil)
-        
     }
+    
 }

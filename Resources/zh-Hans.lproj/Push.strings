@@ -36,8 +36,8 @@
 // Ephemeral
 "push.notification.ephemeral.title" = "有人";
 "push.notification.ephemeral" = "发送消息";
-"push.notification.ephemeral.mention" = "@了您";
-"push.notification.ephemeral.reply" = "回复了您";
+"push.notification.ephemeral.mention" = "你被提及";
+"push.notification.ephemeral.reply" = "Replied to you";
 
 // 2 Components: Sender, Message
 "push.notification.add.message.group" = "%1$@：%2$@";
