@@ -924,10 +924,10 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         if (!orator) {/// orator个数为0 则说明演讲者被全部删除了
             return;
         }
-        [orator enumerateObjectsUsingBlock:^(NSString*  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        for (NSString* obj in orator) {
             ZMUser *user = [ZMUser userWithRemoteID:[NSUUID uuidWithTransportString:obj] createIfNeeded:YES inContext:self.managedObjectContext];
             user.needsToBeUpdatedFromBackend = YES;
-        }];
+        }
         conversation.orator = orator.set;
     }
     //管理员
