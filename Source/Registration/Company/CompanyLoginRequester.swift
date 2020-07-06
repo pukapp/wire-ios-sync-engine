@@ -28,6 +28,7 @@ extension URL {
         static let h5Login = "h5-login"
         static let startSSO = "start-sso"
         static let accessBackend = "access" // Used for connecting to custom backend
+        static let pay = "wallet-pay" // Pay
     }
     enum Path {
         static let success = "success"
@@ -227,4 +228,49 @@ public class CompanyLoginRequester {
         return components.url!.absoluteString
     }
 
+}
+
+public struct PayRequest: Decodable {
+    public var coin: String
+    public var amount: Double
+    public var trade_no: String
+    public var app_id: String
+    public var app_uuid: String
+    public var remark: String?
+    
+    private enum CodingKeys:String,CodingKey{
+        case coin
+        case amount
+        case trade_no
+        case app_id
+        case app_uuid
+        case remark
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        coin = try container.decode(String.self, forKey: .coin)
+        let strAmount = try container.decode(String.self, forKey: .amount)
+        if let tmp = Double(strAmount) {
+            self.amount = tmp
+        } else {
+            throw PayRequestError.invalidRequest
+        }
+        
+        trade_no = try container.decode(String.self, forKey: .trade_no)
+        app_id = try container.decode(String.self, forKey: .app_id)
+        app_uuid = try container.decode(String.self, forKey: .app_uuid)
+        remark = try? container.decode(String.self, forKey: .remark)
+    }
+}
+
+extension PayRequest: Equatable {
+    public static func == (lhs: PayRequest, rhs: PayRequest) -> Bool {
+        return lhs.trade_no == rhs.trade_no && lhs.app_id == rhs.app_id
+    }
+}
+
+public enum PayRequestError: Error {
+    case invalidRequest
 }

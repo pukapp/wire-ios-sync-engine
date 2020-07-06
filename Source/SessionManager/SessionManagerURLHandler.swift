@@ -61,6 +61,9 @@ public enum URLAction: Equatable {
     
     // Switch to a custom backend
     case accessBackend(configurationURL: URL)
+    
+    // Wallet pay
+    case pay(request: Swift.Result<PayRequest, PayRequestError>)
 
     /// Update self's associated value with given userSession
     ///
@@ -192,6 +195,27 @@ extension URLAction {
                 return
             }
             self = .accessBackend(configurationURL: url)
+            
+        case URL.Host.pay:
+            let queryItems = components.queryItems ?? []
+            var dict: [String : Any] = [:]
+            queryItems.forEach { item in
+                
+                dict[item.name] = item.value
+            }
+            
+            guard let data = try? JSONSerialization.data(withJSONObject: dict, options: []) else {
+                self = .pay(request: .failure(.invalidRequest))
+                return
+            }
+            
+            do {
+                let payRequest = try JSONDecoder().decode(PayRequest.self, from: data)
+                self = .pay(request: .success(payRequest))
+            } catch {
+                print(error.localizedDescription)
+                self = .pay(request: .failure(.invalidRequest))
+            }
 
         case URL.Host.login:
             let pathComponents = url.pathComponents
@@ -334,6 +358,13 @@ public final class SessionManagerURLHandler: NSObject {
 
         } else {
             if case .thirdLogin = action, case .h5Login = action {
+                delegate?.sessionManagerShouldExecuteURLAction(action, callback: { (_) in
+                    
+                })
+                return true
+            }
+            
+            if case .pay = action {
                 delegate?.sessionManagerShouldExecuteURLAction(action, callback: { (_) in
                     
                 })
