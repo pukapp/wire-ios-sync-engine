@@ -271,6 +271,10 @@ extension PayRequest: Equatable {
     }
 }
 
-public enum PayRequestError: Error {
-    case invalidRequest
+public enum PayRequestError:Int, Error {
+    case invalidRequest = -1
+    case noCoinType = -1001 ///钱包没有该币种
+    case cancel = -1002 ///取消支付
+    case getWalletsFailure = -1003 ///调用钱包接口失败
+    case googleVerityNotBind = -1004 ///没有绑定谷歌验证码
 }
