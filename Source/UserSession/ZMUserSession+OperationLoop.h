@@ -23,4 +23,6 @@
 
 @property (nonatomic, readonly) ZMOperationLoop *operationLoop;
 
+@property (nonatomic, readonly) ZMSyncStrategy *syncStrategy;
+
 @end

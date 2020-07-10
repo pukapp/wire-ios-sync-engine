@@ -372,16 +372,19 @@ ZM_EMPTY_ASSERTING_INIT()
 
 - (ZMTransportRequest *)nextRequest
 {
-    if (!self.didFetchObjects) {
-        self.didFetchObjects = YES;
-        [self.changeTrackerBootStrap fetchObjectsForChangeTrackers];
-    }
     
     if(self.tornDown) {
         return nil;
     }
     
     return [self.requestStrategies firstNonNilReturnedFromSelector:@selector(nextRequest)];
+}
+
+- (void) startTrack {
+    if (!self.didFetchObjects) {
+        self.didFetchObjects = YES;
+        [self.changeTrackerBootStrap fetchObjectsForChangeTrackers];
+    }
 }
 
 @end
