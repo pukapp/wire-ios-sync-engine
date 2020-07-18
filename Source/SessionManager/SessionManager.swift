@@ -422,8 +422,14 @@ public protocol ForegroundNotificationResponder: class {
         
         
         // register for voIP push notifications
-        self.pushRegistry.delegate = self
-        self.pushRegistry.desiredPushTypes = Set(arrayLiteral: PKPushType.voIP)
+        // ios13.3 以上版本不去注册voTP通知
+        if #available(iOS 13.3, *) {
+            
+        } else {
+            self.pushRegistry.delegate = self
+            self.pushRegistry.desiredPushTypes = Set(arrayLiteral: PKPushType.voIP)
+        }
+        
         self.urlHandler = SessionManagerURLHandler(userSessionSource: self)
 
         postLoginAuthenticationToken = PostLoginAuthenticationNotification.addObserver(self, queue: self.groupQueue)
