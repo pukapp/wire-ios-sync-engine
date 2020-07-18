@@ -108,15 +108,14 @@ private let zmLog = ZMSLog(tag: "calling")
     public required init(userId: UUID, clientId: String, avsWrapper: AVSWrapperType? = nil, uiMOC: NSManagedObjectContext, flowManager: FlowManagerType, analytics: AnalyticsType? = nil, transport: WireCallCenterTransport) {
         self.selfUserId = userId
         self.uiMOC = uiMOC
-        self.flowManager = MediaManagerShared.instance//flowManager
+        self.flowManager = flowManager
         self.analytics = analytics
         self.transport = transport
         
         super.init()
         
         let observer = Unmanaged.passUnretained(self).toOpaque()
-        self.avsWrapper = avsWrapper ?? MediasoupWrapper.init(userId: userId, clientId: clientId, observer: observer)
-            //AVSWrapper(userId: userId, clientId: clientId, observer: observer)MediasoupWrapper
+        self.avsWrapper = MediasoupWrapper(userId: userId, clientId: clientId, observer: observer)
     }
 
 }

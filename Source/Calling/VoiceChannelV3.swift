@@ -140,7 +140,7 @@ extension VoiceChannelV3 : CallActions {
          *  但是按钮点击静音之后，会同步的刷新页面，就会导致状态刷新的有问题
          *  所以这里不采用callKit
          **/
-        if let manager = userSession.mediaManager as? MediaManagerShared {
+        if let manager = userSession.mediaManager as? AVSMediaManager {
             manager.isMicrophoneMuted = muted
         }
     }

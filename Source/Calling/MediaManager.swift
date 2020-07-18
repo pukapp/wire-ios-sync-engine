@@ -17,7 +17,6 @@
 //
 
 import Foundation
-import avs
 
 @objc
 public protocol MediaManagerType: class {
@@ -29,4 +28,3 @@ public protocol MediaManagerType: class {
     
 }
 
-extension AVSMediaManager: MediaManagerType { }

@@ -333,13 +333,16 @@
 		5EFE9C17212AB945007932A6 /* RegistrationPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EFE9C16212AB945007932A6 /* RegistrationPhase.swift */; };
 		7313D45E23B6136B00F73B20 /* HugeConversation+Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7313D45D23B6136B00F73B20 /* HugeConversation+Push.swift */; };
 		7342AC2724860BA400E37829 /* MediasoupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7342AC2624860BA400E37829 /* MediasoupService.swift */; };
+		734554C924C155C20079DCF4 /* AVSMediaManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734554C824C155C20079DCF4 /* AVSMediaManager.swift */; };
+		734554CB24C1566B0079DCF4 /* AVSMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734554CA24C1566B0079DCF4 /* AVSMedia.swift */; };
+		734554CD24C157760079DCF4 /* MediaEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734554CC24C157760079DCF4 /* MediaEventManager.swift */; };
+		734554CF24C157C20079DCF4 /* AVSAudioEffectForNew.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734554CE24C157C20079DCF4 /* AVSAudioEffectForNew.swift */; };
 		73568C63246D3F5D00DE68D5 /* ConvsCallingStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73568C62246D3F5C00DE68D5 /* ConvsCallingStateManager.swift */; };
 		735E682824455670003E089C /* Starscream.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 735E68272445566F003E089C /* Starscream.framework */; };
 		735E682E244559EF003E089C /* SwiftyJSON.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 735E682D244559EF003E089C /* SwiftyJSON.framework */; };
 		735E698E244856C4003E089C /* MediasoupTrackModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735E698D244856C4003E089C /* MediasoupTrackModel.swift */; };
 		735E699C24519F3D003E089C /* MediasoupCallPeersManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735E699B24519F3B003E089C /* MediasoupCallPeersManager.swift */; };
 		7369402E2390C222001A6C44 /* BGPMemberImageStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */; };
-		73999186247919360039BCF5 /* CompatibleForAVS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73999185247919360039BCF5 /* CompatibleForAVS.swift */; };
 		7399918E247CC0340039BCF5 /* ConversationCallingInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */; };
 		7399F57123A10556002DA207 /* ConversationAvatarUpdateStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */; };
 		7399F57323A1E1F9002DA207 /* ConversationAvatarUpdateStategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */; };
@@ -435,8 +438,6 @@
 		BFCE9A5B1C4E4C4D00951B3D /* store124.wiredatabase in Resources */ = {isa = PBXBuildFile; fileRef = BFCE9A581C4E4C4D00951B3D /* store124.wiredatabase */; };
 		BFE53F551D5A2F7000398378 /* DeleteMessagesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE53F541D5A2F7000398378 /* DeleteMessagesTests.swift */; };
 		BFE7FCBF2101E50700D1165F /* CompanyLoginVerificationToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE7FCBE2101E50700D1165F /* CompanyLoginVerificationToken.swift */; };
-		CE5DC1A11DDA09F000D24DBA /* avs.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE5DC1A01DDA09F000D24DBA /* avs.framework */; };
-		CEE02E461DDA0F4D00BA2BE2 /* avs.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE5DC1A01DDA09F000D24DBA /* avs.framework */; };
 		CEF2DE7F1DB778F300451642 /* RequestLoopAnalyticsTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEF2DE7E1DB778F300451642 /* RequestLoopAnalyticsTracker.swift */; };
 		D522571E2062552800562561 /* AssetDeletionRequestStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D522571D2062552800562561 /* AssetDeletionRequestStrategy.swift */; };
 		D5225720206261AA00562561 /* AssetDeletionStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = D522571F206261AA00562561 /* AssetDeletionStatus.swift */; };
@@ -973,13 +974,16 @@
 		5EFE9C16212AB945007932A6 /* RegistrationPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegistrationPhase.swift; sourceTree = "<group>"; };
 		7313D45D23B6136B00F73B20 /* HugeConversation+Push.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HugeConversation+Push.swift"; sourceTree = "<group>"; };
 		7342AC2624860BA400E37829 /* MediasoupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupService.swift; sourceTree = "<group>"; };
+		734554C824C155C20079DCF4 /* AVSMediaManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVSMediaManager.swift; sourceTree = "<group>"; };
+		734554CA24C1566B0079DCF4 /* AVSMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVSMedia.swift; sourceTree = "<group>"; };
+		734554CC24C157760079DCF4 /* MediaEventManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaEventManager.swift; sourceTree = "<group>"; };
+		734554CE24C157C20079DCF4 /* AVSAudioEffectForNew.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVSAudioEffectForNew.swift; sourceTree = "<group>"; };
 		73568C62246D3F5C00DE68D5 /* ConvsCallingStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvsCallingStateManager.swift; sourceTree = "<group>"; };
 		735E68272445566F003E089C /* Starscream.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Starscream.framework; path = ../../Build/iOS/Starscream.framework; sourceTree = "<group>"; };
 		735E682D244559EF003E089C /* SwiftyJSON.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftyJSON.framework; path = ../../Build/iOS/SwiftyJSON.framework; sourceTree = "<group>"; };
 		735E698D244856C4003E089C /* MediasoupTrackModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupTrackModel.swift; sourceTree = "<group>"; };
 		735E699B24519F3B003E089C /* MediasoupCallPeersManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupCallPeersManager.swift; sourceTree = "<group>"; };
 		7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BGPMemberImageStrategy.swift; sourceTree = "<group>"; };
-		73999185247919360039BCF5 /* CompatibleForAVS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompatibleForAVS.swift; sourceTree = "<group>"; };
 		7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationCallingInfo.swift; sourceTree = "<group>"; };
 		7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStatus.swift; sourceTree = "<group>"; };
 		7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStategy.swift; sourceTree = "<group>"; };
@@ -1113,7 +1117,6 @@
 		BFCE9A581C4E4C4D00951B3D /* store124.wiredatabase */ = {isa = PBXFileReference; lastKnownFileType = file; path = store124.wiredatabase; sourceTree = "<group>"; };
 		BFE53F541D5A2F7000398378 /* DeleteMessagesTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DeleteMessagesTests.swift; sourceTree = "<group>"; };
 		BFE7FCBE2101E50700D1165F /* CompanyLoginVerificationToken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanyLoginVerificationToken.swift; sourceTree = "<group>"; };
-		CE5DC1A01DDA09F000D24DBA /* avs.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = avs.framework; path = Carthage/Build/iOS/avs.framework; sourceTree = "<group>"; };
 		CEF2DE7E1DB778F300451642 /* RequestLoopAnalyticsTracker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RequestLoopAnalyticsTracker.swift; sourceTree = "<group>"; };
 		D522571D2062552800562561 /* AssetDeletionRequestStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetDeletionRequestStrategy.swift; sourceTree = "<group>"; };
 		D522571F206261AA00562561 /* AssetDeletionStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetDeletionStatus.swift; sourceTree = "<group>"; };
@@ -1325,7 +1328,6 @@
 				1E16CE871BF4BC5F00336616 /* ProtocolBuffers.framework in Frameworks */,
 				54E03A6D1E93CEF10089AC69 /* WireMockTransport.framework in Frameworks */,
 				54F4DC5A1A4438B300FDB6EA /* WireSyncEngine.framework in Frameworks */,
-				CEE02E461DDA0F4D00BA2BE2 /* avs.framework in Frameworks */,
 				54E03A6F1E93CF050089AC69 /* WireTesting.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1339,7 +1341,6 @@
 				73EA4D212441762000E63429 /* mediasoup_client_ios.framework in Frameworks */,
 				878B823820A1DCE7007455CA /* HTMLString.framework in Frameworks */,
 				D59F3A1020691A0F0023474F /* ZipArchive.framework in Frameworks */,
-				CE5DC1A11DDA09F000D24DBA /* avs.framework in Frameworks */,
 				54E03A631E93CEED0089AC69 /* WireImages.framework in Frameworks */,
 				54E03A6C1E93CEED0089AC69 /* WireUtilities.framework in Frameworks */,
 				5442A7321E42244C00415104 /* libPhoneNumberiOS.framework in Frameworks */,
@@ -1599,7 +1600,6 @@
 				54E03A5E1E93CEED0089AC69 /* WireTesting.framework */,
 				54E03A5F1E93CEED0089AC69 /* WireTransport.framework */,
 				54E03A601E93CEED0089AC69 /* WireUtilities.framework */,
-				CE5DC1A01DDA09F000D24DBA /* avs.framework */,
 				5442A7311E42244C00415104 /* libPhoneNumberiOS.framework */,
 				1E16CE861BF4BC5F00336616 /* ProtocolBuffers.framework */,
 				09B978F31B679B6200A30B38 /* OCMock.framework */,
@@ -2072,9 +2072,21 @@
 			path = Content;
 			sourceTree = "<group>";
 		};
+		734554C724C1556C0079DCF4 /* AudioSessionManager */ = {
+			isa = PBXGroup;
+			children = (
+				734554C824C155C20079DCF4 /* AVSMediaManager.swift */,
+				734554CA24C1566B0079DCF4 /* AVSMedia.swift */,
+				734554CC24C157760079DCF4 /* MediaEventManager.swift */,
+				734554CE24C157C20079DCF4 /* AVSAudioEffectForNew.swift */,
+			);
+			path = AudioSessionManager;
+			sourceTree = "<group>";
+		};
 		73EA4CE4243D8A8200E63429 /* newForSecret */ = {
 			isa = PBXGroup;
 			children = (
+				734554C724C1556C0079DCF4 /* AudioSessionManager */,
 				73EA4D2B2441C05800E63429 /* MediasoupSignalSocket.swift */,
 				73EA4D132440192000E63429 /* MediasoupSignalManager.swift */,
 				7342AC2624860BA400E37829 /* MediasoupService.swift */,
@@ -2086,7 +2098,6 @@
 				735E698D244856C4003E089C /* MediasoupTrackModel.swift */,
 				735E699B24519F3B003E089C /* MediasoupCallPeersManager.swift */,
 				73FCF1002468F35A00AB37ED /* Swift的framework中导入OC的framework */,
-				73999185247919360039BCF5 /* CompatibleForAVS.swift */,
 			);
 			path = newForSecret;
 			sourceTree = "<group>";
@@ -2579,8 +2590,9 @@
 					};
 					549815921A43232400A7CE2E = {
 						CreatedOnToolsVersion = 6.2;
+						DevelopmentTeam = K7PT8BFN3J;
 						LastSwiftMigration = 1000;
-						ProvisioningStyle = Manual;
+						ProvisioningStyle = Automatic;
 					};
 					73FCF0F62466B1B400AB37ED = {
 						CreatedOnToolsVersion = 10.2.1;
@@ -3009,6 +3021,7 @@
 				F9410F651DE49C13007451FF /* PushTokenStrategy.swift in Sources */,
 				54A2C9F31DAFBA3300FFD2A0 /* NSManagedObjectContext+EventDecoder.swift in Sources */,
 				F130BF282062C05600DBE261 /* SessionManager+Backup.swift in Sources */,
+				734554CF24C157C20079DCF4 /* AVSAudioEffectForNew.swift in Sources */,
 				54A0A6321BCE9867001A3A4C /* ZMHotFixDirectory.m in Sources */,
 				54F0A0951B3018D7003386BC /* ProxiedRequestsStatus.swift in Sources */,
 				A0EDE7222272B0D100B2D4E2 /* UserDisableSendMsgStatusStrategy.swift in Sources */,
@@ -3057,6 +3070,7 @@
 				EFF940402240FF12004F3115 /* DeepLinkError.swift in Sources */,
 				F90EC5A31E7BF1AC00A6779E /* AVSWrapper.swift in Sources */,
 				5E8BB8992147CD3F00EEA64B /* AVSBridging.swift in Sources */,
+				734554CD24C157760079DCF4 /* MediaEventManager.swift in Sources */,
 				16F5F16C1E4092C00062F0AE /* NSManagedObjectContext+CTCallCenter.swift in Sources */,
 				16962EE420286D690069D88D /* LocalNotificationType+Configuration.swift in Sources */,
 				BF00441B1C737CE9007A6EA4 /* PushNotificationStatus.swift in Sources */,
@@ -3091,6 +3105,7 @@
 				EEEA75FA1F8A6142006D1070 /* ZMLocalNotification+Messages.swift in Sources */,
 				547E5B5A1DDB67390038D936 /* UserProfileUpdateRequestStrategy.swift in Sources */,
 				54FF64291F73D00C00787EF2 /* NSManagedObjectContext+AuthenticationStatus.swift in Sources */,
+				734554CB24C1566B0079DCF4 /* AVSMedia.swift in Sources */,
 				BF735CFA1E70003D003BC61F /* SystemMessageCallObserver.swift in Sources */,
 				5458AF7F1F70219F00E45977 /* PostLoginAuthenticationNotification.swift in Sources */,
 				165D3A211E1D43870052E654 /* VoiceChannelV3.swift in Sources */,
@@ -3136,7 +3151,6 @@
 				F19F1D381EFBF61800275E27 /* SessionManager.swift in Sources */,
 				D522571E2062552800562561 /* AssetDeletionRequestStrategy.swift in Sources */,
 				1658C2371F503CF800889F22 /* FlowManager.swift in Sources */,
-				73999186247919360039BCF5 /* CompatibleForAVS.swift in Sources */,
 				735E698E244856C4003E089C /* MediasoupTrackModel.swift in Sources */,
 				7CD279882338E52000E638CD /* ProcessInfo+SystemBootTime.swift in Sources */,
 				549710081F6FF5C100026EDD /* NotificationInContext+UserSession.swift in Sources */,
@@ -3165,6 +3179,7 @@
 				D5225720206261AA00562561 /* AssetDeletionStatus.swift in Sources */,
 				5E8BB8A02147F5BC00EEA64B /* CallSnapshot.swift in Sources */,
 				163FB9972057E25600E74F83 /* NSManagedObjectContext+LastNotificationID.swift in Sources */,
+				734554C924C155C20079DCF4 /* AVSMediaManager.swift in Sources */,
 				168E96D2220C3F6F00FC92FA /* ZMUserTranscoder.swift in Sources */,
 				5E8BB8A22147F89000EEA64B /* CallCenterSupport.swift in Sources */,
 				1660AA0D1ECDB0250056D403 /* SearchTask.swift in Sources */,
@@ -3428,6 +3443,9 @@
 			baseConfigurationReference = 0994E1F01B835C4900A51721 /* WireSyncEngine.xcconfig */;
 			buildSettings = {
 				"ARCHS[sdk=iphoneos*]" = arm64;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = K7PT8BFN3J;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/Source/WireSyncEngine-iOS.pch";
 				GCC_WARN_UNKNOWN_PRAGMAS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
@@ -3438,6 +3456,7 @@
 				INFOPLIST_FILE = "$(SRCROOT)/Resources/WireSyncEngine-ios-Info.plist";
 				MOMC_NO_INVERSE_RELATIONSHIP_WARNINGS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.$(PRODUCT_NAME:rfc1034identifier)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Source/Calling/newForSecret\"";
 				SWIFT_OBJC_BRIDGING_HEADER = "";
 			};
@@ -3448,6 +3467,9 @@
 			baseConfigurationReference = 0994E1F01B835C4900A51721 /* WireSyncEngine.xcconfig */;
 			buildSettings = {
 				"ARCHS[sdk=iphoneos*]" = arm64;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = K7PT8BFN3J;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/Source/WireSyncEngine-iOS.pch";
 				GCC_WARN_UNKNOWN_PRAGMAS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
@@ -3458,6 +3480,7 @@
 				INFOPLIST_FILE = "$(SRCROOT)/Resources/WireSyncEngine-ios-Info.plist";
 				MOMC_NO_INVERSE_RELATIONSHIP_WARNINGS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.$(PRODUCT_NAME:rfc1034identifier)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Source/Calling/newForSecret\"";
 				SWIFT_OBJC_BRIDGING_HEADER = "";
 			};

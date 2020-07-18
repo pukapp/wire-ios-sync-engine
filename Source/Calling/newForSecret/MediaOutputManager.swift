@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import avs
 import Mediasoupclient
 
 private let zmLog = ZMSLog(tag: "calling")
@@ -119,7 +118,7 @@ final class MediaOutputManager: NSObject {
     
     func changeVideoOutputFormat(with format: VideoOutputFormat) {
         if self.currentOutputFormat != format {
-            zmLog.info("Mediasoup::MediaManagerShared--changeVideoOutputFormat:\(format)")
+            zmLog.info("Mediasoup::MediaOutputManager--changeVideoOutputFormat:\(format)")
             self.currentOutputFormat = format
             self.videoSource?.adaptOutputFormat(toWidth: format.width, height: format.height, fps: Int32(MEDIA_VIDEO_FPS))
         }
@@ -187,82 +186,4 @@ extension MediaOutputManager : RTCVideoCapturerDelegate {
         }
     }
 }
-
-@objc open class MediaManagerShared: NSObject, FlowManagerType, MediaManagerType {
-    
-    @objc public static let instance: MediaManagerShared = MediaManagerShared()
-
-    @objc public var intensityLevel: AVSIntensityLevel {
-        get {
-            return privateIntensityLevel
-        }
-        set {
-            privateIntensityLevel = newValue
-        }
-    }
-    private var privateIntensityLevel: AVSIntensityLevel = .none {
-        didSet {
-            
-        }
-    }
-    
-    @objc public var isMicrophoneMuted: Bool {
-        get {
-            return privateIsMicrophoneMuted
-        }
-        set {
-            privateIsMicrophoneMuted = newValue
-        }
-    }
-    private var privateIsMicrophoneMuted: Bool = false {
-        didSet {
-            MediasoupRoomManager.shareInstance.setLocalAudio(mute: privateIsMicrophoneMuted)
-        }
-    }
-    
-    public var isSpeakerEnabled: Bool = false {
-        didSet {
-            let session = AVAudioSession.sharedInstance()
-            let category: AVAudioSession.Category = isSpeakerEnabled ? .playback : .playAndRecord
-            do {
-                try session.setCategory(category)
-                try session.setActive(true, options: .notifyOthersOnDeactivation)
-            } catch _ {
-                zmLog.info("Mediasoup::MediaManagerShared == set SpeakEnable failure")
-            }
-        }
-    }
-    public func toggleSpeaker() {
-        isSpeakerEnabled = !isSpeakerEnabled
-    }
-    
-    
-    @objc public func configureSounds() {
-        
-    }
-    
-    var mediaOutputManager: MediaOutputManager? {
-        return MediasoupRoomManager.shareInstance.mediaOutputManager
-    }
-    
-    public func setVideoCaptureDevice(_ device: CaptureDevice, for conversationId: UUID) {
-        mediaOutputManager?.flipCamera(isFront: device == .front)
-    }
-    
-    public func setUiStartsAudio(_ enabled: Bool) {
-        
-    }
-    
-    public func startAudio() {
-        MediasoupRoomManager.shareInstance.readyToComsumer = true
-    }
-    
-    public func setupAudioDevice() {
-        
-    }
-    
-    public func resetAudioDevice() {
-        
-    }
-
-}
+//MediasoupRoomManager.shareInstance.setLocalAudio(mute: privateIsMicrophoneMuted)

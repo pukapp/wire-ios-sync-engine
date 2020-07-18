@@ -36,7 +36,7 @@ extension MediasoupRoomManager: MediasoupSignalManagerDelegate {
         zmLog.info("Mediasoup::RoomManager--onReceiveRequest:action:\(action)")
         switch action {
         case .newConsumer:
-            if (self.recvTransport == nil || !readyToComsumer) {
+            if (self.recvTransport == nil) {
                 // 用户还没有创建recvTransport或者音频设备还没有准备好，就先存起来，不去处理
                 self.consumersInfo.append(info)
                 return
@@ -122,15 +122,6 @@ class MediasoupRoomManager: NSObject {
     var roomPeersManager: MediasoupCallPeersManager?
     ///存储从服务端接收到的consumerJson数据，由于房间状态问题，暂不解析成consumer
     private var consumersInfo: [JSON]
-    ///当callKit准备好，才能去接收consumers，否则语音进程会被系统的callkit所打断
-    var readyToComsumer: Bool = false {
-        didSet {
-            zmLog.info("Mediasoup::RoomManager--readyToComsumer---\(self.consumersInfo.count)")
-            if readyToComsumer {
-                handleRetainedConsumers()
-            }
-        }
-    }
     
     var isCalling: Bool {
         return (self.roomState != .none && self.roomState != .unConnected)
@@ -148,7 +139,7 @@ class MediasoupRoomManager: NSObject {
     }
     
     func connectToRoom(with roomId: UUID, userId: UUID) {
-        print("Mediasoup::signalWorkQueue--\(signalWorkQueue.debugDescription)")
+        zmLog.info("Mediasoup::signalWorkQueue--\(signalWorkQueue.debugDescription)")
         guard self.roomId == nil else {
             ///已经在房间里面了
             return
@@ -188,6 +179,7 @@ class MediasoupRoomManager: NSObject {
             }
             self.device!.load(rtpCapabilities)
         }
+        zmLog.info("Mediasoup::configureDevice--rtpCapabilities:\(String(describing: self.device!.getRtpCapabilities()))")
         self.createWebRtcTransports()
     }
     
@@ -237,6 +229,8 @@ class MediasoupRoomManager: NSObject {
         }
         ///开启音频发送
         self.produceAudio()
+        ///处理已经接收到的consumer
+        self.handleRetainedConsumers()
     }
     
     ///网络断开连接
@@ -285,7 +279,7 @@ class MediasoupRoomManager: NSObject {
             
             self.roomState = .none
 
-            self.readyToComsumer = false
+            //self.readyToComsumer = false
             
             zmLog.info("Mediasoup::leaveRoom--roomPeersManager-clear--thread:\(Thread.current)")
             self.consumersInfo.removeAll()
