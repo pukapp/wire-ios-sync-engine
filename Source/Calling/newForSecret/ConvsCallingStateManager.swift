@@ -175,10 +175,18 @@ class ConvsCallingStateManager {
         ///不是群聊，并且还有人在聊天的话，就清空状态
         switch newState {
         case .outgoing:
+            AVSMediaManager.sharedInstance.startCall()
             roomManager.connectToRoom(with: conv.cid, userId: userId)
+        case .incoming(video: let video, shouldRing: let shouldRing, degraded: _):
+            if shouldRing {
+                AVSMediaManager.sharedInstance.incomingCall(isVideo: video)
+            }
+        case .established:
+            AVSMediaManager.sharedInstance.enterdCall()
         case .answered:
             roomManager.connectToRoom(with: conv.cid, userId: userId)
         case .terminating(reason: let reason):
+            AVSMediaManager.sharedInstance.exitCall()
             if reason != .stillOngoing {
                 self.convsCallingState = self.convsCallingState.filter({ return $0.cid != conv.cid })
             }
