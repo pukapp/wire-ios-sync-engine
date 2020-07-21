@@ -151,8 +151,8 @@ class MediasoupRoomManager: NSObject {
         self.device = MPDevice()
         self.mediaOutputManager = MediaOutputManager()
         self.roomPeersManager = MediasoupCallPeersManager(observer: self)
-        ///192.168.3.66----27.124.45.160
-        self.signalManager.connectRoom(with: "wss://27.124.45.160:4443", roomId: roomId.transportString(), userId: self.userId!.transportString())
+        ///192.168.3.66----27.124.45.111
+        self.signalManager.connectRoom(with: "wss://27.124.45.111:4443", roomId: roomId.transportString(), userId: self.userId!.transportString())
         
 //        MediasoupService.requestRoomInfo(with: roomId.transportString(), uid: userId.transportString()) {[weak self] (roomInfo) in
 //            signalWorkQueue.async {
