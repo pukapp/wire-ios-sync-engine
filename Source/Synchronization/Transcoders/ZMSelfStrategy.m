@@ -90,6 +90,7 @@ NSTimeInterval ZMSelfStrategyPendingValidationRequestInterval = 5;
         self.downstreamSelfUserSync = [[ZMSingleRequestSync alloc] initWithSingleRequestTranscoder:self groupQueue:self.managedObjectContext];
         self.needsToBeUdpatedFromBackend = [ZMUser predicateForNeedingToBeUpdatedFromBackend];
         _timedDownstreamSync = [[ZMTimedSingleRequestSync alloc] initWithSingleRequestTranscoder:self everyTimeInterval:ZMSelfStrategyPendingValidationRequestInterval groupQueue:self.managedObjectContext];
+        [self checkIfNeedsToBeUdpatedFromBackend];
     }
     return self;
 }
