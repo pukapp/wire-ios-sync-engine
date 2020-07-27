@@ -142,7 +142,6 @@ ZM_EMPTY_ASSERTING_INIT()
         self.requestStrategies = @[
                                    self.userClientRequestStrategy,
                                    self.missingClientsRequestStrategy,
-                                   self.missingUpdateEventsTranscoder,
                                    self.fetchingClientRequestStrategy,
                                    self.userDisableSendMsgStrategy,
                                    [[VerifyLegalHoldRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
@@ -171,7 +170,6 @@ ZM_EMPTY_ASSERTING_INIT()
                                    self.clientMessageTranscoder,
                                    self.userTranscoder,
                                    self.lastUpdateEventIDTranscoder,
-                                   self.missingUpdateEventsTranscoder,
                                    [[LinkPreviewUploadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    self.selfStrategy,
                                    self.callingRequestStrategy,
@@ -189,6 +187,7 @@ ZM_EMPTY_ASSERTING_INIT()
                                    [[TeamImageAssetUpdateStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    [[LabelDownstreamRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory syncStatus:applicationStatusDirectory.syncStatus],
                                    [[LabelUpstreamRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
+                                   self.missingUpdateEventsTranscoder
                                    ];
         
         self.changeTrackerBootStrap = [[ZMChangeTrackerBootstrap alloc] initWithManagedObjectContext:self.syncMOC changeTrackers:self.allChangeTrackers];
