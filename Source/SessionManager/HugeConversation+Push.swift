@@ -54,7 +54,8 @@ extension ZMUserSession {
     @objc(saveHugeGroup)
     public func saveHugeGroup() {
         if let hugeGroups = ZMConversation.hugeGroupConversations(in: self.managedObjectContext) as? [ZMConversation] {
-            let uid = ZMUser.selfUser(in: self.managedObjectContext).remoteIdentifier.transportString()
+            guard let context = self.managedObjectContext else {return}
+            let uid = ZMUser.selfUser(in: context).remoteIdentifier.transportString()
             HugeConversationSetting.save(with: hugeGroups, in: uid)
         }
     }
