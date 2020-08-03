@@ -67,7 +67,7 @@ enum VideoOutputFormat: Int {
 final class MediaOutputManager: NSObject {
 
     deinit {
-        zmLog.info("Mediasoup::deinit:---MediaOutputManager")
+        zmLog.info("MediaOutputManager-deinit")
     }
     
     private static let MEDIA_STREAM_ID: String = "ARDAMS"
@@ -100,13 +100,13 @@ final class MediaOutputManager: NSObject {
     }
     
     func startVideoCapture() {
-        zmLog.info("Mediasoup::--startVideoCapture")
+        zmLog.info("MediaOutputManager-startVideoCapture")
         guard let capture = self.currentCapture else { return }
         self.videoCapturer?.startCapture(with: capture, format: capture.activeFormat, fps: MEDIA_VIDEO_FPS)
     }
     
     func stopVideoCapture() {
-        zmLog.info("Mediasoup::--stopVideoCapture-thread:\(Thread.current)")
+        zmLog.info("MediaOutputManager-stopVideoCapture-thread:\(Thread.current)")
         self.videoCapturer?.stopCapture()
     }
     
@@ -118,21 +118,21 @@ final class MediaOutputManager: NSObject {
     
     func changeVideoOutputFormat(with format: VideoOutputFormat) {
         if self.currentOutputFormat != format {
-            zmLog.info("Mediasoup::MediaOutputManager--changeVideoOutputFormat:\(format)")
+            zmLog.info("MediaOutputManager-changeVideoOutputFormat:\(format)")
             self.currentOutputFormat = format
             self.videoSource?.adaptOutputFormat(toWidth: format.width, height: format.height, fps: Int32(MEDIA_VIDEO_FPS))
         }
     }
     
     
-    func getVideoTrack(with format: VideoOutputFormat) -> RTCVideoTrack  {
+    func produceVideoTrack(with format: VideoOutputFormat) -> RTCVideoTrack {
         getVideoTracklock.lock()
         
         if let track = self.mediaSoupVideoTrack {
             getVideoTracklock.unlock()
             return track
         }
-        zmLog.info("Mediasoup::--getVideoTrack:\(format)")
+        zmLog.info("MediaOutputManager-getVideoTrack:\(format)")
         
         self.currentOutputFormat = format
         
@@ -151,7 +151,7 @@ final class MediaOutputManager: NSObject {
         return videoTrack
     }
     
-    internal func getAudioTrack() -> RTCAudioTrack {
+    func produceAudioTrack() -> RTCAudioTrack {
         if let track = self.mediaSoupAudioTrack {
             return track
         }
@@ -186,4 +186,3 @@ extension MediaOutputManager : RTCVideoCapturerDelegate {
         }
     }
 }
-//MediasoupRoomManager.shareInstance.setLocalAudio(mute: privateIsMicrophoneMuted)

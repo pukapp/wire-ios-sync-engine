@@ -36,7 +36,7 @@ public class FlowManager : NSObject, FlowManagerType {
     }
     
     public func setVideoCaptureDevice(_ device : CaptureDevice, for conversationId: UUID) {
-        MediasoupRoomManager.shareInstance.mediaOutputManager?.flipCamera(isFront: device == .front)
+        CallingRoomManager.shareInstance.mediaOutputManager?.flipCamera(isFront: device == .front)
     }
     
 }

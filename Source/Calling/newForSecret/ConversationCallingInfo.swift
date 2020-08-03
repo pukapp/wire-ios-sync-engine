@@ -10,7 +10,7 @@ import Foundation
 
 private let zmLog = ZMSLog(tag: "calling")
 
-private let CallingEstablishedTimeoutInterval: TimeInterval = 90
+private let CallingEstablishedTimeoutInterval: TimeInterval = 80
 ///发起者
 typealias CallStarter = (userId: UUID, clientId:  String)
 
@@ -68,6 +68,6 @@ class ConversationCallingInfo: ZMTimerClient {
     }
     
     deinit {
-        zmLog.info("mediasoup::CallingState-ConversationInfo--deinit")
+        zmLog.info("ConversationCallingInfo-deinit")
     }
 }

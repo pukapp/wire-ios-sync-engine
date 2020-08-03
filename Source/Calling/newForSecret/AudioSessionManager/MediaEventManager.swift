@@ -17,6 +17,7 @@ public enum MediaEvent {
     
     case startCall
     case incomingCall
+    case connectingCall
     case enterCall
     case exitCall
     
@@ -97,6 +98,8 @@ class MediaEventManager {
         case .incomingCall:
             guard let usingCallKit = data as? Bool else { return }
             self.invokeIncoming(with: usingCallKit)
+        case .connectingCall:
+            self.connectingCall()
         case .enterCall:
             self.enterCall()
         case .exitCall:
@@ -136,12 +139,16 @@ fileprivate extension MediaEventManager {
         }
     }
     
-    func enterCall() {
+    func connectingCall() {
         self.stopAllSound()
-        
+        setAudioSessionCategory(with: .playAndRecord)
+        setAudioSessionActive(isActive: true)
+    }
+    
+    func enterCall() {
         if interrupted {
-            setAudioSessionActive(isActive: true)
             self.interrupted = false
+            setAudioSessionActive(isActive: true)
         }
     }
     
@@ -289,7 +296,7 @@ fileprivate extension MediaEventManager {
     func microphoneMuted(isMute: Bool) {
         zmLog.info("MediaEventManager--microphoneMuted-isMute:\(isMute)")
         if self.isCalling {
-            MediasoupRoomManager.shareInstance.setLocalAudio(mute: isMute)
+            CallingRoomManager.shareInstance.setLocalAudio(mute: isMute)
         }
     }
 }

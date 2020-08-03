@@ -24,7 +24,7 @@ struct MediasoupRoom {
 }
 
 ///https服务
-class MediasoupService {
+class CallingService {
     
     static let MediasoupServiceURL: String = "192.168.3.66"
     

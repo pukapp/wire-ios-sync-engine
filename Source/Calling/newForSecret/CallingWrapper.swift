@@ -11,8 +11,8 @@ import SwiftyJSON
 
 private let zmLog = ZMSLog(tag: "calling")
 
-///群语音采用mediasoup
-public class MediasoupWrapper: AVSWrapperType {
+//目前单聊采用webrtc,打洞失败才走mediasoup,群语音则采用mediasoup
+public class CallingWrapper: AVSWrapperType {
     
     private let userId: UUID
     private let clientId: String
@@ -29,11 +29,13 @@ public class MediasoupWrapper: AVSWrapperType {
         self.callCenter?.setCallReady(version: 3)
 
         self.callStateManager = ConvsCallingStateManager(selfUserID: userId, selfClientID: clientId)
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(onSendMessage), name: NSNotification.Name("qwer"), object: nil)
     }
     
-    public func startCall(conversationId: UUID, callType: AVSCallType, conversationType: AVSConversationType, useCBR: Bool) -> Bool {
+    public func startCall(conversationId: UUID, callType: AVSCallType, conversationType: AVSConversationType, useCBR: Bool, peerId: UUID?) -> Bool {
         self.callStateManager.observer = self
-        return callStateManager.startCall(cid: conversationId, callType: callType, conversationType: conversationType, userId: self.userId, clientId: self.clientId)
+        return callStateManager.startCall(cid: conversationId, callType: callType, conversationType: conversationType, peerId: peerId)
     }
     
     public func answerCall(conversationId: UUID, callType: AVSCallType, conversationType: AVSConversationType, useCBR: Bool) -> Bool {
@@ -85,7 +87,7 @@ public class MediasoupWrapper: AVSWrapperType {
 
 }
 
-extension MediasoupWrapper: ConvsCallingStateObserve {
+extension CallingWrapper: ConvsCallingStateObserve {
     
     func changeCallStateNeedToSendMessage(in cid: UUID, callAction: CallingAction, convType: AVSConversationType? = nil, callType: AVSCallType? = nil, to: CallStarter?, memberCount: Int? = nil) {
         self.sendCallingAction(with: callAction, cid: cid, convType: convType, callType: callType, to: to, memberCount: memberCount)
@@ -117,13 +119,19 @@ extension MediasoupWrapper: ConvsCallingStateObserve {
     
 }
 
-extension MediasoupWrapper {
+extension CallingWrapper {
     
     func sendMessage(with cid: UUID, data: Data) {
         let token = Unmanaged.passUnretained(self).toOpaque()
         self.callCenter?.handleCallMessageRequest(token: token, conversationId: cid, senderUserId: self.userId, senderClientId: self.clientId, data: data)
     }
     
+    @objc func onSendMessage(noti: Notification) {
+        if let cid = CallingRoomManager.shareInstance.roomId,
+            let message = noti.userInfo?["sdpChange"] as? WebRTCP2PMessage {
+            self.sendCallingP2PMessage(in: cid, message: message)
+        }
+    }
 }
 
 enum CallingAction: Int {
@@ -134,6 +142,8 @@ enum CallingAction: Int {
     case cancel = 4
     case noResponse = 5
     case busy = 6
+    
+    case sdpExChange = 7
 }
 
 struct CallingModel {
@@ -147,13 +157,15 @@ struct CallingModel {
     let cid: UUID
     let userId: UUID
     let clientId:  String
-    let callData: Date
+    let callDate: Date
+    
+    var data: Data?
     
     init?(callEvent: CallEvent) {
         self.cid = callEvent.conversationId
         self.userId = callEvent.userId
         self.clientId = callEvent.clientId
-        self.callData = callEvent.currentTimestamp
+        self.callDate = callEvent.currentTimestamp
         
         let json = JSON(parseJSON: String(data: callEvent.data, encoding: .utf8)!)
         
@@ -193,13 +205,16 @@ struct CallingModel {
             self.callType = nil
         }
         
+        if let data = try? json["data"].rawData() {
+            self.data = data
+        }
     }
 }
 
 ///receive--CallingAction
-extension MediasoupWrapper {
+extension CallingWrapper {
     
-    fileprivate func sendCallingAction(with action: CallingAction, cid: UUID, convType: AVSConversationType? = nil, callType: AVSCallType? = nil, to: CallStarter? = nil, memberCount: Int? = nil) {
+    fileprivate func sendCallingAction(with action: CallingAction, cid: UUID, convType: AVSConversationType? = nil, callType: AVSCallType? = nil, to: CallStarter? = nil, memberCount: Int? = nil, data: Data? = nil) {
         var json: JSON = ["call_state" : JSON(action.rawValue)]
         if let convType = convType {
             json["conv_type"] = JSON(convType.rawValue)
@@ -213,15 +228,18 @@ extension MediasoupWrapper {
         if let memberCount = memberCount {
             json["member_count"] = JSON(memberCount)
         }
+        if let data = data {
+            json["data"] = JSON(data)
+        }
         zmLog.info("mediasoup::sendCallingAction---action:\(action)--cid:\(cid)--uid:\(self.userId)--clientId:\(self.clientId)\n")
         self.sendMessage(with: cid, data: json.description.data(using: .utf8)!)
     }
     
     func receiveCallingAction(with model: CallingModel) {
-        if model.callData.compare(Date(timeIntervalSinceNow: -60)) == .orderedAscending {
+        if model.callDate.compare(Date(timeIntervalSinceNow: -60)) == .orderedAscending {
             ///信令发送时间小于当前时间60s前，则认为该信令无效
             if model.callAction == .start {
-                self.callCenter?.handleMissedCall(conversationId: model.cid, messageTime: model.callData, userId: model.userId, isVideoCall: model.callType == .video)
+                self.callCenter?.handleMissedCall(conversationId: model.cid, messageTime: model.callDate, userId: model.userId, isVideoCall: model.callType == .video)
             }
             return
         }
@@ -252,7 +270,23 @@ extension MediasoupWrapper {
             callStateManager.recvEndCall(cid: model.cid, userID: model.userId, reason: .timeout)
         case .busy:
             callStateManager.recvBusyCall(cid: model.cid, userID: model.userId)
+        case .sdpExChange:
+            guard let data = model.data else { return }
+            let json = JSON(parseJSON: String(data: data, encoding: .utf8)!)
+            let message = WebRTCP2PMessage.init(json: json)
+            if let p2p = self.callStateManager.roomManager.clientConnectManager as? WebRTCClientManager {
+                p2p.handleSDPMessage(message)
+            }
         }
+    }
+    
+}
+
+extension CallingWrapper {
+    
+    fileprivate func sendCallingP2PMessage(in cid: UUID, message: WebRTCP2PMessage) {
+        let dataMessage = message.json.description.data(using: .utf8)!
+        self.sendCallingAction(with: .sdpExChange, cid: cid, data: dataMessage)
     }
     
 }
