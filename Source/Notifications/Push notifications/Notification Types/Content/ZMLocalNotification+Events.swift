@@ -21,7 +21,7 @@ extension ZMLocalNotification {
     
     // for each supported event type, use the corresponding notification builder.
     //
-    convenience init?(event: ZMUpdateEvent, conversation: ZMConversation?, managedObjectContext moc: NSManagedObjectContext) {
+    public convenience init?(event: ZMUpdateEvent, conversation: ZMConversation?, managedObjectContext moc: NSManagedObjectContext) {
         var builder: NotificationBuilder?
         
         switch event.type {
