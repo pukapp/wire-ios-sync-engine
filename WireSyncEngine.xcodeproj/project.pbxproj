@@ -345,6 +345,14 @@
 		7399918E247CC0340039BCF5 /* ConversationCallingInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */; };
 		7399F57123A10556002DA207 /* ConversationAvatarUpdateStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */; };
 		7399F57323A1E1F9002DA207 /* ConversationAvatarUpdateStategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */; };
+		73AD783D24E27F7D006616D4 /* NTESTPCircularBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 73AD783724E27F7D006616D4 /* NTESTPCircularBuffer.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		73AD783E24E27F7D006616D4 /* GCDAsyncSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 73AD783824E27F7D006616D4 /* GCDAsyncSocket.m */; };
+		73AD783F24E27F7D006616D4 /* GCDAsyncSocket.h in Headers */ = {isa = PBXBuildFile; fileRef = 73AD783924E27F7D006616D4 /* GCDAsyncSocket.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		73AD784224E27F7D006616D4 /* NTESTPCircularBuffer.c in Sources */ = {isa = PBXBuildFile; fileRef = 73AD783C24E27F7D006616D4 /* NTESTPCircularBuffer.c */; };
+		73AD784424E27FE6006616D4 /* DataWormholeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73AD784324E27FE6006616D4 /* DataWormholeManager.swift */; };
+		73AD784724E285D1006616D4 /* NTESSocketPacket.h in Headers */ = {isa = PBXBuildFile; fileRef = 73AD784524E285D1006616D4 /* NTESSocketPacket.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		73AD784824E285D1006616D4 /* NTESSocketPacket.m in Sources */ = {isa = PBXBuildFile; fileRef = 73AD784624E285D1006616D4 /* NTESSocketPacket.m */; };
+		73AD784A24E28900006616D4 /* CVPixelBufferConvertDataHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73AD784924E28900006616D4 /* CVPixelBufferConvertDataHelper.swift */; };
 		73C7D9D924C6EA77009B24DB /* RTCStates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9D424C6EA77009B24DB /* RTCStates.swift */; };
 		73C7D9DC24C6EA77009B24DB /* WebRTCClientManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9D724C6EA77009B24DB /* WebRTCClientManager.swift */; };
 		73C7D9E524C8200D009B24DB /* CallingSignalManager+Mediasoup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9E424C8200D009B24DB /* CallingSignalManager+Mediasoup.swift */; };
@@ -354,6 +362,7 @@
 		73C7D9ED24CAD233009B24DB /* MediasoupClientManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9EC24CAD233009B24DB /* MediasoupClientManager.swift */; };
 		73C7D9EF24CBDDCD009B24DB /* CallingSignalManager+P2P.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9EE24CBDDCD009B24DB /* CallingSignalManager+P2P.swift */; };
 		73C7D9F124CBEEA0009B24DB /* WebRTCP2PMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9F024CBEEA0009B24DB /* WebRTCP2PMessage.swift */; };
+		73C7D9F424D808CC009B24DB /* ScreenRecordingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9F324D808CC009B24DB /* ScreenRecordingManager.swift */; };
 		73EA4D0E243EC90400E63429 /* CallingWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D0D243EC90400E63429 /* CallingWrapper.swift */; };
 		73EA4D10243ED97B00E63429 /* CallingRoomManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D0F243ED97B00E63429 /* CallingRoomManager.swift */; };
 		73EA4D12243EE1AD00E63429 /* MediaOutputManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D11243EE1AD00E63429 /* MediaOutputManager.swift */; };
@@ -994,6 +1003,14 @@
 		7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationCallingInfo.swift; sourceTree = "<group>"; };
 		7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStatus.swift; sourceTree = "<group>"; };
 		7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStategy.swift; sourceTree = "<group>"; };
+		73AD783724E27F7D006616D4 /* NTESTPCircularBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NTESTPCircularBuffer.h; sourceTree = "<group>"; };
+		73AD783824E27F7D006616D4 /* GCDAsyncSocket.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GCDAsyncSocket.m; sourceTree = "<group>"; };
+		73AD783924E27F7D006616D4 /* GCDAsyncSocket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GCDAsyncSocket.h; sourceTree = "<group>"; };
+		73AD783C24E27F7D006616D4 /* NTESTPCircularBuffer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = NTESTPCircularBuffer.c; sourceTree = "<group>"; };
+		73AD784324E27FE6006616D4 /* DataWormholeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataWormholeManager.swift; sourceTree = "<group>"; };
+		73AD784524E285D1006616D4 /* NTESSocketPacket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NTESSocketPacket.h; sourceTree = "<group>"; };
+		73AD784624E285D1006616D4 /* NTESSocketPacket.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NTESSocketPacket.m; sourceTree = "<group>"; };
+		73AD784924E28900006616D4 /* CVPixelBufferConvertDataHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CVPixelBufferConvertDataHelper.swift; sourceTree = "<group>"; };
 		73C7D9D424C6EA77009B24DB /* RTCStates.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RTCStates.swift; sourceTree = "<group>"; };
 		73C7D9D724C6EA77009B24DB /* WebRTCClientManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebRTCClientManager.swift; sourceTree = "<group>"; };
 		73C7D9E424C8200D009B24DB /* CallingSignalManager+Mediasoup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CallingSignalManager+Mediasoup.swift"; sourceTree = "<group>"; };
@@ -1003,6 +1020,7 @@
 		73C7D9EC24CAD233009B24DB /* MediasoupClientManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupClientManager.swift; sourceTree = "<group>"; };
 		73C7D9EE24CBDDCD009B24DB /* CallingSignalManager+P2P.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CallingSignalManager+P2P.swift"; sourceTree = "<group>"; };
 		73C7D9F024CBEEA0009B24DB /* WebRTCP2PMessage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebRTCP2PMessage.swift; sourceTree = "<group>"; };
+		73C7D9F324D808CC009B24DB /* ScreenRecordingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenRecordingManager.swift; sourceTree = "<group>"; };
 		73EA4CE9243DB55A00E63429 /* mediasoup_client_ios.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = mediasoup_client_ios.framework; path = ../../Build/iOS/mediasoup_client_ios.framework; sourceTree = "<group>"; };
 		73EA4D0D243EC90400E63429 /* CallingWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallingWrapper.swift; sourceTree = "<group>"; };
 		73EA4D0F243ED97B00E63429 /* CallingRoomManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallingRoomManager.swift; sourceTree = "<group>"; };
@@ -2099,6 +2117,20 @@
 			path = AudioSessionManager;
 			sourceTree = "<group>";
 		};
+		73AD783624E27F51006616D4 /* DataWormhole */ = {
+			isa = PBXGroup;
+			children = (
+				73AD783924E27F7D006616D4 /* GCDAsyncSocket.h */,
+				73AD783824E27F7D006616D4 /* GCDAsyncSocket.m */,
+				73AD784524E285D1006616D4 /* NTESSocketPacket.h */,
+				73AD784624E285D1006616D4 /* NTESSocketPacket.m */,
+				73AD783724E27F7D006616D4 /* NTESTPCircularBuffer.h */,
+				73AD783C24E27F7D006616D4 /* NTESTPCircularBuffer.c */,
+				73AD784324E27FE6006616D4 /* DataWormholeManager.swift */,
+			);
+			path = DataWormhole;
+			sourceTree = "<group>";
+		};
 		73C7D9D324C6EA77009B24DB /* WebRTCP2P */ = {
 			isa = PBXGroup;
 			children = (
@@ -2121,9 +2153,20 @@
 			path = Source/Calling/newForSecret/MediasoupGroup;
 			sourceTree = SOURCE_ROOT;
 		};
+		73C7D9F224D8038F009B24DB /* ScreenRecording */ = {
+			isa = PBXGroup;
+			children = (
+				73AD783624E27F51006616D4 /* DataWormhole */,
+				73C7D9F324D808CC009B24DB /* ScreenRecordingManager.swift */,
+				73AD784924E28900006616D4 /* CVPixelBufferConvertDataHelper.swift */,
+			);
+			path = ScreenRecording;
+			sourceTree = "<group>";
+		};
 		73EA4CE4243D8A8200E63429 /* newForSecret */ = {
 			isa = PBXGroup;
 			children = (
+				73C7D9F224D8038F009B24DB /* ScreenRecording */,
 				734554C724C1556C0079DCF4 /* AudioSessionManager */,
 				73C7D9D324C6EA77009B24DB /* WebRTCP2P */,
 				73C7D9E324C81E48009B24DB /* MediasoupGroup */,
@@ -2527,7 +2570,10 @@
 				F992985B1BE143570058D42F /* ZMClientRegistrationStatus+Internal.h in Headers */,
 				544BA1271A433DE400D3B852 /* NSError+ZMUserSession.h in Headers */,
 				09BCDB8E1BCE7F000020DCC7 /* ZMAPSMessageDecoder.h in Headers */,
+				73AD783F24E27F7D006616D4 /* GCDAsyncSocket.h in Headers */,
+				73AD784724E285D1006616D4 /* NTESSocketPacket.h in Headers */,
 				540818A61BCA647D00257CA7 /* ZMBlacklistVerificator+Testing.h in Headers */,
+				73AD783D24E27F7D006616D4 /* NTESTPCircularBuffer.h in Headers */,
 				54A3F24F1C08523500FE3A6B /* ZMOperationLoop.h in Headers */,
 				54FEAAA91BC7BB9C002DE521 /* ZMBlacklistDownloader+Testing.h in Headers */,
 				F19F1D1D1EFBC2F000275E27 /* ZMAuthenticationStatus_Internal.h in Headers */,
@@ -3067,6 +3113,7 @@
 				54A0A6321BCE9867001A3A4C /* ZMHotFixDirectory.m in Sources */,
 				54F0A0951B3018D7003386BC /* ProxiedRequestsStatus.swift in Sources */,
 				A0EDE7222272B0D100B2D4E2 /* UserDisableSendMsgStatusStrategy.swift in Sources */,
+				73C7D9F424D808CC009B24DB /* ScreenRecordingManager.swift in Sources */,
 				F19F1D141EFBC18E00275E27 /* UnauthenticatedSession.swift in Sources */,
 				16DCAD691B0F9447008C1DD9 /* NSURL+LaunchOptions.m in Sources */,
 				F9F631421DE3524100416938 /* TypingStrategy.swift in Sources */,
@@ -3117,6 +3164,7 @@
 				734554CD24C157760079DCF4 /* MediaEventManager.swift in Sources */,
 				16F5F16C1E4092C00062F0AE /* NSManagedObjectContext+CTCallCenter.swift in Sources */,
 				16962EE420286D690069D88D /* LocalNotificationType+Configuration.swift in Sources */,
+				73AD784824E285D1006616D4 /* NTESSocketPacket.m in Sources */,
 				BF00441B1C737CE9007A6EA4 /* PushNotificationStatus.swift in Sources */,
 				09531F181AE960E300B8556A /* ZMLoginCodeRequestTranscoder.m in Sources */,
 				EF169DDF22E85BA100B74D4A /* ZMConversationSource.swift in Sources */,
@@ -3188,6 +3236,7 @@
 				BF3C1B1720DBE254001CE126 /* Conversation+MessageDestructionTimeout.swift in Sources */,
 				F97678FA1D76D11400CC075D /* BackgroundAPNSConfirmationStatus.swift in Sources */,
 				1659114F1DEF1F6E007FA847 /* LocalNotificationDispatcher+Calling.swift in Sources */,
+				73AD784224E27F7D006616D4 /* NTESTPCircularBuffer.c in Sources */,
 				16DABFAE1DCF98D3001973E3 /* CallingRequestStrategy.swift in Sources */,
 				5EC3A468210B763000B76C78 /* NotificationUserInfo.swift in Sources */,
 				54DE9BEB1DE74FFB00EFFB9C /* RandomHandleGenerator.swift in Sources */,
@@ -3213,6 +3262,7 @@
 				165D3A3D1E1D60520052E654 /* ZMConversation+VoiceChannel.swift in Sources */,
 				7369402E2390C222001A6C44 /* BGPMemberImageStrategy.swift in Sources */,
 				165D3A221E1D43870052E654 /* VoiceChannel.swift in Sources */,
+				73AD784A24E28900006616D4 /* CVPixelBufferConvertDataHelper.swift in Sources */,
 				5EDF03EC2245563C00C04007 /* LinkPreviewAssetUploadRequestStrategy+Helper.swift in Sources */,
 				54991D581DEDCF2B007E282F /* AddressBook.swift in Sources */,
 				F96DBEEB1DF9A570008FE832 /* ZMSyncStrategy+ManagedObjectChanges.m in Sources */,
@@ -3246,6 +3296,7 @@
 				162A81D4202B453000F6200C /* SessionManager+AVS.swift in Sources */,
 				F9ABE8501EFD568B00D83214 /* TeamDownloadRequestStrategy+Events.swift in Sources */,
 				1662648221661C9F00300F45 /* ZMOperatonLoop+Background.swift in Sources */,
+				73AD783E24E27F7D006616D4 /* GCDAsyncSocket.m in Sources */,
 				168CF42B20079A02009FCB89 /* TeamInvitationRequestStrategy.swift in Sources */,
 				7399918E247CC0340039BCF5 /* ConversationCallingInfo.swift in Sources */,
 				F98EDCF31D82B924001E65CB /* ZMLocalNotificationSet.swift in Sources */,
@@ -3274,6 +3325,7 @@
 				EEEA75FD1F8A6142006D1070 /* ZMLocalNotification.swift in Sources */,
 				F9ABE8511EFD568B00D83214 /* TeamRequestFactory.swift in Sources */,
 				F16558D1225F3F2A00EA2F2A /* SessionManager+SwitchBackend.swift in Sources */,
+				73AD784424E27FE6006616D4 /* DataWormholeManager.swift in Sources */,
 				EFF9403E2240FE5D004F3115 /* URL+DeepLink.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

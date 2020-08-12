@@ -65,6 +65,10 @@ public class CallingSignalSocket {
         self.socket?.write(string: string)
     }
     
+    func send(data: Data) {
+        self.socket?.write(data: data)
+    }
+    
     deinit {
         zmLog.info("CallingSignalSocket-deinit")
     }

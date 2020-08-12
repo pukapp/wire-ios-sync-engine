@@ -135,7 +135,7 @@ class CallingRoomManager: NSObject {
         
         self.mediaOutputManager = MediaOutputManager()
         self.roomMembersManager = CallingMembersManager(observer: self)
-        ///192.168.3.66----27.124.45.111
+        ///192.168.0.110----27.124.45.111
         self.signalManager.connectRoom(with: "wss://27.124.45.111:4443", roomId: roomId.transportString(), userId: self.userId!.transportString())
         
         switch roomMode {

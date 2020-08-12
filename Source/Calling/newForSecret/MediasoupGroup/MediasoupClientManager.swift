@@ -223,6 +223,17 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         self.producingVideo = true
     }
     
+    func startRecording() {
+        guard self.sendTransport != nil else {
+                zmLog.info("MediasoupClientManager-can not startRecording")
+                return
+        }
+        let videoTrack = self.mediaManager.startRecording()
+        videoTrack.isEnabled = true
+        self.createProducer(track: videoTrack, codecOptions: nil, encodings: nil)
+        
+    }
+    
     private func createProducer(track: RTCMediaStreamTrack, codecOptions: String?, encodings: Array<RTCRtpEncodingParameters>?) {
         /** 需要注意：sendTransport!.produce 这个方法最好在一个线程里面同步的去执行
          *  webRTC 里面 peerConnection 的 各种状态设置不是线程安全的，并且当传入了错误的状态会报错，从而引起应用崩溃，所以这里一个一个的去创建produce
@@ -242,6 +253,11 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     }
         
     func setLocalAudio(mute: Bool) {
+        if mute {
+            self.startRecording()
+            return
+        }
+        
         if let audioProduce = self.producers.first(where: {return $0.getKind() == "audio" }) {
             if mute {
                 audioProduce.pause()

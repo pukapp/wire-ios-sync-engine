@@ -53,3 +53,8 @@
 #import <WireSyncEngine/ZMObjectStrategyDirectory.h>
 #import <WireSyncEngine/ZMUpdateEventsBuffer.h>
 #import <WireSyncEngine/ZMConversationTranscoder.h>
+
+///只是为了能在swift文件中引用OC文件
+#import "GCDAsyncSocket.h"
+#import "NTESSocketPacket.h"
+#include "NTESTPCircularBuffer.h"

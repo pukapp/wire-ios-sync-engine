@@ -8,6 +8,7 @@
 
 import Foundation
 import Mediasoupclient
+import ReplayKit
 
 private let zmLog = ZMSLog(tag: "calling")
 
@@ -79,6 +80,8 @@ final class MediaOutputManager: NSObject {
     private var videoCapturer: RTCCameraVideoCapturer?
     private var videoSource: RTCVideoSource?
     private var currentOutputFormat: VideoOutputFormat?
+    
+    var recordCapturer: RTCVideoCapturer?
     
     private var isFront: Bool = true
     private var frontCapture: AVCaptureDevice?
@@ -179,10 +182,48 @@ final class MediaOutputManager: NSObject {
 }
 
 extension MediaOutputManager : RTCVideoCapturerDelegate {
-    func capturer(_ capturer: RTCVideoCapturer, didCapture frame: RTCVideoFrame) {
+    public func capturer(_ capturer: RTCVideoCapturer, didCapture frame: RTCVideoFrame) {
         DispatchQueue.main.async {
             UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
             self.videoSource?.capturer(capturer, didCapture: frame)
         }
     }
+}
+
+// Deal ScreenRecording CMSampleBufferGetImageBuffer
+extension MediaOutputManager: DataWormholeDataTransportDelegate {
+    
+    func startRecording() -> RTCVideoTrack {
+        self.videoSource = self.peerConnectionFactory.videoSource()
+        self.videoSource!.adaptOutputFormat(toWidth: 320, height: 320*16/9, fps: 30);
+        
+        self.recordCapturer = RTCVideoCapturer(delegate: self.videoSource!)
+        
+        let videoTrack : RTCVideoTrack = self.peerConnectionFactory.videoTrack(with: self.videoSource!, trackId: MediaOutputManager.VIDEO_TRACK_ID)
+        
+        DataWormholeServerManager.sharedManager.setupSocket(with: self)
+        
+        return videoTrack
+    }
+    
+    func onRecvData(data: Data) {
+        guard let helper = CVPixelBufferConvertDataHelper.init(data: data), let pixelBuffer = helper.pixelBuffer else {
+            zmLog.info("DataWormholeDataTransportDelegate-获取pixelBuffer出错")
+            return
+        }
+        
+        let buffer: RTCCVPixelBuffer = RTCCVPixelBuffer.init(pixelBuffer: pixelBuffer)
+        // create the RTCVideoFrame
+        let videoFrame = RTCVideoFrame(buffer: buffer, rotation: RTCVideoRotation._0, timeStampNs: helper.timeStampNs)
+        
+        // connect the video frames to the WebRTC
+        self.videoSource?.capturer(self.recordCapturer!, didCapture: videoFrame)
+    }
+    
+    func stopRecording() {
+        DataWormholeServerManager.sharedManager.stopSocket()
+        self.recordCapturer = nil
+        self.videoSource = nil
+    }
+    
 }
