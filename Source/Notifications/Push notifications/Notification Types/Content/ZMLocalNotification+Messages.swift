@@ -27,7 +27,7 @@ extension ZMLocalNotification {
         self.init(conversation: message.conversation, builder: builder)
     }
     
-    fileprivate class MessageNotificationBuilder: NotificationBuilder {
+    class MessageNotificationBuilder: NotificationBuilder {
         
         fileprivate let message: ZMMessage
         fileprivate let contentType: LocalNotificationContentType

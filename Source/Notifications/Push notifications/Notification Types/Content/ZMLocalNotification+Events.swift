@@ -24,9 +24,19 @@ extension ZMLocalNotification {
     public convenience init?(event: ZMUpdateEvent, conversation: ZMConversation?, managedObjectContext moc: NSManagedObjectContext) {
         var builder: NotificationBuilder?
         
+        print("ZMLocalNotification init-------\(event.description)")
+        
         switch event.type {
-        case .conversationOtrMessageAdd:
-            builder = ReactionEventNotificationBuilder(event: event, conversation: conversation, managedObjectContext: moc)
+        case .conversationOtrMessageAdd,
+             .conversationClientMessageAdd,
+             .conversationOtrAssetAdd,
+             .conversationServiceMessageAdd,
+             .conversationJsonMessageAdd,
+             .conversationMemberJoinask,
+             .conversationBgpMessageAdd:
+            guard let message = ZMOTRMessage.createOrUpdate(from: event, in: moc, prefetchResult: nil) else { return nil}
+            message.markAsSent()
+            builder = MessageNotificationBuilder(message: message)
             
         case .conversationCreate:
             builder = ConversationCreateEventNotificationBuilder(event: event, conversation: conversation, managedObjectContext: moc)
@@ -43,6 +53,8 @@ extension ZMLocalNotification {
         default:
             return nil
         }
+        
+        moc.processPendingChanges()
         
         if let builder = builder {
             self.init(conversation: conversation, builder: builder)
