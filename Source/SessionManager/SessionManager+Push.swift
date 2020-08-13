@@ -80,37 +80,51 @@ extension SessionManager: PKPushRegistryDelegate {
         // We were given some time to run, resume background task creation.
         BackgroundActivityFactory.shared.resume()
         
-        // 万人群消息推送
-        if let hugeGroupConversationId = payload.dictionaryPayload.hugeGroupConversationId() {
-            if let pushType = payload.dictionaryPayload.hugeGroupPushType(),
-                pushType == "notice-sie" { // 糖果推送无法判断哪个账号，所有账号都要请求
-                accountManager.accounts.forEach { account in
-                    self.pushNotification(to: account.userIdentifier, payload: payload, completion: completion)
-                }
-            } else {
-                pushNotificationToAccount(conversation: hugeGroupConversationId, needBeNoticedAccount: { [weak self] accountNeedBeNoticed in
-                    self?.pushNotification(to: accountNeedBeNoticed.userIdentifier, payload: payload, completion: completion)
-                })
+        
+        // 13.3以上只处理呼叫通话消息
+        if #available(iOS 13.3, *) {
+            // 呼叫消息
+            if let pushType = payload.dictionaryPayload.pushChannelType(),
+//                pushType == "call",
+                let userId = payload.dictionaryPayload.accountId() {
+                pushCallNotification(to: userId, payload: payload, completion: completion)
+                
+            } else { // 普通消息发到这里会崩溃
+                completion()
             }
-        }
-        // 沙盒环境下的万人群推送
-        else if
-            let payloadDictionary = payload.dictionaryPayload.hugeGroupConversationPayloadDictionary(),
-            let hugeGroupConversationId = payloadDictionary.hugeGroupConversationId() {
-            
-            if let pushType = payloadDictionary.hugeGroupPushType(),
-                pushType == "notice-sie" { // 糖果推送无法判断哪个账号，所有账号都要请求
-                accountManager.accounts.forEach { account in
-                    self.pushSadboxNotification(to: account.userIdentifier, payloadDictionary: payloadDictionary, completion: completion)
+        } else { // 13.3以下按之前处理
+            // 万人群消息推送
+            if let hugeGroupConversationId = payload.dictionaryPayload.hugeGroupConversationId() {
+                if let pushType = payload.dictionaryPayload.pushChannelType(),
+                    pushType == "notice-sie" { // 糖果推送无法判断哪个账号，所有账号都要请求
+                    accountManager.accounts.forEach { account in
+                        self.pushNotification(to: account.userIdentifier, payload: payload, completion: completion)
+                    }
+                } else {
+                    pushNotificationToAccount(conversation: hugeGroupConversationId, needBeNoticedAccount: { [weak self] accountNeedBeNoticed in
+                        self?.pushNotification(to: accountNeedBeNoticed.userIdentifier, payload: payload, completion: completion)
+                    })
                 }
-            } else {
-                pushNotificationToAccount(conversation: hugeGroupConversationId, needBeNoticedAccount: { [weak self] accountNeedBeNoticed in
-                    self?.pushSadboxNotification(to: accountNeedBeNoticed.userIdentifier, payloadDictionary: payloadDictionary, completion: completion)
-                })
             }
-        } else { // 普通推送
-            guard let userId = payload.dictionaryPayload.accountId() else { return }
-            pushNotification(to: userId, payload: payload, completion: completion)
+            // 沙盒环境下的万人群推送
+            else if
+                let payloadDictionary = payload.dictionaryPayload.hugeGroupConversationPayloadDictionary(),
+                let hugeGroupConversationId = payloadDictionary.hugeGroupConversationId() {
+                
+                if let pushType = payloadDictionary.pushChannelType(),
+                    pushType == "notice-sie" { // 糖果推送无法判断哪个账号，所有账号都要请求
+                    accountManager.accounts.forEach { account in
+                        self.pushSadboxNotification(to: account.userIdentifier, payloadDictionary: payloadDictionary, completion: completion)
+                    }
+                } else {
+                    pushNotificationToAccount(conversation: hugeGroupConversationId, needBeNoticedAccount: { [weak self] accountNeedBeNoticed in
+                        self?.pushSadboxNotification(to: accountNeedBeNoticed.userIdentifier, payloadDictionary: payloadDictionary, completion: completion)
+                    })
+                }
+            } else {// 普通推送
+                guard let userId = payload.dictionaryPayload.accountId() else { return }
+                pushNotification(to: userId, payload: payload, completion: completion)
+            }
         }
     }
     
@@ -163,6 +177,46 @@ extension SessionManager: PKPushRegistryDelegate {
                 completion()
             }
         }
+    }
+    
+    private func pushCallNotification(to userUUID: UUID, payload: PKPushPayload, completion: @escaping () -> Void) {
+//        guard let userName = payload.dictionaryPayload.userName(),
+//            let userId = payload.dictionaryPayload.userId(),
+//            let conversationId = payload.dictionaryPayload.conversationId(),
+//            let hasVideo = payload.dictionaryPayload.hasVideo() else {
+//                return completion()
+//        }
+        
+        notificationsTracker?.registerReceivedPush()
+        
+        guard let account = accountManager.account(with: userUUID),
+            let activity = BackgroundActivityFactory.shared.startBackgroundActivity(withName: "\(payload.stringIdentifier)", expirationHandler: { [weak self] in
+                Logging.push.safePublic("Processing push payload expired: \(payload)")
+                self?.notificationsTracker?.registerProcessingExpired()
+            }) else {
+                Logging.push.safePublic("Aborted processing of payload: \(payload)")
+                notificationsTracker?.registerProcessingAborted()
+                return completion()
+        }
+        
+        withSession(for: account) { userSession in
+            Logging.push.safePublic("Forwarding push payload to user session with account \(account.userIdentifier)")
+            
+//            userSession.receivedPushNotification(with: payload.dictionaryPayload) { [weak self] in
+//                Logging.push.safePublic("Processing push payload completed")
+//                self?.notificationsTracker?.registerNotificationProcessingCompleted()
+//                BackgroundActivityFactory.shared.endBackgroundActivity(activity)
+//                completion()
+//            }
+        }
+        
+        
+        let userName = "test"
+        let userId = ""
+        let conversationId = ""
+        let hasVideo = false
+        callKitDelegate?.reportIncomingCallV2(from: userId, userName: userName, conversationId: conversationId, video: hasVideo)
+        completion()
     }
     
     private func pushNotificationToAccount(conversation cid: UUID, needBeNoticedAccount: @escaping (Account) -> Void) {

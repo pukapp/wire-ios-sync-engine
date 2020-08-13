@@ -301,6 +301,41 @@ extension CallKitDelegate {
         }
     }
     
+        func reportIncomingCallV2(from userId: String, userName: String, conversationId: String, video: Bool) {
+            let handle = CXHandle(type: .generic, value: userId + String(identifierSeparator) + conversationId)
+    //        guard let handle = conversation.callKitHandle else {
+    //            return log("Cannot report incoming call: conversation is missing handle")
+    //        }
+            
+    //        guard !conversation.needsToBeUpdatedFromBackend else {
+    //            return log("Cannot report incoming call: conversation needs to be updated from backend")
+    //        }
+            
+            let update = CXCallUpdate()
+            update.supportsHolding = false
+            update.supportsDTMF = false
+            update.supportsGrouping = false
+            update.supportsUngrouping = false
+            update.localizedCallerName = userName
+            update.remoteHandle = handle
+            update.hasVideo = video
+            
+            let callUUID = UUID()
+    //        calls[callUUID] = CallKitCall(conversation: conversation)
+            
+            log("provider.reportNewIncomingCall")
+            
+            provider.reportNewIncomingCall(with: callUUID, update: update) { [weak self] (error) in
+                if let error = error {
+                    self?.log("Cannot report incoming call: \(error)")
+                    self?.calls.removeValue(forKey: callUUID)
+    //                conversation.voiceChannel?.leave()
+                } else {
+                    self?.mediaManager?.setupAudioDevice()
+                }
+            }
+        }
+    
     func reportCall(in conversation: ZMConversation, endedAt timestamp: Date?, reason: CXCallEndedReason) {
         
         var associatedCallUUIDs : [UUID] = []
