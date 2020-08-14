@@ -201,33 +201,26 @@ extension SessionManager: PKPushRegistryDelegate {
         }
         let userName = "test"
         // 先自己写，等老徐调试
-        let userId = "45b944c6-c5fe-43d4-9654-d4974425842d"
-        let conversationId = "79836f3d-c792-4069-ba1c-717bf3287d44"
+        let userId = "33ca2a77-0194-4c95-a3c7-9ce4af02f917"
+//        let conversationId = "79836f3d-c792-4069-ba1c-717bf3287d44"
+        let conversationId = "0ce46f4b-b921-4be4-a583-a4b6c21bdefd"
         let hasVideo = false
         
-        // 如果session能直接获取到（app在后台还未停止活动）,且能创建相应的user对象和conversation对象
-        if let session = self.backgroundUserSessions[account.userIdentifier],
-            let userUUID = UUID(uuidString: userId),
-            let user = ZMUser(remoteID: userUUID, createIfNeeded: false, in: session.managedObjectContext),
-            let conversationUUID = UUID(uuidString: userId),
-            let conversation = ZMConversation(remoteID: conversationUUID, createIfNeeded: false, in: session.managedObjectContext){
-            // 如果session能直接获取到（app在后台还未停止活动）
-            Logging.push.debug("Session for \(account) is already loaded")
-            callKitDelegate?.reportIncomingCall(from: user, in: conversation, video: false)
-            Logging.push.info("-----ReportIncomingCall")
-            completion()
-
-        } else {
-            // 去激活该账号的session
-            withSession(for: account) { userSession in
-                Logging.push.safePublic("Forwarding push payload to user session with account \(account.userIdentifier)")
+        // 去激活该账号的session
+        withSession(for: account) { userSession in
+            Logging.push.safePublic("Forwarding push payload to user session with account \(account.userIdentifier)")
+            BackgroundActivityFactory.shared.endBackgroundActivity(activity)
+            
+            userSession.receivedPushNotification(with: payload.dictionaryPayload) { [weak self] in
+                Logging.push.safePublic("Processing push payload completed")
+                self?.notificationsTracker?.registerNotificationProcessingCompleted()
                 BackgroundActivityFactory.shared.endBackgroundActivity(activity)
+                completion()
             }
-            callKitDelegate?.reportIncomingCallV2(from: userId, userName: userName, conversationId: conversationId, video: hasVideo)
-            Logging.push.info("-----ReportIncomingCallV2")
-            completion()
         }
-        
+        callKitDelegate?.reportIncomingCallV2(from: userId, userName: userName, conversationId: conversationId, video: hasVideo)
+        Logging.push.info("-----ReportIncomingCallV2")
+        completion()
     }
     
     private func pushNotificationToAccount(conversation cid: UUID, needBeNoticedAccount: @escaping (Account) -> Void) {
