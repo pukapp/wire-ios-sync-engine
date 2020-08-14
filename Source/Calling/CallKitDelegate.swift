@@ -44,6 +44,12 @@ public class CallKitDelegate : NSObject {
     fileprivate var missedCallObserverToken : Any?
     fileprivate var connectedCallConversation : ZMConversation?
     fileprivate var calls : [UUID : CallKitCall]
+    /* 由于目前voip的限制，当使用callKit接收到来电时需要在一个runloop中调用callKit的reportCall方法
+     * 如果app刚被启动，则由于usersession没有创建成功，无法获取到conversation，所以此处暂存convID,在callStateObserver中获取conversation
+     * 仍存在一个问题，当点击接听按钮时，如果此时仍然没有获取到conversation，那么这次通话就会失败。
+     */
+    fileprivate var stashIncommingCallConvIDs: [UUID: UUID]
+    
     
     public convenience init(sessionManager: SessionManagerType, mediaManager: MediaManagerType?) {
         self.init(provider: CXProvider(configuration: CallKitDelegate.providerConfiguration),
@@ -62,6 +68,7 @@ public class CallKitDelegate : NSObject {
         self.sessionManager = sessionManager
         self.mediaManager = mediaManager
         self.calls = [:]
+        self.stashIncommingCallConvIDs = [:]
         
         super.init()
         
@@ -301,40 +308,32 @@ extension CallKitDelegate {
         }
     }
     
-        func reportIncomingCallV2(from userId: String, userName: String, conversationId: String, video: Bool) {
-            let handle = CXHandle(type: .generic, value: userId + String(identifierSeparator) + conversationId)
-    //        guard let handle = conversation.callKitHandle else {
-    //            return log("Cannot report incoming call: conversation is missing handle")
-    //        }
-            
-    //        guard !conversation.needsToBeUpdatedFromBackend else {
-    //            return log("Cannot report incoming call: conversation needs to be updated from backend")
-    //        }
-            
-            let update = CXCallUpdate()
-            update.supportsHolding = false
-            update.supportsDTMF = false
-            update.supportsGrouping = false
-            update.supportsUngrouping = false
-            update.localizedCallerName = userName
-            update.remoteHandle = handle
-            update.hasVideo = video
-            
-            let callUUID = UUID()
-    //        calls[callUUID] = CallKitCall(conversation: conversation)
-            
-            log("provider.reportNewIncomingCall")
-            
-            provider.reportNewIncomingCall(with: callUUID, update: update) { [weak self] (error) in
-                if let error = error {
-                    self?.log("Cannot report incoming call: \(error)")
-                    self?.calls.removeValue(forKey: callUUID)
-    //                conversation.voiceChannel?.leave()
-                } else {
-                    self?.mediaManager?.setupAudioDevice()
-                }
+    func reportIncomingCallV2(from userId: String, userName: String, conversationId: String, video: Bool) {
+        let handle = CXHandle(type: .generic, value: userId + String(identifierSeparator) + conversationId)
+        
+        let update = CXCallUpdate()
+        update.supportsHolding = false
+        update.supportsDTMF = false
+        update.supportsGrouping = false
+        update.supportsUngrouping = false
+        update.localizedCallerName = userName
+        update.remoteHandle = handle
+        update.hasVideo = video
+        
+        let callUUID = UUID()
+        self.stashIncommingCallConvIDs[callUUID] = UUID(uuidString: conversationId)!
+
+        log("provider.reportNewIncomingCall")
+        
+        provider.reportNewIncomingCall(with: callUUID, update: update) { [weak self] (error) in
+            if let error = error {
+                self?.log("Cannot report incoming call: \(error)")
+                self?.stashIncommingCallConvIDs.removeValue(forKey: callUUID)
+            } else {
+                self?.mediaManager?.setupAudioDevice()
             }
         }
+    }
     
     func reportCall(in conversation: ZMConversation, endedAt timestamp: Date?, reason: CXCallEndedReason) {
         
@@ -494,8 +493,13 @@ extension CallKitDelegate : WireCallCenterCallStateObserver, WireCallCenterMisse
         switch callState {
         case .incoming(video: let video, shouldRing: let shouldRing, degraded: _):
             if shouldRing {
-                if conversation.mutedMessageTypesIncludingAvailability == .none {
-                    reportIncomingCall(from: caller, in: conversation, video: video)
+                if let callConvID = self.stashIncommingCallConvIDs.first(where: { return $0.value == conversation.remoteIdentifier! }) {
+                    calls[callConvID.key] = CallKitCall(conversation: conversation)
+                    self.stashIncommingCallConvIDs.removeValue(forKey: callConvID.key)
+                } else {
+                    if conversation.mutedMessageTypesIncludingAvailability == .none {
+                        reportIncomingCall(from: caller, in: conversation, video: video)
+                    }
                 }
             } else {
                 reportCall(in: conversation, endedAt: timestamp, reason: .unanswered)
