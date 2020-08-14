@@ -33,6 +33,51 @@ private struct CallKitCall {
     }
 }
 
+//当系统调用callKit时，没有conversation的信息，这里保存下cid的信息，然后等待回调。
+private class WaitingConvInfoCall: ZMTimerClient {
+    
+    enum State {
+        case incoming
+        case answering
+        case finallyWaited //获取到conversation的信息
+        case waitedTimeout //用户点击接听后，有30的等待时间，如果还没有conversation信息，就回调失败
+    }
+    
+    let cid : UUID
+    var state: State
+    var onWaitingTimeout : (() -> Void)?
+    var onWaitingSuccess : (() -> Void)?
+    //由于userSession处理call信令的时间可能受网络情况影响，所以这里开一个定时器增加30s等待时间
+    var timer: ZMTimer?
+    
+    init(cid : UUID) {
+        self.cid = cid
+        self.state = .incoming
+    }
+    
+    func updateState(_ state: State) {
+        self.state = state
+        switch state {
+        case .incoming:
+            break;
+        case .answering:
+            timer = ZMTimer.init(target: self)
+            timer?.fire(at: Date.init(timeIntervalSinceNow: 30))
+        case .finallyWaited:
+            onWaitingSuccess?()
+            self.timer?.cancel()
+            self.timer = nil
+        case .waitedTimeout:
+            self.timer = nil
+            onWaitingTimeout?()
+        }
+    }
+    
+    func timerDidFire(_ timer: ZMTimer!) {
+        self.updateState(.waitedTimeout)
+    }
+}
+
 @objc
 public class CallKitDelegate : NSObject {
     
@@ -46,10 +91,9 @@ public class CallKitDelegate : NSObject {
     fileprivate var calls : [UUID : CallKitCall]
     /* 由于目前voip的限制，当使用callKit接收到来电时需要在一个runloop中调用callKit的reportCall方法
      * 如果app刚被启动，则由于usersession没有创建成功，无法获取到conversation，所以此处暂存convID,在callStateObserver中获取conversation
-     * 仍存在一个问题，当点击接听按钮时，如果此时仍然没有获取到conversation，那么这次通话就会失败。
+     * 仍存在一个问题，当点击接听按钮时，如果在30s之后仍然没有获取到conversation，那么这次通话就会失败。
      */
-    fileprivate var stashIncommingCallConvIDs: [UUID: UUID]
-    
+    fileprivate var stashIncommingCallConvs: [UUID: WaitingConvInfoCall]
     
     public convenience init(sessionManager: SessionManagerType, mediaManager: MediaManagerType?) {
         self.init(provider: CXProvider(configuration: CallKitDelegate.providerConfiguration),
@@ -68,7 +112,7 @@ public class CallKitDelegate : NSObject {
         self.sessionManager = sessionManager
         self.mediaManager = mediaManager
         self.calls = [:]
-        self.stashIncommingCallConvIDs = [:]
+        self.stashIncommingCallConvs = [:]
         
         super.init()
         
@@ -321,14 +365,14 @@ extension CallKitDelegate {
         update.hasVideo = video
         
         let callUUID = UUID()
-        self.stashIncommingCallConvIDs[callUUID] = UUID(uuidString: conversationId)!
+        self.stashIncommingCallConvs[callUUID] = WaitingConvInfoCall(cid: UUID(uuidString: conversationId)!)
 
         log("provider.reportNewIncomingCall")
         
         provider.reportNewIncomingCall(with: callUUID, update: update) { [weak self] (error) in
             if let error = error {
                 self?.log("Cannot report incoming call: \(error)")
-                self?.stashIncommingCallConvIDs.removeValue(forKey: callUUID)
+                self?.stashIncommingCallConvs.removeValue(forKey: callUUID)
             } else {
                 self?.mediaManager?.setupAudioDevice()
             }
@@ -347,6 +391,25 @@ extension CallKitDelegate {
         associatedCallUUIDs.forEach { (callUUID) in
             calls.removeValue(forKey: callUUID)
             log("provider.reportCallEndedAt: \(String(describing: timestamp))")
+            provider.reportCall(with: callUUID, endedAt: timestamp?.clampForCallKit() ?? Date(), reason: reason)
+        }
+        
+        //也需要清除一下暂存的电话信息
+        reportCall(in: conversation.remoteIdentifier!, endedAt: timestamp, reason: .unanswered)
+    }
+    
+    func reportCall(in cid: UUID, endedAt timestamp: Date?, reason: CXCallEndedReason) {
+        
+        var associatedCallUUIDs : [UUID] = []
+        for call in stashIncommingCallConvs {
+            if call.value.cid == cid {
+                associatedCallUUIDs.append(call.key)
+            }
+        }
+        
+        associatedCallUUIDs.forEach { (callUUID) in
+            stashIncommingCallConvs.removeValue(forKey: callUUID)
+            log("provider.reportCallWithCid:EndedAt: \(String(describing: timestamp))")
             provider.reportCall(with: callUUID, endedAt: timestamp?.clampForCallKit() ?? Date(), reason: reason)
         }
     }
@@ -426,21 +489,39 @@ extension CallKitDelegate : CXProviderDelegate {
     public func provider(_ provider: CXProvider, perform action: CXAnswerCallAction) {
         log("perform CXAnswerCallAction: \(action)")
         
-        guard let call = calls[action.callUUID] else {
-            log("fail CXAnswerCallAction because call did not exist")
-            action.fail()
-            return
+        func canAnswerwhenCallReady(call: CallKitCall, action: CXAnswerCallAction) {
+            call.observer.onEstablished = {
+                action.fulfill()
+            }
+            call.observer.onFailedToJoin = {
+                action.fail()
+            }
+            if call.conversation.voiceChannel?.join(video: false) != true {
+                action.fail()
+            }
         }
         
-        call.observer.onEstablished = {
-            action.fulfill()
-        }
-        
-        call.observer.onFailedToJoin = {
-            action.fail()
-        }
-        
-        if call.conversation.voiceChannel?.join(video: false) != true {
+        if let call = self.calls[action.callUUID] {
+            canAnswerwhenCallReady(call: call, action: action)
+        } else if let stillWaitingCall = self.stashIncommingCallConvs[action.callUUID] {
+            stillWaitingCall.updateState(.answering)
+            stillWaitingCall.onWaitingTimeout = {[weak self] in
+                guard let self = self else {
+                    action.fail()
+                    return
+                }
+                self.stashIncommingCallConvs.removeValue(forKey: action.callUUID)
+                action.fail()
+            }
+            stillWaitingCall.onWaitingSuccess = {[weak self] in
+                guard let self = self,
+                    let call = self.calls[action.callUUID] else {
+                    action.fail()
+                    return
+                }
+                canAnswerwhenCallReady(call: call, action: action)
+            }
+        } else {
             action.fail()
         }
     }
@@ -493,9 +574,10 @@ extension CallKitDelegate : WireCallCenterCallStateObserver, WireCallCenterMisse
         switch callState {
         case .incoming(video: let video, shouldRing: let shouldRing, degraded: _):
             if shouldRing {
-                if let callConvID = self.stashIncommingCallConvIDs.first(where: { return $0.value == conversation.remoteIdentifier! }) {
-                    calls[callConvID.key] = CallKitCall(conversation: conversation)
-                    self.stashIncommingCallConvIDs.removeValue(forKey: callConvID.key)
+                if let waitingCallInfo = self.stashIncommingCallConvs.first(where: { return $0.value.cid == conversation.remoteIdentifier! }) {
+                    calls[waitingCallInfo.key] = CallKitCall(conversation: conversation)
+                    waitingCallInfo.value.updateState(.finallyWaited)
+                    self.stashIncommingCallConvs.removeValue(forKey: waitingCallInfo.key)
                 } else {
                     if conversation.mutedMessageTypesIncludingAvailability == .none {
                         reportIncomingCall(from: caller, in: conversation, video: video)
