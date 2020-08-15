@@ -121,7 +121,7 @@ extension ZMLocalNotification {
         self.init(conversation: systemMessage.conversation, builder: builder)
     }
     
-    private class SystemMessageNotificationBuilder : MessageNotificationBuilder {
+    class SystemMessageNotificationBuilder : MessageNotificationBuilder {
         
         override var notificationType: LocalNotificationType {
             return LocalNotificationType.message(contentType)
