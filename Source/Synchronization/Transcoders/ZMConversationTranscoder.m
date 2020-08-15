@@ -476,6 +476,11 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             [[NSNotificationCenter defaultCenter] postNotificationName:ConversationUserConnection object:nil userInfo:nil];
         }
         
+        
+        if (![self shouldProcessUpdateEvent:event]) {
+            continue;
+        }
+        
         ZMConversation *conversation = [self conversationFromEventPayload:event
                                                           conversationMap:prefetchResult.conversationsByRemoteIdentifier];
         if (conversation == nil) {
@@ -483,9 +488,6 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         }
         [self markConversationForDownloadIfNeeded:conversation afterEvent:event];
         
-        if (![self shouldProcessUpdateEvent:event]) {
-            continue;
-        }
         
         NSDate * const currentLastTimestamp = conversation.lastServerTimeStamp;
         [conversation updateWithUpdateEvent:event];

@@ -67,7 +67,7 @@ public class BGPMemberImageStrategy : AbstractRequestStrategy {
     }
     
     @available (*, unavailable)
-    public override init(withManagedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         fatalError()
     }
     

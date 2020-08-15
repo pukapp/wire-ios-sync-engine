@@ -112,7 +112,7 @@ public class TypingStrategy : AbstractRequestStrategy {
     fileprivate var observers: [Any] = []
 
     @available (*, unavailable)
-    override init(withManagedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    override init(withManagedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         fatalError()
     }
     

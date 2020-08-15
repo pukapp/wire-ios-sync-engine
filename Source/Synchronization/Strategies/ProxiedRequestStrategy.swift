@@ -46,7 +46,7 @@ extension ProxiedRequestType {
     fileprivate static let RequestExpirationTime : TimeInterval = 20
     
     @available (*, unavailable, message: "use `init(withManagedObjectContext:applicationStatus:requestsStatus:)` instead")
-    override init(withManagedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    override init(withManagedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         fatalError()
     }
     

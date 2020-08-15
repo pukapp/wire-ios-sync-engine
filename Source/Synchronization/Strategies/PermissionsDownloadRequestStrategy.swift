@@ -30,7 +30,7 @@ public final class PermissionsDownloadRequestStrategy: AbstractRequestStrategy, 
 
     fileprivate var sync: ZMDownstreamObjectSync!
 
-    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
         configuration = .allowsRequestsDuringEventProcessing
         sync = ZMDownstreamObjectSync(
