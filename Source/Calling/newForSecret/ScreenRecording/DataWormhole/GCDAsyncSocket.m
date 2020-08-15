@@ -12,6 +12,7 @@
 
 #if TARGET_OS_IPHONE
 #import <CFNetwork/CFNetwork.h>
+#import <PushKit/PushKit.h>
 #endif
 
 #import <TargetConditionals.h>
@@ -8110,8 +8111,8 @@ static void CFWriteStreamCallback (CFWriteStreamRef stream, CFStreamEventType ty
 	
 	LogVerbose(@"Enabling backgrouding on socket");
 	
-	r1 = CFReadStreamSetProperty(readStream, kCFStreamNetworkServiceType, kCFStreamNetworkServiceTypeVoIP);
-	r2 = CFWriteStreamSetProperty(writeStream, kCFStreamNetworkServiceType, kCFStreamNetworkServiceTypeVoIP);
+	r1 = CFReadStreamSetProperty(readStream, kCFStreamNetworkServiceType, PKPushTypeVoIP);
+	r2 = CFWriteStreamSetProperty(writeStream, kCFStreamNetworkServiceType, PKPushTypeVoIP);
 	
 	if (!r1 || !r2)
 	{

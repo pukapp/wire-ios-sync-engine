@@ -346,9 +346,9 @@
 		7399F57123A10556002DA207 /* ConversationAvatarUpdateStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */; };
 		7399F57323A1E1F9002DA207 /* ConversationAvatarUpdateStategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */; };
 		73AD783D24E27F7D006616D4 /* NTESTPCircularBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 73AD783724E27F7D006616D4 /* NTESTPCircularBuffer.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		73AD783E24E27F7D006616D4 /* GCDAsyncSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 73AD783824E27F7D006616D4 /* GCDAsyncSocket.m */; };
+		73AD783E24E27F7D006616D4 /* GCDAsyncSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 73AD783824E27F7D006616D4 /* GCDAsyncSocket.m */; settings = {COMPILER_FLAGS = "-Wno-sign-conversion"; }; };
 		73AD783F24E27F7D006616D4 /* GCDAsyncSocket.h in Headers */ = {isa = PBXBuildFile; fileRef = 73AD783924E27F7D006616D4 /* GCDAsyncSocket.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		73AD784224E27F7D006616D4 /* NTESTPCircularBuffer.c in Sources */ = {isa = PBXBuildFile; fileRef = 73AD783C24E27F7D006616D4 /* NTESTPCircularBuffer.c */; };
+		73AD784224E27F7D006616D4 /* NTESTPCircularBuffer.c in Sources */ = {isa = PBXBuildFile; fileRef = 73AD783C24E27F7D006616D4 /* NTESTPCircularBuffer.c */; settings = {COMPILER_FLAGS = "-Wno-sign-conversion"; }; };
 		73AD784424E27FE6006616D4 /* DataWormholeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73AD784324E27FE6006616D4 /* DataWormholeManager.swift */; };
 		73AD784724E285D1006616D4 /* NTESSocketPacket.h in Headers */ = {isa = PBXBuildFile; fileRef = 73AD784524E285D1006616D4 /* NTESSocketPacket.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		73AD784824E285D1006616D4 /* NTESSocketPacket.m in Sources */ = {isa = PBXBuildFile; fileRef = 73AD784624E285D1006616D4 /* NTESSocketPacket.m */; };

@@ -145,7 +145,11 @@ static __inline__ __attribute__((always_inline)) void NTESTPCircularBufferConsum
     buffer->tail = (buffer->tail + amount) % buffer->length;
 
     if ( buffer->atomic ) {
+        #pragma clang diagnostic push
+        #pragma clang diagnostic ignored"-Wdeprecated-declarations"
+        //写在这个中间的代码,都不会被编译器提示-Wdeprecated-declarations类型的警告
         OSAtomicAdd32Barrier(-amount, &buffer->fillCount);
+        #pragma clang diagnostic pop
     } else {
         buffer->fillCount -= amount;
     }
@@ -182,7 +186,11 @@ static __inline__ __attribute__((always_inline)) void* NTESTPCircularBufferHead(
 static __inline__ __attribute__((always_inline)) void NTESTPCircularBufferProduce(NTESTPCircularBuffer *buffer, int32_t amount) {
     buffer->head = (buffer->head + amount) % buffer->length;
     if ( buffer->atomic ) {
+        #pragma clang diagnostic push
+        #pragma clang diagnostic ignored"-Wdeprecated-declarations"
+        //写在这个中间的代码,都不会被编译器提示-Wdeprecated-declarations类型的警告
         OSAtomicAdd32Barrier(amount, &buffer->fillCount);
+        #pragma clang diagnostic pop
     } else {
         buffer->fillCount += amount;
     }
