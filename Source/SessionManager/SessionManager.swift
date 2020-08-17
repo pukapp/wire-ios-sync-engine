@@ -71,6 +71,9 @@ public protocol SessionManagerType : class {
     /// Will update the push token for the session if it has changed
     func updatePushToken(for session: ZMUserSession)
     
+    
+    func updateApnsPushToken(for session: ZMUserSession)
+    
     /// Configure user notification settings. This will ask the user for permission to display notifications.
     func configureUserNotifications()
     
@@ -184,7 +187,7 @@ public protocol ForegroundNotificationResponder: class {
     public fileprivate(set) var activeUserSession: ZMUserSession?
     public var urlHandler: SessionManagerURLHandler!
 
-    public fileprivate(set) var backgroundUserSessions: [UUID: ZMUserSession] = [:]
+    public var backgroundUserSessions: [UUID: ZMUserSession] = [:]
     public internal(set) var unauthenticatedSession: UnauthenticatedSession? {
         willSet {
             self.unauthenticatedSession?.tearDown()
@@ -423,12 +426,12 @@ public protocol ForegroundNotificationResponder: class {
         
         // register for voIP push notifications
         // ios13.3 以上版本不去注册voTP通知
-        if #available(iOS 13.3, *) {
-            
-        } else {
+//        if #available(iOS 13.3, *) {
+//
+//        } else {
             self.pushRegistry.delegate = self
             self.pushRegistry.desiredPushTypes = Set(arrayLiteral: PKPushType.voIP)
-        }
+//        }
         
         self.urlHandler = SessionManagerURLHandler(userSessionSource: self)
 
@@ -695,6 +698,7 @@ public protocol ForegroundNotificationResponder: class {
         backgroundUserSessions[account.userIdentifier] = userSession
         userSession.useConstantBitRateAudio = useConstantBitRateAudio
         updatePushToken(for: userSession)
+        updateApnsPushToken(for: userSession)
         registerObservers(account: account, session: userSession)
     }
     

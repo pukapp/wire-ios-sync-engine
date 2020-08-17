@@ -225,6 +225,17 @@ extension SessionManager: PKPushRegistryDelegate {
         }
     }
     
+    public func updateApnsPushToken(for session: ZMUserSession) {
+        session.managedObjectContext.performGroupedBlock {
+            // Refresh the Apns tokens if needed
+            let token = UserDefaults.standard.string(forKey: ApnsPushTokenStrategy.Keys.UserClientApnsPushTokenKey)
+            if let t = token {
+                session.setApnsPushKitToken(t)
+            }
+        }
+    }
+    
+    
     func handleNotification(with userInfo: NotificationUserInfo, block: @escaping (ZMUserSession) -> Void) {
         guard
             let selfID = userInfo.selfUserID,
