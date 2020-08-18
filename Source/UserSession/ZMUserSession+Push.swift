@@ -25,8 +25,10 @@ let PushChannelUserIDKey = "user"
 let PushChannelDataKey = "data"
 let PushChannelConvIDKey = "conv"
 let PushChannelTypeKey = "type"
-let PushChannelUserNameKey = "userName"
-let PushChannelVideoKey = "hasVideo"
+let PushChannelCallUserIDKey = "call_user_id"
+let PushChannelCallUserNameKey = "call_user_name"
+let PushChannelCallConversationIDKey = "call_conv_id"
+let PushChannelVideoKey = "video"
 
 extension Dictionary {
     
@@ -103,47 +105,50 @@ extension Dictionary {
         return ["data": userInfoData]
     }
     
-    internal func userId() -> String? {
+    // 发起通话用户id
+    internal func callUserId() -> String? {
         guard let userInfoData = self[PushChannelDataKey as! Key] as? [String: Any] else {
             Logging.push.safePublic("No data dictionary in notification userInfo payload");
             return nil
         }
     
-        guard let userIdString = userInfoData[PushChannelUserIDKey] as? String else {
+        guard let userIdString = userInfoData[PushChannelCallUserIDKey] as? String else {
             return nil
         }
     
         return userIdString
     }
     
-    internal func conversationId() -> String? {
-        guard let userInfoData = self[PushChannelDataKey as! Key] as? [String: Any] else {
-            Logging.push.safePublic("No data dictionary in notification userInfo payload");
-            return nil
-        }
-        
-        guard let conversationId = userInfoData[PushChannelConvIDKey] as? String else {
-            return nil
-        }
-        
-        return conversationId
-    }
-    
-    
+    // 发起通话用户名称
     func userName() -> String? {
         guard let userInfoData = self[PushChannelDataKey as! Key] as? [String: Any] else {
             Logging.push.safePublic("No data dictionary in notification userInfo payload");
             return nil
         }
     
-        guard let userName = userInfoData[PushChannelUserNameKey] as? String else {
+        guard let userName = userInfoData[PushChannelCallUserNameKey] as? String else {
             return nil
         }
     
         return userName
     }
     
-    func hasVideo() -> Bool? {
+    // 发起通话会话id
+    internal func conversationId() -> String? {
+        guard let userInfoData = self[PushChannelDataKey as! Key] as? [String: Any] else {
+            Logging.push.safePublic("No data dictionary in notification userInfo payload");
+            return nil
+        }
+        
+        guard let conversationId = userInfoData[PushChannelCallConversationIDKey] as? String else {
+            return nil
+        }
+        
+        return conversationId
+    }
+    
+    // 是否视频通话
+    func video() -> Bool? {
         guard let userInfoData = self[PushChannelDataKey as! Key] as? [String: Any] else {
             Logging.push.safePublic("No data dictionary in notification userInfo payload");
             return nil

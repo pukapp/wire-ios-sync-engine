@@ -85,8 +85,7 @@ extension SessionManager: PKPushRegistryDelegate {
         // 13.3以上只处理呼叫通话消息
         if #available(iOS 13.3, *) {
             // 呼叫消息
-            if let pushType = payload.dictionaryPayload.pushChannelType(),
-//                pushType == "call",
+            if let video = payload.dictionaryPayload.video(),
                 let userId = payload.dictionaryPayload.accountId() {
                 pushCallNotification(to: userId, payload: payload, completion: completion)
                 
@@ -181,12 +180,12 @@ extension SessionManager: PKPushRegistryDelegate {
     }
     
     private func pushCallNotification(to userUUID: UUID, payload: PKPushPayload, completion: @escaping () -> Void) {
-//        guard let userName = payload.dictionaryPayload.userName(),
-//            let userId = payload.dictionaryPayload.userId(),
-//            let conversationId = payload.dictionaryPayload.conversationId(),
-//            let hasVideo = payload.dictionaryPayload.hasVideo() else {
-//                return completion()
-//        }
+        guard let userName = payload.dictionaryPayload.userName(),
+            let callUserId = payload.dictionaryPayload.callUserId(),
+            let conversationId = payload.dictionaryPayload.conversationId(),
+            let video = payload.dictionaryPayload.video() else {
+                return completion()
+        }
         
         notificationsTracker?.registerReceivedPush()
         
@@ -199,12 +198,6 @@ extension SessionManager: PKPushRegistryDelegate {
                 notificationsTracker?.registerProcessingAborted()
                 return completion()
         }
-        let userName = "test"
-        // 先自己写，等老徐调试
-        let userId = "33ca2a77-0194-4c95-a3c7-9ce4af02f917"
-//        let conversationId = "79836f3d-c792-4069-ba1c-717bf3287d44"
-        let conversationId = "0ce46f4b-b921-4be4-a583-a4b6c21bdefd"
-        let hasVideo = false
         
         // 去激活该账号的session
         withSession(for: account) { userSession in
@@ -218,7 +211,7 @@ extension SessionManager: PKPushRegistryDelegate {
                 completion()
             }
         }
-        callKitDelegate?.reportIncomingCallV2(from: userId, userName: userName, conversationId: conversationId, video: hasVideo)
+        callKitDelegate?.reportIncomingCallV2(from: callUserId, userName: userName, conversationId: conversationId, video: video)
         Logging.push.info("-----ReportIncomingCallV2")
         completion()
     }
