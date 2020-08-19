@@ -126,7 +126,7 @@ public extension CVPixelBufferConvertDataHelper {
         let osTypeSize = MemoryLayout<OSType>.size
         let intSize = MemoryLayout<Int>.size
         var offset: Int = 0
-        //把data转换为指针，用指针进行memcpy操作，比用subdata快上百倍
+        
         //把data转换为指针，用指针进行memcpy操作，比用subdata快上百倍
         data.withUnsafeBytes { dataBytes in
             var pixelF: OSType = 0
@@ -160,9 +160,10 @@ public extension CVPixelBufferConvertDataHelper {
             self.timeStampNs = timeStampNs
             offset += int64TypeSize
             
-            print("init?(with data) \(pixelF),  \(width),  \(height),  \(yBytesPerRow),  \(cbcrBytesPerRow)")
+            //print("init?(with data) \(pixelF),  \(width),  \(height),  \(yBytesPerRow),  \(cbcrBytesPerRow)")
             if CVPixelBufferConvertDataHelper.pixelBufferPool == nil,
                 !CVPixelBufferConvertDataHelper.configPixelBufferPool(with: pixelFormatType, width: width, height: height, yBytesPerRow: yBytesPerRow) {
+                print("init?(with data) \(pixelF),  \(width),  \(height),  \(yBytesPerRow),  \(cbcrBytesPerRow)")
                 fatalError()
             }
             

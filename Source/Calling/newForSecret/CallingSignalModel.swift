@@ -13,11 +13,14 @@ import SwiftyJSON
  * Request和Response一一对应，服务器端发送了request，则客户端需回应response，否则会报错
  * Notification则只需要接收，无需任何响应
  */
-struct CallingSignalRequest {
+class CallingSignalRequest {
     let request: Bool
     let method: String
     let id: Int
     let data: JSON
+    
+    var peerId: String?
+    var roomId: String?
     
     init(method: String, data: JSON?) {
         self.request = true
@@ -31,6 +34,9 @@ struct CallingSignalRequest {
         self.method = json["method"].stringValue
         self.data = json["data"]
         self.id = json["id"].intValue
+        
+        self.peerId = json["peerId"].string
+        self.roomId = json["roomId"].string
     }
     
     func jsonString() -> String {
@@ -44,17 +50,44 @@ struct CallingSignalRequest {
     
 }
 
+class CallingSignalForwardMessage: CallingSignalRequest {
+    var toId: String?
+    
+    init(toId: String, method: String, data: JSON?) {
+        self.toId = toId
+        super.init(method: method, data: data)
+    }
+    
+    override func jsonString() -> String {
+        let json: JSON = ["request": request,
+                          "method": method,
+                          "id": id,
+                          "data": data,
+                          "toId": toId!
+        ]
+        return json.description
+    }
+}
+
 struct CallingSignalResponse {
     let response: Bool
     let ok: Bool
     let id: Int
     let data: JSON?
     
-    init(response: Bool, ok: Bool, id: Int, data: JSON?) {
+    var method: String?
+    var roomId: String?
+    var peerId: String?
+    
+    init(response: Bool, ok: Bool, id: Int, data: JSON?, method: String? = nil, roomId: String? = nil, peerId: String? = nil) {
         self.response = response
         self.ok = ok
         self.id = id
         self.data = data
+        
+        self.roomId = roomId
+        self.method = method
+        self.peerId = peerId
     }
     
     init(json: JSON) {
@@ -62,13 +95,20 @@ struct CallingSignalResponse {
         self.ok = json["ok"].boolValue
         self.data = json["data"]
         self.id = json["id"].intValue
+        
+        self.method = json["method"].string
+        self.roomId = json["roomId"].string
+        self.peerId = json["peerId"].string
     }
     
     func jsonString() -> String {
         let json: JSON = ["response": response,
                           "ok": ok,
                           "id": id,
-                          "data": ""]
+                          "data": "",
+                          "method": method ?? "",
+                          "roomId": roomId ?? "",
+                          "peerId": peerId ?? ""]
         return json.description
     }
 }

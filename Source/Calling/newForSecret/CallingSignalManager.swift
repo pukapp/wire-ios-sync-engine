@@ -61,7 +61,7 @@ extension CallingSignalManager {
     
     func receiveSocketRequest(with request: CallingSignalRequest) {
         ///先发response回给服务器
-        let response = CallingSignalResponse(response: true, ok: true,  id: request.id, data: nil)
+        let response = CallingSignalResponse(response: true, ok: true,  id: request.id, data: nil, method: request.method, roomId: request.roomId, peerId: request.peerId)
         self.send(string: response.jsonString())
         signalWorkQueue.async {
             self.signalDelegate?.onReceiveRequest(with: request.method, info: request.data)
@@ -157,9 +157,18 @@ class CallingSignalManager: NSObject {
 ///socket 发送同步异步请求
 extension CallingSignalManager{
     
+    //转发信令给房间里面的某人
+    func forwardSocketMessage(to peerId: String, method: String, data: JSON?) {
+        signalWorkQueue.async {
+            zmLog.info("CallingSignalManager-11111sendSocketRequest==method:\(method)-data:\(String(describing: data))")
+            let request = CallingSignalForwardMessage.init(toId: peerId, method: method, data: data)
+            self.send(string: request.jsonString())
+        }
+    }
+    
     func sendSocketRequest(with method: String, data: JSON?) {
         signalWorkQueue.async {
-            zmLog.info("CallingSignalManager-sendSocketRequest==method:\(method)--thread:\(Thread.current)\n")
+            zmLog.info("CallingSignalManager-11111sendSocketRequest==method:\(method)-data:\(String(describing: data))")
             let request = CallingSignalRequest.init(method: method, data: data)
             self.send(string: request.jsonString())
         }
@@ -174,7 +183,7 @@ extension CallingSignalManager{
         
         self.socket?.send(string: request.jsonString())
         
-        let result = sendAckRequestDispatch.wait(timeout: .now() + 20)
+        let result = sendAckRequestDispatch.wait(timeout: .now() + 30)
         if result == .success {
             return self.syncResponse
         } else {

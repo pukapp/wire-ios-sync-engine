@@ -199,7 +199,7 @@ extension DataWormholeServerManager: GCDAsyncSocketDelegate {
         
         let data = Data.init(bytes: buffer!.advanced(by: headSize), count: Int(dataLen))
         NTESTPCircularBufferClear(self.recvBuffer) // 处理完一帧数据就清空缓存
-        
+        guard data.count > 0 else { return }
         self.delegate?.onRecvData(data: data)
     }
 }

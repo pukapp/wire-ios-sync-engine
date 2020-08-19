@@ -55,40 +55,46 @@ struct SessionDescription {
 
 /// This struct is a swift wrapper over `RTCIceCandidate` for easy encode and decode
 struct IceCandidate: Codable {
-    let sdp: String
-    let sdpMLineIndex: Int32
-    let sdpMid: String?
+    let candidate: String
+    let label: Int32
+    let id: String?
     
     init(from iceCandidate: RTCIceCandidate) {
-        self.sdpMLineIndex = iceCandidate.sdpMLineIndex
-        self.sdpMid = iceCandidate.sdpMid
-        self.sdp = iceCandidate.sdp
+        self.label = iceCandidate.sdpMLineIndex
+        self.id = iceCandidate.sdpMid
+        self.candidate = iceCandidate.sdp
     }
     
     init(json: JSON) {
-        self.sdp = json["sdp"].stringValue
-        self.sdpMLineIndex = json["sdpMLineIndex"].int32Value
-        self.sdpMid = json["sdpMid"].string
+        self.candidate = json["candidate"].stringValue
+        self.label = json["label"].int32Value
+        self.id = json["id"].string
     }
     
     var json: JSON {
-        let data:JSON = ["sdp": sdp,
-                         "sdpMLineIndex": sdpMLineIndex,
-                         "sdpMid": sdpMid ?? ""]
+        let data:JSON = ["candidate": candidate,
+                         "label": label,
+                         "id": id ?? ""]
         return data
     }
     
     var rtcIceCandidate: RTCIceCandidate {
-        return RTCIceCandidate(sdp: self.sdp, sdpMLineIndex: self.sdpMLineIndex, sdpMid: self.sdpMid)
+        return RTCIceCandidate(sdp: self.candidate, sdpMLineIndex: self.label, sdpMid: self.id)
     }
+}
+
+enum RoomMode: String {
+    case p2p        = "p2p"
+    case chat       = "chat"
+    case meeting    = "meeting"
 }
 
 enum WebRTCP2PMessage {
     case sdp(SessionDescription)
     case candidate(IceCandidate)
     case videoState(VideoState)
-    case isReady //适用于answer端发信息给offer端，自己已经连接上websocket，offer可以发sdp信息了
-    case switchMode
+    case restart //Answer发给offer端，offer端接收时需要重新创建offer
+    case switchMode(RoomMode)
 }
 
 extension WebRTCP2PMessage {
@@ -96,15 +102,15 @@ extension WebRTCP2PMessage {
     init(json: JSON) {
         let type = json["type"].stringValue
         if type == "sdp" {
-            self = .sdp(SessionDescription(json: json["sdp"]))
-        } else if type == "candidate" {
-            self = .candidate(IceCandidate(json: json["candidate"]))
-        } else if type == "videoState" {
-            self = .videoState(VideoState(rawValue: json["state"].int32Value) ?? .stopped)
-        } else if type == "switchMode" {
-            self = .switchMode
-        } else if type == "isReady" {
-            self = .isReady
+            self = .sdp(SessionDescription(json: json["data"]))
+        } else if type == "ice" {
+            self = .candidate(IceCandidate(json: json["data"]))
+        } else if type == "video_state" {
+            self = .videoState(VideoState(rawValue: json["data"].int32Value) ?? .stopped)
+        } else if type == "restart" {
+            self = .restart
+        } else if type == "switch_mode" {
+            self = .switchMode(RoomMode(rawValue: json["data"].stringValue) ?? .chat)
         } else {
             fatal("wrong p2p message")
         }
@@ -114,15 +120,15 @@ extension WebRTCP2PMessage {
         var data:JSON
         switch self {
         case .sdp(let sdp):
-            data = ["type": "sdp", "sdp": sdp.json]
+            data = ["type": "sdp", "data": sdp.json]
         case .candidate(let candidate):
-            data = ["type": "candidate", "candidate": candidate.json]
+            data = ["type": "ice", "data": candidate.json]
         case .videoState(let state):
-            data = ["type": "videoState", "state": state.rawValue]
-        case .switchMode:
-            data = ["type": "switchMode"]
-        case .isReady:
-            data = ["type": "isReady"]
+            data = ["type": "video_state", "data": state.rawValue]
+        case .restart:
+            data = ["type": "restart"]
+        case .switchMode(let mode):
+            data = ["type": "switch_mode", "data": mode.rawValue]
         }
         return data
     }

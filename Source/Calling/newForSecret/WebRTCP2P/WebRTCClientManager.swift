@@ -49,7 +49,8 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     }
     //连接状态
     private enum ConnectState {
-        case none
+        case waitForPeerReady
+        case peerIsReady
         case startICE
         case connectd
         case disconnected
@@ -57,7 +58,7 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
         case close
     }
     
-    private var connectState: ConnectState = .none
+    private var connectState: ConnectState = .waitForPeerReady
     private var timer: ZMTimer?
     private var getStatstimer: Timer?
     
@@ -84,16 +85,18 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     }
     
     func startConnect() {
-        guard self.connectState == .none, self.peerConnection == nil else { return }
-        
+        guard self.connectState == .waitForPeerReady, self.peerConnection == nil else { return }
+        self.requestToSwitchToP2PMode()
         zmLog.info("WebRTCClientManager: startConnect")
-        self.createPeerConnection()
-        //由于双方交换sdp的时候就必须包含有是否开启音频或者视频，所以为了能从语音切换到视频，此处先创建视频的track，但是设置enable为false，当开关视频的时候，通过enable的设置
-        self.produceAudio()
-        self.produceVideo(isEnabled: self.videoState == .started)
+        
+        if self.connectRole == .offer && self.signalManager.requestToJudgeIsPeerAlreadyInRoom() {
+            self.changeConnectState(.peerIsReady)
+            self.offer()
+        }
     }
     
     func createPeerConnection() {
+        guard self.peerConnection == nil else { return }
         zmLog.info("WebRTCClientManager: createPeerConnection")
 
         let config = RTCConfiguration()
@@ -111,28 +114,19 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     }
     
     func produceAudio() {
+        guard self.localAudioTrack == nil else { return }
         self.localAudioTrack = self.mediaManager.produceAudioTrack()
         self.peerConnection?.add(self.localAudioTrack!, streamIds: [WebRTCClientManager.MEDIA_STREAM_ID])
-        
-        
-//        self.peerConnection?.stats(for: self.localAudioTrack!, statsOutputLevel: .standard, completionHandler: { (reports) in
-//            reports.forEach { (re) in
-//                zmLog.info("webrtc: reportForAudioTrack--\(re.values)")
-//            }
-//        })
     }
     
     func produceVideo(isEnabled: Bool) {
+        guard self.localVideoTrack == nil else { return }
         self.localVideoTrack = self.mediaManager.produceVideoTrack(with: .high)
         self.localVideoTrack?.isEnabled = isEnabled
         self.peerConnection?.add(self.localVideoTrack!, streamIds: [WebRTCClientManager.MEDIA_STREAM_ID])
     }
     
     func setLocalAudio(mute: Bool) {
-        if mute {
-            self.connectStateObserver.establishConnectionFailed()
-            return
-        }
         self.localAudioTrack?.isEnabled = !mute
     }
     
@@ -147,12 +141,13 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
         case .screenSharing, .badConnection:
             break
         }
-        self.signalManager.forwardP2PMessage(.videoState(state))
+        self.forwardP2PMessage(.videoState(state))
     }
     
     func dispose() {
         zmLog.info("WebRTCClientManager: dispose")
-        
+        self.timer?.cancel()
+        self.timer = nil
         //self.peerConnection?.delegate = nil
         self.peerConnection?.close()
 //        self.localAudioTrack = nil
@@ -187,7 +182,7 @@ extension WebRTCClientManager {
                     return
                 }
                 let sdp = SessionDescription(from: sdp)
-                self.signalManager.forwardP2PMessage(.sdp(sdp))
+                self.forwardP2PMessage(.sdp(sdp))
             })
         }
     }
@@ -207,7 +202,7 @@ extension WebRTCClientManager {
                     return
                 }
                 let sdp = SessionDescription(from: sdp)
-                self.signalManager.forwardP2PMessage(.sdp(sdp))
+                self.forwardP2PMessage(.sdp(sdp))
             })
         }
     }
@@ -231,11 +226,16 @@ extension WebRTCClientManager: ZMTimerClient {
     
     private func changeConnectState(_ currentState: ConnectState) {
         switch currentState {
-        case .none:
+        case .waitForPeerReady:
             fatal("这只是初始状态")
+        case .peerIsReady:
+            self.createPeerConnection()
+            //由于双方交换sdp的时候就必须包含有是否开启音频或者视频，所以为了能从语音切换到视频，此处先创建视频的track，但是设置enable为false，当开关视频的时候，通过enable的设置
+            self.produceAudio()
+            self.produceVideo(isEnabled: self.videoState == .started)
         case .startICE:
             self.timer = ZMTimer(target: self)
-            self.timer!.fire(afterTimeInterval: 20)
+            self.timer!.fire(afterTimeInterval: 30)
         case .connectd:
             self.invalidTimer()
             self.membersManagerDelegate.memberConnected(with: self.peerId!)
@@ -261,6 +261,7 @@ extension WebRTCClientManager: ZMTimerClient {
                 self.offer()
             } else {
                 self.changeConnectState(.startICE)
+                self.forwardP2PMessage(.restart)
             }
         case .close:
             self.establishConnectionFailed()
@@ -270,7 +271,8 @@ extension WebRTCClientManager: ZMTimerClient {
     
     func establishConnectionFailed() {
         self.invalidTimer()
-        self.signalManager.forwardP2PMessage(.switchMode)
+        self.requestToSwitchToChatMode()
+        self.forwardP2PMessage(.switchMode(.chat))
         //断开连接之后需要将视频重置
         self.membersManagerDelegate.setMemberVideo(.stopped, mid: self.peerId!)
         self.connectStateObserver.establishConnectionFailed()
@@ -330,8 +332,7 @@ extension WebRTCClientManager: RTCPeerConnectionDelegate {
     func peerConnection(_ peerConnection: RTCPeerConnection, didGenerate candidate: RTCIceCandidate) {
         if candidate.sdp.contains("tcp") { return }
         zmLog.info("RTCPeerConnectionDelegate didGenerate candidate: \(candidate.sdp)")
-        let candidate = IceCandidate(from: candidate)
-        self.signalManager.forwardP2PMessage(.candidate(candidate))
+        self.forwardP2PMessage(.candidate(IceCandidate(from: candidate)))
     }
     
     func peerConnection(_ peerConnection: RTCPeerConnection, didRemove candidates: [RTCIceCandidate]) {
@@ -347,12 +348,25 @@ extension WebRTCClientManager: RTCPeerConnectionDelegate {
 
 extension WebRTCClientManager: CallingSignalManagerDelegate {
     
+    private func requestToSwitchToP2PMode() {
+        self.signalManager.requestToSwitchRoomMode(to: .p2p)
+    }
+    
+    private func requestToSwitchToChatMode() {
+        self.signalManager.requestToSwitchRoomMode(to: .chat)
+    }
+    
+    private func forwardP2PMessage(_ message: WebRTCP2PMessage) {
+        self.signalManager.forwardP2PMessage(to: self.peerId.transportString(), message: message)
+    }
+    
     func handleSDPMessage(_ message: WebRTCP2PMessage) {
         zmLog.info("WebRTCClientManager-handleSDPMessage message:\(message)")
         switch message {
         case .sdp(let sdp):
             switch sdp.type {
             case .offer:
+                self.changeConnectState(.peerIsReady)
                 self.set(remoteSdp: sdp.rtcSessionDescription)
                 self.answer()
             case .answer:
@@ -364,8 +378,10 @@ extension WebRTCClientManager: CallingSignalManagerDelegate {
             self.membersManagerDelegate.setMemberVideo(state, mid: self.peerId!)
         case .switchMode:
             self.establishConnectionFailed()
-        case .isReady:
-            self.offer()
+        case .restart:
+            if self.connectState != .startICE {
+                self.offer()
+            }
         }
     }
     
@@ -383,7 +399,7 @@ extension WebRTCClientManager: CallingSignalManagerDelegate {
         guard let action = WebRTCP2PSignalAction.Notification(rawValue: noti) else { return }
         zmLog.info("WebRTCClientManager-onNewNotification:action:\(action)")
         switch action {
-        case .peerOpen:
+        case .peerOpened:
             guard let peerId = info["peerId"].string, let peerUId = UUID(uuidString: peerId) else {
                 zmLog.error("WebRTCClientManager- peerOpen: no peerId:\(info)")
                 return
@@ -391,9 +407,10 @@ extension WebRTCClientManager: CallingSignalManagerDelegate {
             if self.peerId == peerUId {
                 switch self.connectRole {
                 case .offer:
+                    self.changeConnectState(.peerIsReady)
                     self.offer()
                 case .answer:
-                    self.signalManager.forwardP2PMessage(.isReady)
+                    break;
                 }
             } else {
                 zmLog.error("WebRTCClientManager-peerOpen :wrong peerId:\(peerId)")

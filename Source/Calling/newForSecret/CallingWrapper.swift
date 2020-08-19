@@ -26,11 +26,14 @@ public class CallingWrapper: AVSWrapperType {
         if let observer = observer {
             self.callCenter = Unmanaged<WireCallCenterV3>.fromOpaque(observer).takeUnretainedValue()
         }
-        self.callCenter?.setCallReady(version: 3)
 
         self.callStateManager = ConvsCallingStateManager(selfUserID: userId, selfClientID: clientId)
         
-        NotificationCenter.default.addObserver(self, selector: #selector(onSendMessage), name: NSNotification.Name("qwer"), object: nil)
+        CallingService.getConfigInfo(completionHandler: { callingConfigure in
+            guard let callingConfigure = callingConfigure else { return }
+            self.callCenter?.setCallReady(version: 3)
+            self.callStateManager.setCallingConfigure(callingConfigure)
+        })
     }
     
     public func startCall(conversationId: UUID, callType: AVSCallType, conversationType: AVSConversationType, useCBR: Bool, peerId: UUID?) -> Bool {
@@ -124,13 +127,6 @@ extension CallingWrapper {
     func sendMessage(with cid: UUID, data: Data) {
         let token = Unmanaged.passUnretained(self).toOpaque()
         self.callCenter?.handleCallMessageRequest(token: token, conversationId: cid, senderUserId: self.userId, senderClientId: self.clientId, data: data)
-    }
-    
-    @objc func onSendMessage(noti: Notification) {
-        if let cid = CallingRoomManager.shareInstance.roomId,
-            let message = noti.userInfo?["sdpChange"] as? WebRTCP2PMessage {
-            self.sendCallingP2PMessage(in: cid, message: message)
-        }
     }
 }
 
@@ -278,15 +274,6 @@ extension CallingWrapper {
                 p2p.handleSDPMessage(message)
             }
         }
-    }
-    
-}
-
-extension CallingWrapper {
-    
-    fileprivate func sendCallingP2PMessage(in cid: UUID, message: WebRTCP2PMessage) {
-        let dataMessage = message.json.description.data(using: .utf8)!
-        self.sendCallingAction(with: .sdpExChange, cid: cid, data: dataMessage)
     }
     
 }

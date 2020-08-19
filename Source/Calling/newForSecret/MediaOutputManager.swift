@@ -195,7 +195,7 @@ extension MediaOutputManager: DataWormholeDataTransportDelegate {
     
     func startRecording() -> RTCVideoTrack {
         self.videoSource = self.peerConnectionFactory.videoSource()
-        self.videoSource!.adaptOutputFormat(toWidth: 320, height: 320*16/9, fps: 30);
+        self.videoSource!.adaptOutputFormat(toWidth: 640, height: 640*16/9, fps: Int32(MEDIA_VIDEO_FPS));
         
         self.recordCapturer = RTCVideoCapturer(delegate: self.videoSource!)
         

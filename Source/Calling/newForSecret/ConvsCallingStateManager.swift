@@ -38,6 +38,10 @@ class ConvsCallingStateManager {
         self.roomManager.delegate = self
     }
     
+    func setCallingConfigure(_ callingConfigure: CallingConfigure) {
+        self.roomManager.setCallingConfigure(callingConfigure)
+    }
+    
     func startCall(cid: UUID, callType: AVSCallType, conversationType: AVSConversationType, peerId: UUID?) -> Bool {
         if roomManager.isCalling {
             return false
@@ -181,9 +185,6 @@ class ConvsCallingStateManager {
             roomManager.connectToRoom(with: conv.cid, userId: self.selfUserID, roomMode: roomMode, videoState: conv.videoState, isStarter: true)
         case .answered:
             AVSMediaManager.sharedInstance.callConnecting()
-            if let p2p = roomManager.clientConnectManager as? WebRTCClientManager {
-                p2p.offer()
-            }
         case .incoming(video: let video, shouldRing: let shouldRing, degraded: _):
             if shouldRing {
                 AVSMediaManager.sharedInstance.incomingCall(isVideo: video)

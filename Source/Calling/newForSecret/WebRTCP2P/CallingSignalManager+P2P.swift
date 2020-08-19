@@ -9,11 +9,14 @@
 import Foundation
 import SwiftyJSON
 
+private let zmLog = ZMSLog(tag: "calling")
+
 enum WebRTCP2PSignalAction {
     
     enum sendRequest: String {
         case getP2PInfo = "getP2PInfo"
         case forward = "forward"
+        case switchRoomMode = "switchRoomMode"
     }
     
     enum ReceiveRequest: String {
@@ -21,7 +24,7 @@ enum WebRTCP2PSignalAction {
     }
     
     enum Notification: String {
-        case peerOpen = "peerOpen"
+        case peerOpened = "peerOpened"
     }
     
 }
@@ -29,23 +32,20 @@ enum WebRTCP2PSignalAction {
 ///p2p + sendMessage
 extension CallingSignalManager {
 
-    func forwardP2PMessage(_ message: WebRTCP2PMessage) {
-        //self.sendSocketRequest(with: "forward", data: message.json)
-        
-        NotificationCenter.default.post(name: NSNotification.Name("qwer"), object: nil, userInfo: [
-                                                                                                   "sdpChange": message])
+    func forwardP2PMessage(to peerId: String, message: WebRTCP2PMessage) {
+        zmLog.info("WebRTCClientManager forwardP2PMessage -- \(message)")
+        self.forwardSocketMessage(to: peerId, method: "forward", data: message.json)
     }
     
-    func requestToGetP2PInfo() -> String? {
+    func requestToJudgeIsPeerAlreadyInRoom() -> Bool {
         guard let info = sendAckSocketRequest(with: "getP2PInfo", data: nil)  else {
-            return nil
+            return false
         }
-        if let ice_server = info["data"].dictionary?["ice_server"]?.string {
-            return ice_server
-        } else {
-            return nil
-        }
+        zmLog.info("WebRTCClientManager requestToJudgeIsPeerAlreadyInRoom -- \(info)")
+        return info["peerCount"].intValue > 1
     }
     
-
+    func requestToSwitchRoomMode(to mode: RoomMode) {
+        sendSocketRequest(with: WebRTCP2PSignalAction.sendRequest.switchRoomMode.rawValue, data: ["roomMode": mode.rawValue])
+    }
 }

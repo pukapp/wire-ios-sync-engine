@@ -92,6 +92,7 @@ class CallingRoomManager: NSObject {
     
     static let shareInstance: CallingRoomManager = CallingRoomManager()
     
+    var callingConfigure: CallingConfigure?
     var delegate: CallingRoomManagerDelegate?
     
     var roomId: UUID?
@@ -120,10 +121,17 @@ class CallingRoomManager: NSObject {
         signalManager = CallingSignalManager(socketStateDelegate: self)
     }
     
+    func setCallingConfigure(_ callingConfigure: CallingConfigure) {
+        self.callingConfigure = callingConfigure
+    }
+    
     func connectToRoom(with roomId: UUID, userId: UUID, roomMode: RoomMode, videoState: VideoState, isStarter: Bool) {
         zmLog.info("CallingRoomManager-connectToRoom workQueue--\(signalWorkQueue.debugDescription)")
-        guard self.roomId == nil else {
+        guard let callingConfigure = self.callingConfigure,
+            let wsUrl = callingConfigure.vaildGateway,
+            self.roomId == nil else {
             ///已经在房间里面了
+            zmLog.info("CallingRoomManager-connectToRoom err:获取configuare出错，或者roomId不为空")
             return
         }
         self.roomId = roomId
@@ -135,7 +143,7 @@ class CallingRoomManager: NSObject {
         
         self.mediaOutputManager = MediaOutputManager()
         self.roomMembersManager = CallingMembersManager(observer: self)
-        ///192.168.0.110----27.124.45.111
+        ///192.168.0.110:4443----27.124.45.111:4443
         self.signalManager.connectRoom(with: "wss://27.124.45.111:4443", roomId: roomId.transportString(), userId: self.userId!.transportString())
         
         switch roomMode {
@@ -148,22 +156,6 @@ class CallingRoomManager: NSObject {
             self.clientConnectManager = MediasoupClientManager(signalManager: self.signalManager, mediaManager: self.mediaOutputManager!, membersManagerDelegate: self.roomMembersManager!, mediaStateManagerDelegate: self.roomMembersManager!, observe: self, isStarter: self.isStarter, videoState: self.videoState)
         }
         self.signalManager.setSignalDelegate(self.clientConnectManager!)
-//        MediasoupService.requestRoomInfo(with: roomId.transportString(), uid: userId.transportString()) {[weak self] (roomInfo) in
-//            signalWorkQueue.async {
-//                guard let `self` = self,
-//                    self.roomState == .socketConnecting else { return }
-//
-//                guard let info = roomInfo else {
-//                    self.delegate?.leaveRoom(conversationId: roomId, reason: .internalError)
-//                    return
-//                }
-//                self.device = Device()
-//                self.mediaOutputManager = MediaOutputManager()
-//                self.roomPeersManager = MediasoupCallPeersManager(observer: self)
-//                self.signalManager.connectRoom(with: info.roomUrl, roomId: roomId.transportString(), userId: self.userId!.transportString())
-//            }
-//        }
-
     }
     
     private func roomConnected() {

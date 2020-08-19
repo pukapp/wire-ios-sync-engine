@@ -253,11 +253,6 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     }
         
     func setLocalAudio(mute: Bool) {
-        if mute {
-            self.startRecording()
-            return
-        }
-        
         if let audioProduce = self.producers.first(where: {return $0.getKind() == "audio" }) {
             if mute {
                 audioProduce.pause()
