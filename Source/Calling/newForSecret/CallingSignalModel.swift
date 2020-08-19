@@ -51,7 +51,7 @@ class CallingSignalRequest {
 }
 
 class CallingSignalForwardMessage: CallingSignalRequest {
-    var toId: String?
+    let toId: String
     
     init(toId: String, method: String, data: JSON?) {
         self.toId = toId
@@ -63,7 +63,7 @@ class CallingSignalForwardMessage: CallingSignalRequest {
                           "method": method,
                           "id": id,
                           "data": data,
-                          "toId": toId!
+                          "toId": toId
         ]
         return json.description
     }

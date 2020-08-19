@@ -84,7 +84,7 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
         zmLog.info("WebRTCClientManager: deinit")
     }
     
-    func startConnect() {
+    func webSocketConnected() {
         guard self.connectState == .waitForPeerReady, self.peerConnection == nil else { return }
         self.requestToSwitchToP2PMode()
         zmLog.info("WebRTCClientManager: startConnect")
@@ -93,6 +93,11 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
             self.changeConnectState(.peerIsReady)
             self.offer()
         }
+    }
+    
+    func webSocketDisConnected() {
+        zmLog.info("WebRTCClientManager: disConnected")
+        self.peerConnection?.close()
     }
     
     func createPeerConnection() {
@@ -153,12 +158,6 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
 //        self.localAudioTrack = nil
 //        self.localVideoTrack = nil
         self.peerConnection = nil
-    }
-    
-    func disConnected() {
-        zmLog.info("WebRTCClientManager: disConnected")
-        
-        self.peerConnection?.close()
     }
     
 }

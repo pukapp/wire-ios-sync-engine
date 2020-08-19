@@ -46,7 +46,8 @@ protocol CallingRoomManagerDelegate {
 ///client连接管理，具体实现分别由继承类独自实现
 protocol CallingClientConnectProtocol: CallingSignalManagerDelegate {
     init(signalManager: CallingSignalManager, mediaManager: MediaOutputManager, membersManagerDelegate: CallingMembersManagerProtocol, mediaStateManagerDelegate: CallingMediaStateManagerProtocol, observe: CallingClientConnectStateObserve, isStarter: Bool, videoState: VideoState)
-    func startConnect()
+    func webSocketConnected()
+    func webSocketDisConnected()
     func dispose()
     func setLocalAudio(mute: Bool)
     func setLocalVideo(state: VideoState)
@@ -160,7 +161,7 @@ class CallingRoomManager: NSObject {
     
     private func roomConnected() {
         self.roomState = .socketConnected
-        self.clientConnectManager?.startConnect()
+        self.clientConnectManager?.webSocketConnected()
     }
     
     ///网络断开连接
@@ -168,7 +169,7 @@ class CallingRoomManager: NSObject {
         ///需要在此线程中释放资源
         signalWorkQueue.async {
             zmLog.info("CallingRoomManager-disConnectedRoom--thread:\(Thread.current)")
-            //self.clientConnectManager?.dispose()
+            self.clientConnectManager?.webSocketDisConnected()
         }
     }
     
@@ -247,7 +248,7 @@ extension CallingRoomManager: CallingClientConnectStateObserve {
                 self.clientConnectManager?.dispose()
                 self.clientConnectManager = MediasoupClientManager(signalManager: self.signalManager, mediaManager: self.mediaOutputManager!, membersManagerDelegate: self.roomMembersManager!, mediaStateManagerDelegate: self.roomMembersManager!, observe: self, isStarter: self.isStarter, videoState: self.videoState)
                 self.signalManager.setSignalDelegate(self.clientConnectManager!)
-                self.clientConnectManager?.startConnect()
+                self.clientConnectManager?.webSocketConnected()
             }
         }
     }

@@ -2131,7 +2131,7 @@
 			path = DataWormhole;
 			sourceTree = "<group>";
 		};
-		73C7D9D324C6EA77009B24DB /* WebRTCP2P */ = {
+		73C7D9D324C6EA77009B24DB /* OneToOne */ = {
 			isa = PBXGroup;
 			children = (
 				73C7D9D424C6EA77009B24DB /* RTCStates.swift */,
@@ -2139,7 +2139,7 @@
 				73C7D9EE24CBDDCD009B24DB /* CallingSignalManager+P2P.swift */,
 				73C7D9D724C6EA77009B24DB /* WebRTCClientManager.swift */,
 			);
-			path = WebRTCP2P;
+			path = OneToOne;
 			sourceTree = "<group>";
 		};
 		73C7D9E324C81E48009B24DB /* MediasoupGroup */ = {
@@ -2168,7 +2168,7 @@
 			children = (
 				73C7D9F224D8038F009B24DB /* ScreenRecording */,
 				734554C724C1556C0079DCF4 /* AudioSessionManager */,
-				73C7D9D324C6EA77009B24DB /* WebRTCP2P */,
+				73C7D9D324C6EA77009B24DB /* OneToOne */,
 				73C7D9E324C81E48009B24DB /* MediasoupGroup */,
 				73EA4D2B2441C05800E63429 /* CallingSignalSocket.swift */,
 				73C7D9E624C82ACE009B24DB /* CallingSignalModel.swift */,

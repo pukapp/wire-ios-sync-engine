@@ -91,10 +91,14 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         self.videoState = videoState
     }
     
-    func startConnect() {
+    func webSocketConnected() {
         zmLog.info("MediasoupClientManager-startConnect")
-        if self.recvTransport != nil { return }
+        guard self.recvTransport == nil else { return }
         self.configureDevice()
+    }
+    
+    func webSocketDisConnected() {
+        
     }
     
     func dispose() {
@@ -190,10 +194,10 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     }
     
      func produceAudio() {
-            guard self.sendTransport != nil,
-                self.device!.canProduce("audio") else {
-                return
-            }
+        guard self.sendTransport != nil,
+            self.device!.canProduce("audio") else {
+            return
+        }
 
         let audioTrack: RTCAudioTrack = self.mediaManager.produceAudioTrack()
         self.createProducer(track: audioTrack, codecOptions: nil, encodings: nil)

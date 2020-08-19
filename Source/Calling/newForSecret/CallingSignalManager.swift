@@ -49,7 +49,6 @@ extension CallingSignalManager: SocketActionDelegate {
         if json["request"].boolValue {
             self.receiveSocketRequest(with: CallingSignalRequest(json: json))
         } else if json["response"].boolValue {
-            zmLog.info("CallingSignalManager-receiveSocketData--\(json)")
             self.receiveSocketResponse(with: CallingSignalResponse(json: json))
         } else if json["notification"].boolValue {
             self.receiveSocketNotification(with: CallingSignalNotification(json: json))
@@ -160,7 +159,7 @@ extension CallingSignalManager{
     //转发信令给房间里面的某人
     func forwardSocketMessage(to peerId: String, method: String, data: JSON?) {
         signalWorkQueue.async {
-            zmLog.info("CallingSignalManager-11111sendSocketRequest==method:\(method)-data:\(String(describing: data))")
+            zmLog.info("CallingSignalManager-forwardSocketMessage==method:\(method)-data:\(String(describing: data))")
             let request = CallingSignalForwardMessage.init(toId: peerId, method: method, data: data)
             self.send(string: request.jsonString())
         }
@@ -168,7 +167,7 @@ extension CallingSignalManager{
     
     func sendSocketRequest(with method: String, data: JSON?) {
         signalWorkQueue.async {
-            zmLog.info("CallingSignalManager-11111sendSocketRequest==method:\(method)-data:\(String(describing: data))")
+            zmLog.info("CallingSignalManager-sendSocketRequest==method:\(method)-data:\(String(describing: data))")
             let request = CallingSignalRequest.init(method: method, data: data)
             self.send(string: request.jsonString())
         }
