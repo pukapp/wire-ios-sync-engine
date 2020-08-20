@@ -27,7 +27,8 @@ private let zmLog = ZMSLog(tag: "calling")
 
 public protocol AVSWrapperType {
     init(userId: UUID, clientId: String, observer: UnsafeMutableRawPointer?)
-    func startCall(conversationId: UUID, callType: AVSCallType, conversationType: AVSConversationType, useCBR: Bool) -> Bool
+    //TODO: 由于p2p模式下无法从websocket获取peerId,所以这里新增了一个参数
+    func startCall(conversationId: UUID, callType: AVSCallType, conversationType: AVSConversationType, useCBR: Bool, peerId: UUID?) -> Bool
     func answerCall(conversationId: UUID, callType: AVSCallType, conversationType: AVSConversationType, useCBR: Bool) -> Bool
     func endCall(conversationId: UUID)
     func rejectCall(conversationId: UUID)

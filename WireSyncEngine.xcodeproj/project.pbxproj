@@ -332,7 +332,7 @@
 		5EFE9C15212AB138007932A6 /* UnregisteredUser+Payload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EFE9C14212AB138007932A6 /* UnregisteredUser+Payload.swift */; };
 		5EFE9C17212AB945007932A6 /* RegistrationPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EFE9C16212AB945007932A6 /* RegistrationPhase.swift */; };
 		7313D45E23B6136B00F73B20 /* HugeConversation+Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7313D45D23B6136B00F73B20 /* HugeConversation+Push.swift */; };
-		7342AC2724860BA400E37829 /* MediasoupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7342AC2624860BA400E37829 /* MediasoupService.swift */; };
+		7342AC2724860BA400E37829 /* CallingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7342AC2624860BA400E37829 /* CallingService.swift */; };
 		734554C924C155C20079DCF4 /* AVSMediaManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734554C824C155C20079DCF4 /* AVSMediaManager.swift */; };
 		734554CB24C1566B0079DCF4 /* AVSMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734554CA24C1566B0079DCF4 /* AVSMedia.swift */; };
 		734554CD24C157760079DCF4 /* MediaEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734554CC24C157760079DCF4 /* MediaEventManager.swift */; };
@@ -340,18 +340,35 @@
 		73568C63246D3F5D00DE68D5 /* ConvsCallingStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73568C62246D3F5C00DE68D5 /* ConvsCallingStateManager.swift */; };
 		735E682824455670003E089C /* Starscream.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 735E68272445566F003E089C /* Starscream.framework */; };
 		735E682E244559EF003E089C /* SwiftyJSON.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 735E682D244559EF003E089C /* SwiftyJSON.framework */; };
-		735E698E244856C4003E089C /* MediasoupTrackModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735E698D244856C4003E089C /* MediasoupTrackModel.swift */; };
-		735E699C24519F3D003E089C /* MediasoupCallPeersManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735E699B24519F3B003E089C /* MediasoupCallPeersManager.swift */; };
+		735E698E244856C4003E089C /* VideoTrackRenderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735E698D244856C4003E089C /* VideoTrackRenderView.swift */; };
 		7369402E2390C222001A6C44 /* BGPMemberImageStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */; };
 		7399918E247CC0340039BCF5 /* ConversationCallingInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */; };
 		7399F57123A10556002DA207 /* ConversationAvatarUpdateStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */; };
 		7399F57323A1E1F9002DA207 /* ConversationAvatarUpdateStategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */; };
-		73EA4D0E243EC90400E63429 /* MediasoupWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D0D243EC90400E63429 /* MediasoupWrapper.swift */; };
-		73EA4D10243ED97B00E63429 /* MediasoupRoomManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D0F243ED97B00E63429 /* MediasoupRoomManager.swift */; };
+		73AD783D24E27F7D006616D4 /* NTESTPCircularBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 73AD783724E27F7D006616D4 /* NTESTPCircularBuffer.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		73AD783E24E27F7D006616D4 /* GCDAsyncSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 73AD783824E27F7D006616D4 /* GCDAsyncSocket.m */; settings = {COMPILER_FLAGS = "-Wno-sign-conversion"; }; };
+		73AD783F24E27F7D006616D4 /* GCDAsyncSocket.h in Headers */ = {isa = PBXBuildFile; fileRef = 73AD783924E27F7D006616D4 /* GCDAsyncSocket.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		73AD784224E27F7D006616D4 /* NTESTPCircularBuffer.c in Sources */ = {isa = PBXBuildFile; fileRef = 73AD783C24E27F7D006616D4 /* NTESTPCircularBuffer.c */; settings = {COMPILER_FLAGS = "-Wno-sign-conversion"; }; };
+		73AD784424E27FE6006616D4 /* DataWormholeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73AD784324E27FE6006616D4 /* DataWormholeManager.swift */; };
+		73AD784724E285D1006616D4 /* NTESSocketPacket.h in Headers */ = {isa = PBXBuildFile; fileRef = 73AD784524E285D1006616D4 /* NTESSocketPacket.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		73AD784824E285D1006616D4 /* NTESSocketPacket.m in Sources */ = {isa = PBXBuildFile; fileRef = 73AD784624E285D1006616D4 /* NTESSocketPacket.m */; };
+		73AD784A24E28900006616D4 /* CVPixelBufferConvertDataHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73AD784924E28900006616D4 /* CVPixelBufferConvertDataHelper.swift */; };
+		73C7D9D924C6EA77009B24DB /* RTCStates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9D424C6EA77009B24DB /* RTCStates.swift */; };
+		73C7D9DC24C6EA77009B24DB /* WebRTCClientManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9D724C6EA77009B24DB /* WebRTCClientManager.swift */; };
+		73C7D9E524C8200D009B24DB /* CallingSignalManager+Mediasoup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9E424C8200D009B24DB /* CallingSignalManager+Mediasoup.swift */; };
+		73C7D9E724C82ACE009B24DB /* CallingSignalModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9E624C82ACE009B24DB /* CallingSignalModel.swift */; };
+		73C7D9E924C98F18009B24DB /* CallingMembersManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9E824C98F18009B24DB /* CallingMembersManager.swift */; };
+		73C7D9EB24CA9D91009B24DB /* MediasoupConsumer+Member.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9EA24CA9D91009B24DB /* MediasoupConsumer+Member.swift */; };
+		73C7D9ED24CAD233009B24DB /* MediasoupClientManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9EC24CAD233009B24DB /* MediasoupClientManager.swift */; };
+		73C7D9EF24CBDDCD009B24DB /* CallingSignalManager+P2P.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9EE24CBDDCD009B24DB /* CallingSignalManager+P2P.swift */; };
+		73C7D9F124CBEEA0009B24DB /* WebRTCP2PMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9F024CBEEA0009B24DB /* WebRTCP2PMessage.swift */; };
+		73C7D9F424D808CC009B24DB /* ScreenRecordingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9F324D808CC009B24DB /* ScreenRecordingManager.swift */; };
+		73EA4D0E243EC90400E63429 /* CallingWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D0D243EC90400E63429 /* CallingWrapper.swift */; };
+		73EA4D10243ED97B00E63429 /* CallingRoomManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D0F243ED97B00E63429 /* CallingRoomManager.swift */; };
 		73EA4D12243EE1AD00E63429 /* MediaOutputManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D11243EE1AD00E63429 /* MediaOutputManager.swift */; };
-		73EA4D142440192000E63429 /* MediasoupSignalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D132440192000E63429 /* MediasoupSignalManager.swift */; };
+		73EA4D142440192000E63429 /* CallingSignalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D132440192000E63429 /* CallingSignalManager.swift */; };
 		73EA4D212441762000E63429 /* mediasoup_client_ios.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 73EA4CE9243DB55A00E63429 /* mediasoup_client_ios.framework */; };
-		73EA4D2C2441C05800E63429 /* MediasoupSignalSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D2B2441C05800E63429 /* MediasoupSignalSocket.swift */; };
+		73EA4D2C2441C05800E63429 /* CallingSignalSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D2B2441C05800E63429 /* CallingSignalSocket.swift */; };
 		73FCF1012468F35A00AB37ED /* Swift的framework中导入OC的framework in Resources */ = {isa = PBXBuildFile; fileRef = 73FCF1002468F35A00AB37ED /* Swift的framework中导入OC的framework */; };
 		7C1F4BF5203C4F67000537A8 /* Analytics+Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1F4BF4203C4F67000537A8 /* Analytics+Push.swift */; };
 		7C26879D21F7193800570AA9 /* EventProcessingTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C26879C21F7193800570AA9 /* EventProcessingTracker.swift */; };
@@ -973,7 +990,7 @@
 		5EFE9C14212AB138007932A6 /* UnregisteredUser+Payload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UnregisteredUser+Payload.swift"; sourceTree = "<group>"; };
 		5EFE9C16212AB945007932A6 /* RegistrationPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegistrationPhase.swift; sourceTree = "<group>"; };
 		7313D45D23B6136B00F73B20 /* HugeConversation+Push.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HugeConversation+Push.swift"; sourceTree = "<group>"; };
-		7342AC2624860BA400E37829 /* MediasoupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupService.swift; sourceTree = "<group>"; };
+		7342AC2624860BA400E37829 /* CallingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallingService.swift; sourceTree = "<group>"; };
 		734554C824C155C20079DCF4 /* AVSMediaManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVSMediaManager.swift; sourceTree = "<group>"; };
 		734554CA24C1566B0079DCF4 /* AVSMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVSMedia.swift; sourceTree = "<group>"; };
 		734554CC24C157760079DCF4 /* MediaEventManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaEventManager.swift; sourceTree = "<group>"; };
@@ -981,18 +998,35 @@
 		73568C62246D3F5C00DE68D5 /* ConvsCallingStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvsCallingStateManager.swift; sourceTree = "<group>"; };
 		735E68272445566F003E089C /* Starscream.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Starscream.framework; path = ../../Build/iOS/Starscream.framework; sourceTree = "<group>"; };
 		735E682D244559EF003E089C /* SwiftyJSON.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftyJSON.framework; path = ../../Build/iOS/SwiftyJSON.framework; sourceTree = "<group>"; };
-		735E698D244856C4003E089C /* MediasoupTrackModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupTrackModel.swift; sourceTree = "<group>"; };
-		735E699B24519F3B003E089C /* MediasoupCallPeersManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupCallPeersManager.swift; sourceTree = "<group>"; };
+		735E698D244856C4003E089C /* VideoTrackRenderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoTrackRenderView.swift; sourceTree = "<group>"; };
 		7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BGPMemberImageStrategy.swift; sourceTree = "<group>"; };
 		7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationCallingInfo.swift; sourceTree = "<group>"; };
 		7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStatus.swift; sourceTree = "<group>"; };
 		7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStategy.swift; sourceTree = "<group>"; };
+		73AD783724E27F7D006616D4 /* NTESTPCircularBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NTESTPCircularBuffer.h; sourceTree = "<group>"; };
+		73AD783824E27F7D006616D4 /* GCDAsyncSocket.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GCDAsyncSocket.m; sourceTree = "<group>"; };
+		73AD783924E27F7D006616D4 /* GCDAsyncSocket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GCDAsyncSocket.h; sourceTree = "<group>"; };
+		73AD783C24E27F7D006616D4 /* NTESTPCircularBuffer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = NTESTPCircularBuffer.c; sourceTree = "<group>"; };
+		73AD784324E27FE6006616D4 /* DataWormholeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataWormholeManager.swift; sourceTree = "<group>"; };
+		73AD784524E285D1006616D4 /* NTESSocketPacket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NTESSocketPacket.h; sourceTree = "<group>"; };
+		73AD784624E285D1006616D4 /* NTESSocketPacket.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NTESSocketPacket.m; sourceTree = "<group>"; };
+		73AD784924E28900006616D4 /* CVPixelBufferConvertDataHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CVPixelBufferConvertDataHelper.swift; sourceTree = "<group>"; };
+		73C7D9D424C6EA77009B24DB /* RTCStates.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RTCStates.swift; sourceTree = "<group>"; };
+		73C7D9D724C6EA77009B24DB /* WebRTCClientManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebRTCClientManager.swift; sourceTree = "<group>"; };
+		73C7D9E424C8200D009B24DB /* CallingSignalManager+Mediasoup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CallingSignalManager+Mediasoup.swift"; sourceTree = "<group>"; };
+		73C7D9E624C82ACE009B24DB /* CallingSignalModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallingSignalModel.swift; sourceTree = "<group>"; };
+		73C7D9E824C98F18009B24DB /* CallingMembersManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallingMembersManager.swift; sourceTree = "<group>"; };
+		73C7D9EA24CA9D91009B24DB /* MediasoupConsumer+Member.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MediasoupConsumer+Member.swift"; sourceTree = "<group>"; };
+		73C7D9EC24CAD233009B24DB /* MediasoupClientManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupClientManager.swift; sourceTree = "<group>"; };
+		73C7D9EE24CBDDCD009B24DB /* CallingSignalManager+P2P.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CallingSignalManager+P2P.swift"; sourceTree = "<group>"; };
+		73C7D9F024CBEEA0009B24DB /* WebRTCP2PMessage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebRTCP2PMessage.swift; sourceTree = "<group>"; };
+		73C7D9F324D808CC009B24DB /* ScreenRecordingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenRecordingManager.swift; sourceTree = "<group>"; };
 		73EA4CE9243DB55A00E63429 /* mediasoup_client_ios.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = mediasoup_client_ios.framework; path = ../../Build/iOS/mediasoup_client_ios.framework; sourceTree = "<group>"; };
-		73EA4D0D243EC90400E63429 /* MediasoupWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupWrapper.swift; sourceTree = "<group>"; };
-		73EA4D0F243ED97B00E63429 /* MediasoupRoomManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupRoomManager.swift; sourceTree = "<group>"; };
+		73EA4D0D243EC90400E63429 /* CallingWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallingWrapper.swift; sourceTree = "<group>"; };
+		73EA4D0F243ED97B00E63429 /* CallingRoomManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallingRoomManager.swift; sourceTree = "<group>"; };
 		73EA4D11243EE1AD00E63429 /* MediaOutputManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaOutputManager.swift; sourceTree = "<group>"; };
-		73EA4D132440192000E63429 /* MediasoupSignalManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupSignalManager.swift; sourceTree = "<group>"; };
-		73EA4D2B2441C05800E63429 /* MediasoupSignalSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediasoupSignalSocket.swift; sourceTree = "<group>"; };
+		73EA4D132440192000E63429 /* CallingSignalManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallingSignalManager.swift; sourceTree = "<group>"; };
+		73EA4D2B2441C05800E63429 /* CallingSignalSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallingSignalSocket.swift; sourceTree = "<group>"; };
 		73FCF1002468F35A00AB37ED /* Swift的framework中导入OC的framework */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Swift的framework中导入OC的framework"; sourceTree = "<group>"; };
 		7C1F4BF4203C4F67000537A8 /* Analytics+Push.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Analytics+Push.swift"; sourceTree = "<group>"; };
 		7C26879C21F7193800570AA9 /* EventProcessingTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventProcessingTracker.swift; sourceTree = "<group>"; };
@@ -2083,20 +2117,70 @@
 			path = AudioSessionManager;
 			sourceTree = "<group>";
 		};
+		73AD783624E27F51006616D4 /* DataWormhole */ = {
+			isa = PBXGroup;
+			children = (
+				73AD783924E27F7D006616D4 /* GCDAsyncSocket.h */,
+				73AD783824E27F7D006616D4 /* GCDAsyncSocket.m */,
+				73AD784524E285D1006616D4 /* NTESSocketPacket.h */,
+				73AD784624E285D1006616D4 /* NTESSocketPacket.m */,
+				73AD783724E27F7D006616D4 /* NTESTPCircularBuffer.h */,
+				73AD783C24E27F7D006616D4 /* NTESTPCircularBuffer.c */,
+				73AD784324E27FE6006616D4 /* DataWormholeManager.swift */,
+			);
+			path = DataWormhole;
+			sourceTree = "<group>";
+		};
+		73C7D9D324C6EA77009B24DB /* OneToOne */ = {
+			isa = PBXGroup;
+			children = (
+				73C7D9D424C6EA77009B24DB /* RTCStates.swift */,
+				73C7D9F024CBEEA0009B24DB /* WebRTCP2PMessage.swift */,
+				73C7D9EE24CBDDCD009B24DB /* CallingSignalManager+P2P.swift */,
+				73C7D9D724C6EA77009B24DB /* WebRTCClientManager.swift */,
+			);
+			path = OneToOne;
+			sourceTree = "<group>";
+		};
+		73C7D9E324C81E48009B24DB /* MediasoupGroup */ = {
+			isa = PBXGroup;
+			children = (
+				73C7D9EA24CA9D91009B24DB /* MediasoupConsumer+Member.swift */,
+				73C7D9E424C8200D009B24DB /* CallingSignalManager+Mediasoup.swift */,
+				73C7D9EC24CAD233009B24DB /* MediasoupClientManager.swift */,
+			);
+			name = MediasoupGroup;
+			path = Source/Calling/newForSecret/MediasoupGroup;
+			sourceTree = SOURCE_ROOT;
+		};
+		73C7D9F224D8038F009B24DB /* ScreenRecording */ = {
+			isa = PBXGroup;
+			children = (
+				73AD783624E27F51006616D4 /* DataWormhole */,
+				73C7D9F324D808CC009B24DB /* ScreenRecordingManager.swift */,
+				73AD784924E28900006616D4 /* CVPixelBufferConvertDataHelper.swift */,
+			);
+			path = ScreenRecording;
+			sourceTree = "<group>";
+		};
 		73EA4CE4243D8A8200E63429 /* newForSecret */ = {
 			isa = PBXGroup;
 			children = (
+				73C7D9F224D8038F009B24DB /* ScreenRecording */,
 				734554C724C1556C0079DCF4 /* AudioSessionManager */,
-				73EA4D2B2441C05800E63429 /* MediasoupSignalSocket.swift */,
-				73EA4D132440192000E63429 /* MediasoupSignalManager.swift */,
-				7342AC2624860BA400E37829 /* MediasoupService.swift */,
-				73EA4D0F243ED97B00E63429 /* MediasoupRoomManager.swift */,
+				73C7D9D324C6EA77009B24DB /* OneToOne */,
+				73C7D9E324C81E48009B24DB /* MediasoupGroup */,
+				73EA4D2B2441C05800E63429 /* CallingSignalSocket.swift */,
+				73C7D9E624C82ACE009B24DB /* CallingSignalModel.swift */,
+				73EA4D132440192000E63429 /* CallingSignalManager.swift */,
+				7342AC2624860BA400E37829 /* CallingService.swift */,
+				73EA4D0F243ED97B00E63429 /* CallingRoomManager.swift */,
 				7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */,
 				73568C62246D3F5C00DE68D5 /* ConvsCallingStateManager.swift */,
-				73EA4D0D243EC90400E63429 /* MediasoupWrapper.swift */,
+				73EA4D0D243EC90400E63429 /* CallingWrapper.swift */,
 				73EA4D11243EE1AD00E63429 /* MediaOutputManager.swift */,
-				735E698D244856C4003E089C /* MediasoupTrackModel.swift */,
-				735E699B24519F3B003E089C /* MediasoupCallPeersManager.swift */,
+				735E698D244856C4003E089C /* VideoTrackRenderView.swift */,
+				73C7D9E824C98F18009B24DB /* CallingMembersManager.swift */,
 				73FCF1002468F35A00AB37ED /* Swift的framework中导入OC的framework */,
 			);
 			path = newForSecret;
@@ -2486,7 +2570,10 @@
 				F992985B1BE143570058D42F /* ZMClientRegistrationStatus+Internal.h in Headers */,
 				544BA1271A433DE400D3B852 /* NSError+ZMUserSession.h in Headers */,
 				09BCDB8E1BCE7F000020DCC7 /* ZMAPSMessageDecoder.h in Headers */,
+				73AD783F24E27F7D006616D4 /* GCDAsyncSocket.h in Headers */,
+				73AD784724E285D1006616D4 /* NTESSocketPacket.h in Headers */,
 				540818A61BCA647D00257CA7 /* ZMBlacklistVerificator+Testing.h in Headers */,
+				73AD783D24E27F7D006616D4 /* NTESTPCircularBuffer.h in Headers */,
 				54A3F24F1C08523500FE3A6B /* ZMOperationLoop.h in Headers */,
 				54FEAAA91BC7BB9C002DE521 /* ZMBlacklistDownloader+Testing.h in Headers */,
 				F19F1D1D1EFBC2F000275E27 /* ZMAuthenticationStatus_Internal.h in Headers */,
@@ -2994,6 +3081,7 @@
 				F95706541DE5D1CC0087442C /* SearchUserImageStrategy.swift in Sources */,
 				163FB9992057E3F200E74F83 /* AuthenticationStatusProvider.swift in Sources */,
 				872A2EE61FFFBC2A00900B22 /* ServiceUser.swift in Sources */,
+				73C7D9F124CBEEA0009B24DB /* WebRTCP2PMessage.swift in Sources */,
 				BF2A9D5D1D6B63DB00FA7DBC /* StoreUpdateEvent.swift in Sources */,
 				F19E55A622B3AAA8005C792D /* PKPushCredentials+SafeLogging.swift in Sources */,
 				09C77C531BA6C77000E2163F /* UserClientRequestStrategy.swift in Sources */,
@@ -3002,7 +3090,7 @@
 				F1C1F3EE1FCF0C85007273E3 /* ZMUserSessionErrorCode+Localized.swift in Sources */,
 				166264742166093800300F45 /* CallEventStatus.swift in Sources */,
 				549815CD1A432BC700A7CE2E /* ZMBlacklistDownloader.m in Sources */,
-				73EA4D2C2441C05800E63429 /* MediasoupSignalSocket.swift in Sources */,
+				73EA4D2C2441C05800E63429 /* CallingSignalSocket.swift in Sources */,
 				F96C8E7A1D7DCCE8004B6D87 /* LocalNotificationDispatcher+Messages.swift in Sources */,
 				549815CE1A432BC700A7CE2E /* ZMBlacklistVerificator.m in Sources */,
 				16D9E8BA22BCD39200FA463F /* LegalHoldRequestStrategy.swift in Sources */,
@@ -3025,6 +3113,7 @@
 				54A0A6321BCE9867001A3A4C /* ZMHotFixDirectory.m in Sources */,
 				54F0A0951B3018D7003386BC /* ProxiedRequestsStatus.swift in Sources */,
 				A0EDE7222272B0D100B2D4E2 /* UserDisableSendMsgStatusStrategy.swift in Sources */,
+				73C7D9F424D808CC009B24DB /* ScreenRecordingManager.swift in Sources */,
 				F19F1D141EFBC18E00275E27 /* UnauthenticatedSession.swift in Sources */,
 				16DCAD691B0F9447008C1DD9 /* NSURL+LaunchOptions.m in Sources */,
 				F9F631421DE3524100416938 /* TypingStrategy.swift in Sources */,
@@ -3036,6 +3125,7 @@
 				54C8A39C1F7536DB004961DF /* ZMOperationLoop+Notifications.swift in Sources */,
 				7C5B94F622DC6BC500A6F8BB /* JailbreakDetector.swift in Sources */,
 				5EC2C58F2137F5EE00C6CE35 /* CallClosedReason.swift in Sources */,
+				73C7D9ED24CAD233009B24DB /* MediasoupClientManager.swift in Sources */,
 				EF2CB12722D5E58B00350B0A /* TeamImageAssetUpdateStrategy.swift in Sources */,
 				BF2ADA021F41A450000980E8 /* BackendEnvironmentProvider+Cookie.swift in Sources */,
 				5EFE9C15212AB138007932A6 /* UnregisteredUser+Payload.swift in Sources */,
@@ -3043,9 +3133,10 @@
 				160C31271E6434500012E4BC /* OperationStatus.swift in Sources */,
 				165911531DEF38EC007FA847 /* CallStateObserver.swift in Sources */,
 				5498162B1A432BC800A7CE2E /* ZMConversationTranscoder.m in Sources */,
+				73C7D9E924C98F18009B24DB /* CallingMembersManager.swift in Sources */,
 				54E2C1E01E682DC400536569 /* LocalNotificationDispatcher.swift in Sources */,
 				879634401F7BEA4700FC79BA /* DispatchQueue+SerialAsync.swift in Sources */,
-				73EA4D0E243EC90400E63429 /* MediasoupWrapper.swift in Sources */,
+				73EA4D0E243EC90400E63429 /* CallingWrapper.swift in Sources */,
 				F93A75F21C1F219800252586 /* ConversationStatusStrategy.swift in Sources */,
 				544F8FF31DDCD34600D1AB04 /* UserProfileUpdateNotifications.swift in Sources */,
 				F19F1D1F1EFBC2F000275E27 /* ZMAuthenticationStatus.m in Sources */,
@@ -3073,6 +3164,7 @@
 				734554CD24C157760079DCF4 /* MediaEventManager.swift in Sources */,
 				16F5F16C1E4092C00062F0AE /* NSManagedObjectContext+CTCallCenter.swift in Sources */,
 				16962EE420286D690069D88D /* LocalNotificationType+Configuration.swift in Sources */,
+				73AD784824E285D1006616D4 /* NTESSocketPacket.m in Sources */,
 				BF00441B1C737CE9007A6EA4 /* PushNotificationStatus.swift in Sources */,
 				09531F181AE960E300B8556A /* ZMLoginCodeRequestTranscoder.m in Sources */,
 				EF169DDF22E85BA100B74D4A /* ZMConversationSource.swift in Sources */,
@@ -3080,6 +3172,7 @@
 				1672A64523473EA100380537 /* LabelDownstreamRequestStrategy.swift in Sources */,
 				09BCDB8F1BCE7F000020DCC7 /* ZMAPSMessageDecoder.m in Sources */,
 				546392721D79D5210094EC66 /* Application.swift in Sources */,
+				73C7D9DC24C6EA77009B24DB /* WebRTCClientManager.swift in Sources */,
 				EFC8281C1FB343B600E27E21 /* RegistationCredentialVerificationStrategy.swift in Sources */,
 				73EA4D12243EE1AD00E63429 /* MediaOutputManager.swift in Sources */,
 				874A16902052BE5E001C6760 /* ZMUserSession+OpenConversation.swift in Sources */,
@@ -3100,6 +3193,7 @@
 				878ACB4820AEFB980016E68A /* ZMUser+Consent.swift in Sources */,
 				F1C51FE71FB49660009C2269 /* RegistrationStatus.swift in Sources */,
 				5E8EE1FA20FDC7D700DB1F9B /* Pasteboard.swift in Sources */,
+				73C7D9EB24CA9D91009B24DB /* MediasoupConsumer+Member.swift in Sources */,
 				874A16922052BEC5001C6760 /* UserExpirationObserver.swift in Sources */,
 				8751DA061F66BFA6000D308B /* ZMUserSession+Push.swift in Sources */,
 				EEEA75FA1F8A6142006D1070 /* ZMLocalNotification+Messages.swift in Sources */,
@@ -3115,19 +3209,20 @@
 				D5D10DA4203AE43200145497 /* Conversation+AccessMode.swift in Sources */,
 				7C1F4BF5203C4F67000537A8 /* Analytics+Push.swift in Sources */,
 				549AEA3B1D6340BC003C0BEC /* AddressBookUploadRequestStrategy.swift in Sources */,
-				7342AC2724860BA400E37829 /* MediasoupService.swift in Sources */,
+				7342AC2724860BA400E37829 /* CallingService.swift in Sources */,
 				F9AB00221F0CDAF00037B437 /* FileRelocator.swift in Sources */,
 				F1EB0E78200501C70040D73E /* NotificationsTracker.swift in Sources */,
 				166A8BF31E015F3B00F5EEEA /* WireCallCenterV3Factory.swift in Sources */,
 				16519D38231D3B1700C9D76D /* Conversation+Deletion.swift in Sources */,
 				F1C1F3F01FCF18C5007273E3 /* NSError+Localized.swift in Sources */,
 				5467F1C41E0AE2EF008C1745 /* KeyValueStore.swift in Sources */,
+				73C7D9D924C6EA77009B24DB /* RTCStates.swift in Sources */,
 				5467F1C61E0AE421008C1745 /* KeyValueStore+AccessToken.swift in Sources */,
 				8754B84A1F73C25400EC02AD /* ConversationListChangeInfo+UserSession.swift in Sources */,
 				16E0FBE3233296A9000E3235 /* ZMUserSession+ConversationDirectory.swift in Sources */,
 				8737D554209217BD00E5A4AF /* SessionManagerURLHandler.swift in Sources */,
 				547E5B581DDB4B800038D936 /* UserProfileUpdateStatus.swift in Sources */,
-				73EA4D142440192000E63429 /* MediasoupSignalManager.swift in Sources */,
+				73EA4D142440192000E63429 /* CallingSignalManager.swift in Sources */,
 				EEEA75FC1F8A6142006D1070 /* ZMLocalNotification+Calling.swift in Sources */,
 				09B7308D1B301F0200A5CCC9 /* ZMUserSession+Proxy.m in Sources */,
 				09E393BE1BAB0C2A00F3EA1B /* ZMUserSession+OTR.m in Sources */,
@@ -3141,6 +3236,7 @@
 				BF3C1B1720DBE254001CE126 /* Conversation+MessageDestructionTimeout.swift in Sources */,
 				F97678FA1D76D11400CC075D /* BackgroundAPNSConfirmationStatus.swift in Sources */,
 				1659114F1DEF1F6E007FA847 /* LocalNotificationDispatcher+Calling.swift in Sources */,
+				73AD784224E27F7D006616D4 /* NTESTPCircularBuffer.c in Sources */,
 				16DABFAE1DCF98D3001973E3 /* CallingRequestStrategy.swift in Sources */,
 				5EC3A468210B763000B76C78 /* NotificationUserInfo.swift in Sources */,
 				54DE9BEB1DE74FFB00EFFB9C /* RandomHandleGenerator.swift in Sources */,
@@ -3151,7 +3247,7 @@
 				F19F1D381EFBF61800275E27 /* SessionManager.swift in Sources */,
 				D522571E2062552800562561 /* AssetDeletionRequestStrategy.swift in Sources */,
 				1658C2371F503CF800889F22 /* FlowManager.swift in Sources */,
-				735E698E244856C4003E089C /* MediasoupTrackModel.swift in Sources */,
+				735E698E244856C4003E089C /* VideoTrackRenderView.swift in Sources */,
 				7CD279882338E52000E638CD /* ProcessInfo+SystemBootTime.swift in Sources */,
 				549710081F6FF5C100026EDD /* NotificationInContext+UserSession.swift in Sources */,
 				16D0A11D234C8CD700A83F87 /* LabelUpstreamRequestStrategy.swift in Sources */,
@@ -3161,20 +3257,21 @@
 				5E0EB1F421008C1900B5DC2B /* CompanyLoginRequester.swift in Sources */,
 				16A764611F3E0B0B00564F21 /* CallKitDelegate.swift in Sources */,
 				BF491CD11F03D7CF0055EE44 /* PermissionsDownloadRequestStrategy.swift in Sources */,
-				735E699C24519F3D003E089C /* MediasoupCallPeersManager.swift in Sources */,
 				54973A361DD48CAB007F8702 /* NSManagedObject+EncryptionContext.swift in Sources */,
 				F9ABDF411CECBD8A008461B2 /* AccountStatus.swift in Sources */,
 				165D3A3D1E1D60520052E654 /* ZMConversation+VoiceChannel.swift in Sources */,
 				7369402E2390C222001A6C44 /* BGPMemberImageStrategy.swift in Sources */,
 				165D3A221E1D43870052E654 /* VoiceChannel.swift in Sources */,
+				73AD784A24E28900006616D4 /* CVPixelBufferConvertDataHelper.swift in Sources */,
 				5EDF03EC2245563C00C04007 /* LinkPreviewAssetUploadRequestStrategy+Helper.swift in Sources */,
 				54991D581DEDCF2B007E282F /* AddressBook.swift in Sources */,
 				F96DBEEB1DF9A570008FE832 /* ZMSyncStrategy+ManagedObjectChanges.m in Sources */,
 				168CF4292007840A009FCB89 /* Team+Invite.swift in Sources */,
 				168CF42720077C54009FCB89 /* TeamInvitationStatus.swift in Sources */,
+				73C7D9EF24CBDDCD009B24DB /* CallingSignalManager+P2P.swift in Sources */,
 				F159F4161F1E4C4C001B7D80 /* LocalStoreProvider.swift in Sources */,
 				8717DFA71F6EF44E0087EFE4 /* SessionManager+Push.swift in Sources */,
-				73EA4D10243ED97B00E63429 /* MediasoupRoomManager.swift in Sources */,
+				73EA4D10243ED97B00E63429 /* CallingRoomManager.swift in Sources */,
 				D52257232062637500562561 /* DeletableAssetIdentifierProvider.swift in Sources */,
 				D5225720206261AA00562561 /* AssetDeletionStatus.swift in Sources */,
 				5E8BB8A02147F5BC00EEA64B /* CallSnapshot.swift in Sources */,
@@ -3199,11 +3296,13 @@
 				162A81D4202B453000F6200C /* SessionManager+AVS.swift in Sources */,
 				F9ABE8501EFD568B00D83214 /* TeamDownloadRequestStrategy+Events.swift in Sources */,
 				1662648221661C9F00300F45 /* ZMOperatonLoop+Background.swift in Sources */,
+				73AD783E24E27F7D006616D4 /* GCDAsyncSocket.m in Sources */,
 				168CF42B20079A02009FCB89 /* TeamInvitationRequestStrategy.swift in Sources */,
 				7399918E247CC0340039BCF5 /* ConversationCallingInfo.swift in Sources */,
 				F98EDCF31D82B924001E65CB /* ZMLocalNotificationSet.swift in Sources */,
 				5498161C1A432BC800A7CE2E /* ZMTypingUsersTimeout.m in Sources */,
 				5498165A1A432BC800A7CE2E /* ZMUpdateEventsBuffer.m in Sources */,
+				73C7D9E724C82ACE009B24DB /* CallingSignalModel.swift in Sources */,
 				161D3AC92134013C0053D39A /* Logging.swift in Sources */,
 				F19E55A022B3A2C5005C792D /* UNNotification+SafeLogging.swift in Sources */,
 				F9B8308C1DEEDC2900FF6FE7 /* SyncStatus.swift in Sources */,
@@ -3221,10 +3320,12 @@
 				549816321A432BC800A7CE2E /* ZMUserTranscoder.m in Sources */,
 				54257C081DF1C94200107FE7 /* TopConversationsDirectory.swift in Sources */,
 				16962EE220286A4C0069D88D /* LocalNotificationType+Localization.swift in Sources */,
+				73C7D9E524C8200D009B24DB /* CallingSignalManager+Mediasoup.swift in Sources */,
 				7399F57323A1E1F9002DA207 /* ConversationAvatarUpdateStategy.swift in Sources */,
 				EEEA75FD1F8A6142006D1070 /* ZMLocalNotification.swift in Sources */,
 				F9ABE8511EFD568B00D83214 /* TeamRequestFactory.swift in Sources */,
 				F16558D1225F3F2A00EA2F2A /* SessionManager+SwitchBackend.swift in Sources */,
+				73AD784424E27FE6006616D4 /* DataWormholeManager.swift in Sources */,
 				EFF9403E2240FE5D004F3115 /* URL+DeepLink.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

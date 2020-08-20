@@ -60,10 +60,12 @@ public enum CallState: Equatable {
     case none
     /// Outgoing call is pending
     case outgoing(degraded: Bool)
-    /// Incoming call is pending
-    case incoming(video: Bool, shouldRing: Bool, degraded: Bool)
     /// Call is answered
     case answered(degraded: Bool)
+    /// Incoming call is pending
+    case incoming(video: Bool, shouldRing: Bool, degraded: Bool)
+    /// answeredIncomingCall
+    case answeredIncomingCall
     /// Call is established (data is flowing)
     case establishedDataChannel
     /// Call is established (media is flowing)
@@ -115,6 +117,8 @@ public enum CallState: Equatable {
             zmLog.debug("calling-state:answered call, degraded: \(degraded)")
         case .incoming(video: let isVideo, shouldRing: let shouldRing, degraded: let degraded):
             zmLog.debug("calling-state:incoming call, isVideo: \(isVideo), shouldRing: \(shouldRing), degraded: \(degraded)")
+        case .answeredIncomingCall:
+            zmLog.debug("calling-state:answeredIncomingCall")
         case .establishedDataChannel:
             zmLog.debug("calling-state:established data channel")
         case .established:
@@ -181,6 +185,8 @@ public enum CallState: Equatable {
             return 9
         case .reconnecting:
             return 10
+        case .answeredIncomingCall:
+            return 11
         }
     }
 

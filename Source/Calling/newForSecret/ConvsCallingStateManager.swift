@@ -27,8 +27,8 @@ class ConvsCallingStateManager {
     private let selfUserID: UUID
     private let selfClientID: String
     private var convsCallingState: [ConversationCallingInfo]
-    private let roomManager: MediasoupRoomManager = MediasoupRoomManager.shareInstance
-    
+    let roomManager: CallingRoomManager = CallingRoomManager.shareInstance
+    var currentCid: UUID?
     var observer: ConvsCallingStateObserve?
  
     init(selfUserID: UUID, selfClientID: String) {
@@ -38,41 +38,46 @@ class ConvsCallingStateManager {
         self.roomManager.delegate = self
     }
     
-    func startCall(cid: UUID, callType: AVSCallType, conversationType: AVSConversationType, userId: UUID, clientId: String) -> Bool {
+    func setCallingConfigure(_ callingConfigure: CallingConfigure) {
+        self.roomManager.setCallingConfigure(callingConfigure)
+    }
+    
+    func startCall(cid: UUID, callType: AVSCallType, conversationType: AVSConversationType, peerId: UUID?) -> Bool {
         if roomManager.isCalling {
             return false
         }
         if self.convsCallingState.contains(where: { return $0.cid == cid }) {
-            zmLog.info("mediasoup::error-startCall-already exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-startCall-already exist convInfo")
             return false
         }
         if self.convsCallingState.contains(where: { return $0.isInCalling }) {
             ///说明当前正在通话中
-            zmLog.info("mediasoup::error-startCall-already calling")
+            zmLog.info("ConvsCallingStateManager-error-startCall-already calling")
             return false
         }
-        let info = ConversationCallingInfo(cid: cid, convType: conversationType, callType: callType, starter: (userId, clientId), state: .none, delegate: self)
+        let info = ConversationCallingInfo(cid: cid, convType: conversationType, callType: callType, starter: (selfUserID, selfClientID), state: .none, delegate: self)
         info.state = .outgoing(degraded: false)
+        info.videoState = (callType == .video) ? .started : .stopped
         self.convsCallingState.append(info)
-        self.handleCallStateChange(in: info, userId: selfUserID, oldState: .none, newState: info.state)
+        self.handleCallStateChange(in: info, userId: peerId ?? self.selfUserID, oldState: .none, newState: info.state)
         self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .start, convType: conversationType, callType: callType, to: nil, memberCount: nil)
         return true
     }
     
     public func answerCall(cid: UUID) -> Bool {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == cid }) else {
-            zmLog.info("mediasoup::error-answerCall-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-answerCall-no exist convInfo")
             return false
         }
         guard convInfo.state == .incoming(video: convInfo.videoState == .started, shouldRing: true, degraded: false) || convInfo.state == .terminating(reason: .stillOngoing) else {
-            zmLog.info("mediasoup::error-answerCall-wrong state:\(convInfo.state)")
+            zmLog.info("ConvsCallingStateManager-error-answerCall-wrong state:\(convInfo.state)")
             return false
         }
         if roomManager.isCalling {
             return false
         }
         let previousState = convInfo.state
-        convInfo.state = .answered(degraded: false)
+        convInfo.state = .answeredIncomingCall
         self.handleCallStateChange(in: convInfo, userId: selfUserID, oldState: previousState, newState: convInfo.state)
         self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .answer, convType: nil, callType: nil, to: convInfo.starter, memberCount: nil)
         return true
@@ -80,11 +85,11 @@ class ConvsCallingStateManager {
     
     public func cancelCall(cid: UUID) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == cid }) else {
-            zmLog.info("mediasoup::error-cancelCall-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-cancelCall-no exist convInfo")
             return
         }
         guard convInfo.state == .outgoing(degraded: false) else {
-            zmLog.info("mediasoup::error-cancelCall-wrong state:\(convInfo.state)")
+            zmLog.info("ConvsCallingStateManager-error-cancelCall-wrong state:\(convInfo.state)")
             return
         }
         let previousState = convInfo.state
@@ -95,10 +100,10 @@ class ConvsCallingStateManager {
     
     public func endCall(cid: UUID, reason: CallClosedReason) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == cid }) else {
-            zmLog.info("mediasoup::error-answerCall-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-answerCall-no exist convInfo")
             return
         }
-        zmLog.info("Mediasoup::endCall--memberCount:\(convInfo.memberCount)--reason:\(reason)")
+        zmLog.info("ConvsCallingStateManager-endCall--memberCount:\(convInfo.memberCount)--reason:\(reason)")
         
         let previousState = convInfo.state
         if convInfo.convType == .oneToOne {
@@ -129,11 +134,11 @@ class ConvsCallingStateManager {
     
     public func rejectCall(cid: UUID) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == cid }) else {
-            zmLog.info("mediasoup::error-rejectCall-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-rejectCall-no exist convInfo")
             return
         }
         guard convInfo.state == .incoming(video: false, shouldRing: false, degraded: false) else {
-            zmLog.info("mediasoup::error-rejectCall-wrong state:\(convInfo.state)")
+            zmLog.info("ConvsCallingStateManager-error-rejectCall-wrong state:\(convInfo.state)")
             return
         }
         
@@ -149,14 +154,14 @@ class ConvsCallingStateManager {
     
     public func members(in conversationId: UUID) -> [AVSCallMember] {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == conversationId }) else {
-            zmLog.info("mediasoup::members-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-members-no exist convInfo")
             return []
         }
         guard convInfo.isInCalling else {
-            zmLog.info("mediasoup::members-convInfo state is wrong :\(convInfo.state)")
+            zmLog.info("ConvsCallingStateManager-members-convInfo state is wrong :\(convInfo.state)")
             return []
         }
-        return roomManager.roomPeersManager?.avsMembers ?? []
+        return roomManager.roomMembersManager?.avsMembers ?? []
     }
     
     func setVideoState(conversationId: UUID, videoState: VideoState) {
@@ -168,7 +173,7 @@ class ConvsCallingStateManager {
     }
     
     private func handleCallStateChange(in conv: ConversationCallingInfo, userId: UUID, oldState: CallState, newState: CallState) {
-        zmLog.info("mediasoup::handleCallStateChange---oldState\(oldState)--newState\(newState)--observer:\(String(describing: observer))")
+        zmLog.info("ConvsCallingStateManager-handleCallStateChange---oldState\(oldState)--newState\(newState)--observer:\(String(describing: observer))")
         guard let observer = self.observer, oldState != newState else {
             return
         }
@@ -176,15 +181,21 @@ class ConvsCallingStateManager {
         switch newState {
         case .outgoing:
             AVSMediaManager.sharedInstance.startCall()
-            roomManager.connectToRoom(with: conv.cid, userId: userId)
+            let roomMode: CallingRoomManager.RoomMode = (conv.convType == .oneToOne) ? .p2p(peerId: userId) : .mp
+            roomManager.connectToRoom(with: conv.cid, userId: self.selfUserID, roomMode: roomMode, videoState: conv.videoState, isStarter: true)
+        case .answered:
+            AVSMediaManager.sharedInstance.callConnecting()
         case .incoming(video: let video, shouldRing: let shouldRing, degraded: _):
             if shouldRing {
                 AVSMediaManager.sharedInstance.incomingCall(isVideo: video)
             }
         case .established:
             AVSMediaManager.sharedInstance.enterdCall()
-        case .answered:
-            roomManager.connectToRoom(with: conv.cid, userId: userId)
+        case .answeredIncomingCall:
+            AVSMediaManager.sharedInstance.callConnecting()
+            let roomMode: CallingRoomManager.RoomMode = (conv.convType == .oneToOne) ? .p2p(peerId: conv.starter.userId) : .mp
+            //todo: answer端初始是不开启视频的
+            roomManager.connectToRoom(with: conv.cid, userId: self.selfUserID, roomMode: roomMode, videoState: conv.videoState, isStarter: false)
         case .terminating(reason: let reason):
             AVSMediaManager.sharedInstance.exitCall()
             if reason != .stillOngoing {
@@ -204,27 +215,29 @@ extension ConvsCallingStateManager {
     func recvStartCall(cid: UUID, callType: AVSCallType, conversationType: AVSConversationType, userId: UUID, clientId: String) {
         if self.convsCallingState.contains(where: { return $0.isInCalling }) {
             ///说明当前正在通话中
-            zmLog.info("mediasoup::error-recvStartCall-already calling")
+            zmLog.info("ConvsCallingStateManager-error-recvStartCall-already calling")
             self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .busy, convType: nil, callType: nil, to: nil, memberCount: nil)
             return
         }
         if let conv = self.convsCallingState.first(where: { return $0.cid == cid }), conv.state != .terminating(reason: .stillOngoing) {
-            zmLog.info("mediasoup::error-recvStartCall-already exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-recvStartCall-already exist convInfo")
             return
         }
         let info = ConversationCallingInfo(cid: cid, convType: conversationType, callType: callType, starter: (userId, clientId), state: .none, delegate: self)
         info.state = .incoming(video: callType == .video, shouldRing: true, degraded: false)
+        //接收来电的话，则默认不会开启视频
+        info.videoState = .stopped
         self.convsCallingState.append(info)
         self.handleCallStateChange(in: info, userId: userId, oldState: .none, newState: info.state)
     }
     
     public func recvAnswerCall(cid: UUID, userID: UUID) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == cid }) else {
-            zmLog.info("mediasoup::error-recvAnswerCall-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-recvAnswerCall-no exist convInfo")
             return
         }
         guard convInfo.state == .outgoing(degraded: false) else {
-            zmLog.info("mediasoup::error-recvAnswerCall-wrong state:\(convInfo.state)")
+            zmLog.info("ConvsCallingStateManager-error-recvAnswerCall-wrong state:\(convInfo.state)")
             return
         }
         let privious = convInfo.state
@@ -234,11 +247,11 @@ extension ConvsCallingStateManager {
     
     public func recvCancelCall(cid: UUID, userID: UUID) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == cid }) else {
-            zmLog.info("mediasoup::error-recvCancelCall-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-recvCancelCall-no exist convInfo")
             return
         }
         guard convInfo.state == .outgoing(degraded: false) else {
-            zmLog.info("mediasoup::error-recvCancelCall-wrong state:\(convInfo.state)")
+            zmLog.info("ConvsCallingStateManager-error-recvCancelCall-wrong state:\(convInfo.state)")
             return
         }
         let privious = convInfo.state
@@ -250,7 +263,7 @@ extension ConvsCallingStateManager {
     
     public func recvEndCall(cid: UUID, userID: UUID, reason: CallClosedReason, leftMemberCount: Int? = nil) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == cid }) else {
-            zmLog.info("mediasoup::error-recvEndCall-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-recvEndCall-no exist convInfo")
             return
         }
         roomManager.removePeer(with: userID)
@@ -273,7 +286,7 @@ extension ConvsCallingStateManager {
     
     public func recvRejectCall(cid: UUID, userID: UUID) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == cid }) else {
-            zmLog.info("mediasoup::error-recvRejectCall-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-recvRejectCall-no exist convInfo")
             return
         }
         let privious = convInfo.state
@@ -290,7 +303,7 @@ extension ConvsCallingStateManager {
     
     public func recvBusyCall(cid: UUID, userID: UUID) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == cid }) else {
-            zmLog.info("mediasoup::error-recvBusyCall-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-recvBusyCall-no exist convInfo")
             return
         }
         let privious = convInfo.state
@@ -303,15 +316,15 @@ extension ConvsCallingStateManager {
 }
 
 ///房间状态用代理返回
-extension ConvsCallingStateManager: MediasoupRoomManagerDelegate {
+extension ConvsCallingStateManager: CallingRoomManagerDelegate {
     
     func onEstablishedCall(conversationId: UUID, peerId: UUID) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == conversationId }) else {
-            zmLog.info("mediasoup::error-onEstablishedCall-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-onEstablishedCall-no exist convInfo")
             return
         }
         guard convInfo.state != .established else {
-            zmLog.info("mediasoup::error-callEstablished-wrong state:\(convInfo.state)")
+            zmLog.info("ConvsCallingStateManager-error-callEstablished-wrong state:\(convInfo.state)")
             return
         }
         let previousState = convInfo.state
@@ -321,11 +334,11 @@ extension ConvsCallingStateManager: MediasoupRoomManagerDelegate {
     
     func onReconnectingCall(conversationId: UUID) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == conversationId }) else {
-            zmLog.info("mediasoup::error-onReconnectingCall-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-onReconnectingCall-no exist convInfo")
             return
         }
         guard convInfo.state != .reconnecting else {
-            zmLog.info("mediasoup::error-onReconnectingCall-wrong state:\(convInfo.state)")
+            zmLog.info("ConvsCallingStateManager-error-onReconnectingCall-wrong state:\(convInfo.state)")
             return
         }
         let previousState = convInfo.state
@@ -335,11 +348,11 @@ extension ConvsCallingStateManager: MediasoupRoomManagerDelegate {
     
     func  leaveRoom(conversationId: UUID, reason: CallClosedReason) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == conversationId }) else {
-            zmLog.info("mediasoup::error-leaveRoom-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-leaveRoom-no exist convInfo")
             return
         }
         guard convInfo.state != .terminating(reason: .stillOngoing) else {
-            zmLog.info("mediasoup::error-leaveRoom-wrong state:\(convInfo.state)")
+            zmLog.info("ConvsCallingStateManager-error-leaveRoom-wrong state:\(convInfo.state)")
             return
         }
         let previousState = convInfo.state
@@ -359,18 +372,18 @@ extension ConvsCallingStateManager: MediasoupRoomManagerDelegate {
         self.handleCallStateChange(in: convInfo, userId: selfUserID, oldState: previousState, newState: convInfo.state)
     }
     
-    func onVideoStateChange(conversationId: UUID, peerId: UUID, videoState: VideoState) {
+    func onVideoStateChange(conversationId: UUID, memberId: UUID, videoState: VideoState) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == conversationId }) else {
-            zmLog.info("mediasoup::error-onVideoStateChange-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-onVideoStateChange-no exist convInfo")
             return
         }
         convInfo.videoState = videoState
-        observer?.onVideoStateChange(peerId: peerId, videoState: videoState)
+        observer?.onVideoStateChange(peerId: memberId, videoState: videoState)
     }
     
     func onGroupMemberChange(conversationId: UUID, memberCount: Int) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == conversationId }) else {
-            zmLog.info("mediasoup::error-onGroupMemberChange-no exist convInfo")
+            zmLog.info("ConvsCallingStateManager-error-onGroupMemberChange-no exist convInfo")
             return
         }
         convInfo.memberCount = memberCount

@@ -115,7 +115,7 @@ private let zmLog = ZMSLog(tag: "calling")
         super.init()
         
         let observer = Unmanaged.passUnretained(self).toOpaque()
-        self.avsWrapper = MediasoupWrapper(userId: userId, clientId: clientId, observer: observer)
+        self.avsWrapper = CallingWrapper(userId: userId, clientId: clientId, observer: observer)
     }
 
 }
@@ -388,7 +388,7 @@ extension WireCallCenterV3 {
             callType = video ? .video : .normal
         }
         
-        let started = avsWrapper.startCall(conversationId: conversationId, callType: callType, conversationType: conversationType, useCBR: useConstantBitRateAudio)
+        let started = avsWrapper.startCall(conversationId: conversationId, callType: callType, conversationType: conversationType, useCBR: useConstantBitRateAudio, peerId: conversation.conversationType == .oneOnOne ? conversation.connectedUser!.remoteIdentifier : nil)
         if started {
             let callState: CallState = .outgoing(degraded: isDegraded(conversationId: conversationId))
             

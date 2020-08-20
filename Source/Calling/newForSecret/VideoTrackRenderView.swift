@@ -11,47 +11,45 @@ import Mediasoupclient
 
 private let zmLog = ZMSLog(tag: "calling")
 
-open class MediasoupPreviewView : RTCEAGLVideoView {
+open class SelfVideoRenderView : RTCEAGLVideoView {
     
     private var attached: Bool = false
     
     
     override open func didMoveToWindow() {
-        guard let videoTrack = MediasoupRoomManager.shareInstance.mediaOutputManager?.getVideoTrack(with: .high) else {
-            zmLog.info("Mediasoup::SelfPreviewView--videoTrack == nil  mediaOutputManager:\(MediasoupRoomManager.shareInstance.mediaOutputManager == nil)")
+        guard let videoTrack = CallingRoomManager.shareInstance.mediaOutputManager?.produceVideoTrack(with: .high) else {
+            zmLog.info("SelfVideoRenderView-videoTrack == nil  mediaOutputManager:\(CallingRoomManager.shareInstance.mediaOutputManager == nil)")
             return
         }
         
         if self.window != nil && !attached {
-            zmLog.info("Mediasoup::SelfPreviewView--addTrack")
-            signalWorkQueue.async {
-                videoTrack.add(self)
-            }
+            zmLog.info("SelfVideoRenderView-addTrack")
+            videoTrack.add(self)
         } else {
-            zmLog.info("Mediasoup::SelfPreviewView--removeTrack")
+            zmLog.info("SelfVideoRenderView-removeTrack")
             videoTrack.remove(self)
             attached = false
         }
     }
     
     open func startVideoCapture() {
-        MediasoupRoomManager.shareInstance.mediaOutputManager?.startVideoCapture()
+        CallingRoomManager.shareInstance.mediaOutputManager?.startVideoCapture()
     }
     
     open func stopVideoCapture() {
-        MediasoupRoomManager.shareInstance.mediaOutputManager?.stopVideoCapture()
+        CallingRoomManager.shareInstance.mediaOutputManager?.stopVideoCapture()
     }
     
     deinit {
-        zmLog.info("Mediasoup::MediasoupPreviewView---deinit")
+        zmLog.info("SelfVideoRenderView-deinit")
     }
     
 }
 
-open class MediasoupVideoView : RTCEAGLVideoView {
+open class VideoRenderView : RTCEAGLVideoView {
     
     deinit {
-        zmLog.info("Mediasoup::VideoView--deinit")
+        zmLog.info("VideoRenderView--deinit")
     }
     
     open var shouldFill: Bool = false
@@ -59,10 +57,10 @@ open class MediasoupVideoView : RTCEAGLVideoView {
     open var videoSize: CGSize = CGSize(width: 100, height: 100)
     open var userid: String? {
         didSet {
-            zmLog.info("Mediasoup::VideoView--userid--newValue:\(String(describing: userid)),oldValue\(String(describing: oldValue))")
+            zmLog.info("VideoRenderView--userid--newValue:\(String(describing: userid)),oldValue\(String(describing: oldValue))")
             if let id = userid,
                 let uid = UUID(uuidString: id),
-                let track = MediasoupRoomManager.shareInstance.roomPeersManager?.getVideoTrack(with: uid)
+                let track = CallingRoomManager.shareInstance.roomMembersManager?.getVideoTrack(with: uid)
             {
                 self.videoTrack = track
             }
@@ -71,7 +69,7 @@ open class MediasoupVideoView : RTCEAGLVideoView {
     
     private var videoTrack: RTCVideoTrack? {
         didSet {
-            zmLog.info("Mediasoup::VideoView--videoTrack--newValue:\(String(describing: videoTrack)),oldValue\(String(describing: oldValue))")
+            zmLog.info("VideoRenderView--videoTrack--newValue:\(String(describing: videoTrack)),oldValue\(String(describing: oldValue))")
             oldValue?.remove(self)
             videoTrack?.add(self)
         }

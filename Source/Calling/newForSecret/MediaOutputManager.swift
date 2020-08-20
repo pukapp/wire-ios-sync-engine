@@ -8,6 +8,7 @@
 
 import Foundation
 import Mediasoupclient
+import ReplayKit
 
 private let zmLog = ZMSLog(tag: "calling")
 
@@ -67,7 +68,7 @@ enum VideoOutputFormat: Int {
 final class MediaOutputManager: NSObject {
 
     deinit {
-        zmLog.info("Mediasoup::deinit:---MediaOutputManager")
+        zmLog.info("MediaOutputManager-deinit")
     }
     
     private static let MEDIA_STREAM_ID: String = "ARDAMS"
@@ -79,6 +80,8 @@ final class MediaOutputManager: NSObject {
     private var videoCapturer: RTCCameraVideoCapturer?
     private var videoSource: RTCVideoSource?
     private var currentOutputFormat: VideoOutputFormat?
+    
+    var recordCapturer: RTCVideoCapturer?
     
     private var isFront: Bool = true
     private var frontCapture: AVCaptureDevice?
@@ -100,13 +103,13 @@ final class MediaOutputManager: NSObject {
     }
     
     func startVideoCapture() {
-        zmLog.info("Mediasoup::--startVideoCapture")
+        zmLog.info("MediaOutputManager-startVideoCapture")
         guard let capture = self.currentCapture else { return }
         self.videoCapturer?.startCapture(with: capture, format: capture.activeFormat, fps: MEDIA_VIDEO_FPS)
     }
     
     func stopVideoCapture() {
-        zmLog.info("Mediasoup::--stopVideoCapture-thread:\(Thread.current)")
+        zmLog.info("MediaOutputManager-stopVideoCapture-thread:\(Thread.current)")
         self.videoCapturer?.stopCapture()
     }
     
@@ -118,21 +121,21 @@ final class MediaOutputManager: NSObject {
     
     func changeVideoOutputFormat(with format: VideoOutputFormat) {
         if self.currentOutputFormat != format {
-            zmLog.info("Mediasoup::MediaOutputManager--changeVideoOutputFormat:\(format)")
+            zmLog.info("MediaOutputManager-changeVideoOutputFormat:\(format)")
             self.currentOutputFormat = format
             self.videoSource?.adaptOutputFormat(toWidth: format.width, height: format.height, fps: Int32(MEDIA_VIDEO_FPS))
         }
     }
     
     
-    func getVideoTrack(with format: VideoOutputFormat) -> RTCVideoTrack  {
+    func produceVideoTrack(with format: VideoOutputFormat) -> RTCVideoTrack {
         getVideoTracklock.lock()
         
         if let track = self.mediaSoupVideoTrack {
             getVideoTracklock.unlock()
             return track
         }
-        zmLog.info("Mediasoup::--getVideoTrack:\(format)")
+        zmLog.info("MediaOutputManager-getVideoTrack:\(format)")
         
         self.currentOutputFormat = format
         
@@ -151,7 +154,7 @@ final class MediaOutputManager: NSObject {
         return videoTrack
     }
     
-    internal func getAudioTrack() -> RTCAudioTrack {
+    func produceAudioTrack() -> RTCAudioTrack {
         if let track = self.mediaSoupAudioTrack {
             return track
         }
@@ -179,11 +182,48 @@ final class MediaOutputManager: NSObject {
 }
 
 extension MediaOutputManager : RTCVideoCapturerDelegate {
-    func capturer(_ capturer: RTCVideoCapturer, didCapture frame: RTCVideoFrame) {
+    public func capturer(_ capturer: RTCVideoCapturer, didCapture frame: RTCVideoFrame) {
         DispatchQueue.main.async {
             UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
             self.videoSource?.capturer(capturer, didCapture: frame)
         }
     }
 }
-//MediasoupRoomManager.shareInstance.setLocalAudio(mute: privateIsMicrophoneMuted)
+
+// Deal ScreenRecording CMSampleBufferGetImageBuffer
+extension MediaOutputManager: DataWormholeDataTransportDelegate {
+    
+    func startRecording() -> RTCVideoTrack {
+        self.videoSource = self.peerConnectionFactory.videoSource()
+        self.videoSource!.adaptOutputFormat(toWidth: 640, height: 640*16/9, fps: Int32(MEDIA_VIDEO_FPS));
+        
+        self.recordCapturer = RTCVideoCapturer(delegate: self.videoSource!)
+        
+        let videoTrack : RTCVideoTrack = self.peerConnectionFactory.videoTrack(with: self.videoSource!, trackId: MediaOutputManager.VIDEO_TRACK_ID)
+        
+        DataWormholeServerManager.sharedManager.setupSocket(with: self)
+        
+        return videoTrack
+    }
+    
+    func onRecvData(data: Data) {
+        guard let helper = CVPixelBufferConvertDataHelper.init(data: data), let pixelBuffer = helper.pixelBuffer else {
+            zmLog.info("DataWormholeDataTransportDelegate-获取pixelBuffer出错")
+            return
+        }
+        
+        let buffer: RTCCVPixelBuffer = RTCCVPixelBuffer.init(pixelBuffer: pixelBuffer)
+        // create the RTCVideoFrame
+        let videoFrame = RTCVideoFrame(buffer: buffer, rotation: RTCVideoRotation._0, timeStampNs: helper.timeStampNs)
+        
+        // connect the video frames to the WebRTC
+        self.videoSource?.capturer(self.recordCapturer!, didCapture: videoFrame)
+    }
+    
+    func stopRecording() {
+        DataWormholeServerManager.sharedManager.stopSocket()
+        self.recordCapturer = nil
+        self.videoSource = nil
+    }
+    
+}

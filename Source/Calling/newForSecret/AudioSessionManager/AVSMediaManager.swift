@@ -49,7 +49,7 @@ public enum AVSPlaybackRoute: NSInteger {
     
     ///电话的几种状态，并在合适的状态下播放或者停止铃声
     private enum CallState {
-        case normal, calling, incoming, connected, end
+        case normal, calling, incoming, connecting, connected, end
     }
     private var callState: CallState = .normal
     private var oldCategory: AVAudioSession.Category = .ambient
@@ -87,12 +87,10 @@ public enum AVSPlaybackRoute: NSInteger {
         case .oldDeviceUnavailable:
             zmLog.info("MediaEventManager--handleRouteChangeNotification: reason:oldDeviceUnavailable")
         case .categoryChange, .override:
+            ///播放音乐时，由于Category正在切换，所以直接播放的话会导致声音从大变小，所以这里参照原来avs的做法，在Category已经切换完毕后，根据当前状态，播放铃声
             if currCategory == .playAndRecord && currCategory != oldCategory {
                 if self.callState == .calling {
                     self.playSound("ringing_from_me")
-                } else if self.callState == .incoming && !self.usingCallKit {
-                    ///callKit来电会自动播放铃声
-                    self.playSound("ringing_from_them")
                 }
             }
             oldCategory = currCategory
@@ -124,6 +122,11 @@ public enum AVSPlaybackRoute: NSInteger {
     func incomingCall(isVideo: Bool) {
         MediaEventNotification(event: .incomingCall, data: self.usingCallKit).post()
         self.callState = .incoming
+    }
+    
+    func callConnecting() {
+        MediaEventNotification(event: .connectingCall, data: nil).post()
+        self.callState = .connecting
     }
     
     func enterdCall() {
