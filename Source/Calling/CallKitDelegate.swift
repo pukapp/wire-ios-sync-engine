@@ -399,6 +399,7 @@ extension CallKitDelegate : CXProviderDelegate {
         }
         
         //TODO: 调用了fulfill之后 didActivate audioSession 才会被调用，才能开启语音通话，否则会出现接收电话方无声音的问题
+        // 但是会造成另外一个问题，就是应答方在callKit界面上会立即显示已经通话的界面
         //https://stackoverflow.com/a/55393873/9490258
         call.observer.onAnswered = {
             action.fulfill()

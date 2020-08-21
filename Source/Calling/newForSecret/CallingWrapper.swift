@@ -138,8 +138,6 @@ enum CallingAction: Int {
     case cancel = 4
     case noResponse = 5
     case busy = 6
-    
-    case sdpExChange = 7
 }
 
 struct CallingModel {
@@ -266,13 +264,6 @@ extension CallingWrapper {
             callStateManager.recvEndCall(cid: model.cid, userID: model.userId, reason: .timeout)
         case .busy:
             callStateManager.recvBusyCall(cid: model.cid, userID: model.userId)
-        case .sdpExChange:
-            guard let data = model.data else { return }
-            let json = JSON(parseJSON: String(data: data, encoding: .utf8)!)
-            let message = WebRTCP2PMessage.init(json: json)
-            if let p2p = self.callStateManager.roomManager.clientConnectManager as? WebRTCClientManager {
-                p2p.handleSDPMessage(message)
-            }
         }
     }
     
