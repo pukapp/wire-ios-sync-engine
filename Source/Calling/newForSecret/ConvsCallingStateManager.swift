@@ -191,6 +191,10 @@ class ConvsCallingStateManager {
             }
         case .established:
             AVSMediaManager.sharedInstance.enterdCall()
+            if conv.videoState == .started {
+                //当连接成功之后，需要判断下视频状态是否是开启状态，如开启，则改为扩音模式
+                AVSMediaManager.sharedInstance.isSpeakerEnabled = true
+            }
         case .answeredIncomingCall:
             AVSMediaManager.sharedInstance.callConnecting()
             let roomMode: CallingRoomManager.RoomMode = (conv.convType == .oneToOne) ? .p2p(peerId: conv.starter.userId) : .mp
