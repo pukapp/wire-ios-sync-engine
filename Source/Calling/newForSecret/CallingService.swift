@@ -31,7 +31,7 @@ struct CallingConfigure {
          "credential" : ""
        }]
      */
-    let ice_servers:        [String : Any]
+    let iceServers: [JSON]
     
     init?(json: JSON) {
         guard let gateways = json["gateways"].array else {
@@ -45,10 +45,10 @@ struct CallingConfigure {
             }
         })
         
-        guard let ice_servers = json["p2p"].dictionaryObject else {
+        guard let ice_servers = json["p2p"].dictionary?["ice_servers"]?.array else {
             return nil
         }
-        self.ice_servers = ice_servers
+        self.iceServers = ice_servers
     }
     
     ///返回有效的webSocket地址
