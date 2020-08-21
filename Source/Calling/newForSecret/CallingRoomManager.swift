@@ -153,6 +153,8 @@ class CallingRoomManager: NSObject {
             //单聊通话需要知道好友信息，并且将其添加至房间成员管理类中
             (clientConnectManager as! WebRTCClientManager).setPeerInfo(peerId: peerId)
             self.roomMembersManager?.addNewMember(with: peerId, hasVideo: false)
+            //获取穿透服务器地址
+            (clientConnectManager as! WebRTCClientManager).callingConfigure = callingConfigure
         case .mp:
             self.clientConnectManager = MediasoupClientManager(signalManager: self.signalManager, mediaManager: self.mediaOutputManager!, membersManagerDelegate: self.roomMembersManager!, mediaStateManagerDelegate: self.roomMembersManager!, observe: self, isStarter: self.isStarter, videoState: self.videoState)
         }

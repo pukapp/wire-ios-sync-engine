@@ -108,9 +108,9 @@ extension CallingSignalManager {
      }
      
      func loginRoom(with rtpCapabilities: String) -> JSON? {
-         let loginRoomRequestData: JSON = ["displayName" : "lc",
+         let loginRoomRequestData: JSON = ["displayName" : "",
                                            "rtpCapabilities" : JSON(parseJSON: rtpCapabilities),
-                                           "device" : "",
+                                           "device" : "ios",
                                            "sctpCapabilities" : ""]
          guard let json = sendAckMediasoupAction(with: .loginRoom, data: loginRoomRequestData) else {
              return nil

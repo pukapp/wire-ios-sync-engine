@@ -211,15 +211,6 @@ class MediasoupClientManager: CallingClientConnectProtocol {
                 return
         }
         
-//        ///WebRTC-M79版本不支持这些参数
-//        let codecOptions: JSON = [
-//            "x-google-start-bitrate": 1000
-//        ]
-//        var encodings: Array = Array<RTCRtpEncodingParameters>.init()
-//        encodings.append(RTCUtils.genRtpEncodingParameters(true, maxBitrateBps: 500000, minBitrateBps: 0, maxFramerate: 60, numTemporalLayers: 0, scaleResolutionDownBy: 0))
-//        encodings.append(RTCUtils.genRtpEncodingParameters(true, maxBitrateBps: 1000000, minBitrateBps: 0, maxFramerate: 60, numTemporalLayers: 0, scaleResolutionDownBy: 0))
-//        encodings.append(RTCUtils.genRtpEncodingParameters(true, maxBitrateBps: 1500000, minBitrateBps: 0, maxFramerate: 60, numTemporalLayers: 0, scaleResolutionDownBy: 0))
-//
         let videoTrack = self.mediaManager.produceVideoTrack(with: VideoOutputFormat(count: self.mediaStateManagerDelegate.totalVideoTracksCount))
         videoTrack.isEnabled = true
         self.createProducer(track: videoTrack, codecOptions: nil, encodings: nil)

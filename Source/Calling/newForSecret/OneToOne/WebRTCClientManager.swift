@@ -12,9 +12,25 @@ import SwiftyJSON
 
 private let zmLog = ZMSLog(tag: "calling")
 
+extension CallingConfigure {
+    //将服务器返回的json数据转成[RTCIceServer]
+    func transIceServer(with json: JSON) -> RTCIceServer? {
+        if let urls = json["urls"].arrayObject as? [String] {
+            return RTCIceServer(urlStrings: urls, username: json["username"].string, credential: json["credential"].string)
+        }
+        return nil
+    }
+    
+    var rtcIceServers: [RTCIceServer] {
+        return self.iceServers.compactMap({ return transIceServer(with: $0) })
+    }
+    
+}
+
 class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     
     private var peerId: UUID!
+    var callingConfigure: CallingConfigure!
     
     private let signalManager: CallingSignalManager
     private let mediaManager: MediaOutputManager
@@ -63,7 +79,6 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     private var getStatstimer: Timer?
     
     required init(signalManager: CallingSignalManager, mediaManager: MediaOutputManager, membersManagerDelegate: CallingMembersManagerProtocol, mediaStateManagerDelegate: CallingMediaStateManagerProtocol, observe: CallingClientConnectStateObserve, isStarter: Bool, videoState: VideoState) {
-        zmLog.info("WebRTCClientManager: init")
         self.signalManager = signalManager
         self.mediaManager = mediaManager
         self.membersManagerDelegate = membersManagerDelegate
@@ -105,11 +120,7 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
         zmLog.info("WebRTCClientManager: createPeerConnection")
 
         let config = RTCConfiguration()
-        config.iceServers = [RTCIceServer(urlStrings: [//"stun:stun.l.google.com:19302",
-                                                       //"stun:stun1.l.google.com:19302",
-                                                       //"stun:stun2.l.google.com:19302",
-                                                       "stun:47.93.186.97:3478?transport=udp"
-                                                       ])]
+        config.iceServers = callingConfigure.rtcIceServers
         config.candidateNetworkPolicy = .all
         config.sdpSemantics = .unifiedPlan
         config.continualGatheringPolicy = .gatherContinually
@@ -233,28 +244,22 @@ extension WebRTCClientManager: ZMTimerClient {
             self.produceAudio()
             self.produceVideo(isEnabled: self.videoState == .started)
         case .startICE:
+            //打洞仅给30s时间，不成功则直接走mediasoup
             self.timer = ZMTimer(target: self)
             self.timer!.fire(afterTimeInterval: 30)
         case .connectd:
             self.invalidTimer()
             self.membersManagerDelegate.memberConnected(with: self.peerId!)
-//            if self.getStatstimer == nil {
-//                self.peerConnection?.statistics(completionHandler: { (report) in
-//                    zmLog.info("webrtc: report--111\(report.statistics)")
-//                })
-//                self.getStatstimer = Timer.init(timeInterval: 5, repeats: true, block: { (t) in
-//                    zmLog.info("webrtc: report--test")
-//                    self.peerConnection?.statistics(completionHandler: { (report) in
-//                        zmLog.info("webrtc: report--\(report.statistics)")
-//                    })
-//                })
-//                self.getStatstimer?.fire()
-//            }
         case .disconnected:
             self.membersManagerDelegate.memberConnecting(with: self.peerId!)
         case .faild:
             if self.peerId == nil { return }
             self.membersManagerDelegate.memberConnecting(with: self.peerId!)
+            guard self.connectState != .disconnected else {
+                //只要connectState不是从disconnected变成failed，就认为该用户没有ice穿透的可能性，直接走失败处理方法
+                self.establishConnectionFailed()
+                return
+            }
             if self.connectRole == .offer {
                 zmLog.info("RTCPeerConnectionDelegate restart ICE")
                 self.offer()
@@ -269,6 +274,9 @@ extension WebRTCClientManager: ZMTimerClient {
     }
     
     func establishConnectionFailed() {
+        self.peerConnection?.statistics(completionHandler: { (report) in
+            zmLog.info("webrtc: report--111\(report.statistics)")
+        })
         self.invalidTimer()
         self.requestToSwitchToChatMode()
         self.forwardP2PMessage(.switchMode(.chat))
