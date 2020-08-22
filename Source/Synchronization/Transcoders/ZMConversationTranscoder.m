@@ -56,6 +56,8 @@ static NSString *const ConversationAccessRoleKey = @"access_role";
 static NSString *const ConversationTeamIdKey = @"teamid";
 static NSString *const ConversationTeamManagedKey = @"managed";
 
+NSNotificationName const ZMUpdateTaskListNotificationName = @"ZMUpdateTaskListNotificationName";
+
 @interface ZMConversationTranscoder () <ZMSimpleListRequestPaginatorSync>
 
 @property (nonatomic) ZMUpstreamModifiedObjectSync *modifiedSync;
@@ -995,6 +997,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 {
     // itask群，不需要生成成员添加和删除的消息
     if (conversation.isITaskGroup && (event.type == ZMUpdateEventTypeConversationMemberJoin || event.type == ZMUpdateEventTypeConversationMemberLeave)) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:ZMUpdateTaskListNotificationName object:nil userInfo:nil];
         return;
     }
     ZMSystemMessage *systemMessage = [ZMSystemMessage createOrUpdateMessageFromUpdateEvent:event inManagedObjectContext:self.managedObjectContext];
