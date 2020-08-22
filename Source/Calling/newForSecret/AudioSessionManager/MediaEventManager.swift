@@ -146,6 +146,8 @@ fileprivate extension MediaEventManager {
     }
     
     func enterCall() {
+        //TODO: 这里也需要停止音乐播放，当群里直接同时拨打电话，有可能通过websocket连接直接通话成功，而不需要收到消息
+        self.stopAllSound()
         if interrupted {
             self.interrupted = false
             setAudioSessionActive(isActive: true)

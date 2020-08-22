@@ -98,7 +98,26 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     }
     
     func webSocketDisConnected() {
+        self.producers.forEach({ $0.close() })
+        self.producers.removeAll()
+        self.producerListeners.removeAll()
         
+        if self.sendTransport != nil {
+            self.sendTransport?.close()
+            self.sendTransport?.dispose()
+            self.sendTransport = nil
+            self.sendTransportListen = nil
+        }
+        
+        if self.recvTransport != nil {
+            self.recvTransport?.close()
+            self.recvTransport?.dispose()
+            self.recvTransport = nil
+            self.recvTransportListen = nil
+        }
+
+        zmLog.info("Mediasoup::webSocketDisConnected")
+        self.device = nil
     }
     
     func dispose() {
@@ -131,6 +150,9 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     }
     
     func configureDevice() {
+        if self.device == nil {
+            self.device = MPDevice()
+        }
         if !self.device!.isLoaded() {
             guard let rtpCapabilities = self.signalManager.requestToGetRoomRtpCapabilities() else {
                 return
