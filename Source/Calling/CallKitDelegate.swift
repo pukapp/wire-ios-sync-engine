@@ -352,33 +352,6 @@ extension CallKitDelegate {
         }
     }
     
-    func reportIncomingCallV2(from userId: String, userName: String, conversationId: String, video: Bool) {
-        let handle = CXHandle(type: .generic, value: userId + String(identifierSeparator) + conversationId)
-        
-        let update = CXCallUpdate()
-        update.supportsHolding = false
-        update.supportsDTMF = false
-        update.supportsGrouping = false
-        update.supportsUngrouping = false
-        update.localizedCallerName = userName
-        update.remoteHandle = handle
-        update.hasVideo = video
-        
-        let callUUID = UUID()
-        self.stashIncommingCallConvs[callUUID] = WaitingConvInfoCall(cid: UUID(uuidString: conversationId)!)
-
-        log("provider.reportNewIncomingCall")
-        
-        provider.reportNewIncomingCall(with: callUUID, update: update) { [weak self] (error) in
-            if let error = error {
-                self?.log("Cannot report incoming call: \(error)")
-                self?.stashIncommingCallConvs.removeValue(forKey: callUUID)
-            } else {
-                self?.mediaManager?.setupAudioDevice()
-            }
-        }
-    }
-    
     func reportCall(in conversation: ZMConversation, endedAt timestamp: Date?, reason: CXCallEndedReason) {
         
         var associatedCallUUIDs : [UUID] = []
@@ -413,6 +386,64 @@ extension CallKitDelegate {
             provider.reportCall(with: callUUID, endedAt: timestamp?.clampForCallKit() ?? Date(), reason: reason)
         }
     }
+}
+
+// MARK: V2
+extension CallKitDelegate {
+    
+    internal func callUUIDV2(for conversationid: String) -> UUID? {
+        guard let cUid = UUID.init(uuidString: conversationid) else {
+            return nil
+        }
+        if let callUID = stashIncommingCallConvs.first(where: { $0.value.cid == cUid })?.key {
+            return callUID
+        }
+        return calls.first(where: { $0.value.conversation.remoteIdentifier == cUid })?.key
+    }
+    
+    func reportIncomingCallV2(from userId: String, userName: String, conversationId: String, video: Bool) {
+        let handle = CXHandle(type: .generic, value: userId + String(identifierSeparator) + conversationId)
+        
+        let update = CXCallUpdate()
+        update.supportsHolding = false
+        update.supportsDTMF = false
+        update.supportsGrouping = false
+        update.supportsUngrouping = false
+        update.localizedCallerName = userName
+        update.remoteHandle = handle
+        update.hasVideo = video
+        
+        let callUUID = UUID()
+        self.stashIncommingCallConvs[callUUID] = WaitingConvInfoCall(cid: UUID(uuidString: conversationId)!)
+
+        log("provider.reportNewIncomingCallv2")
+        
+        provider.reportNewIncomingCall(with: callUUID, update: update) { [weak self] (error) in
+            if let error = error {
+                self?.log("Cannot report incoming call: \(error)")
+                self?.stashIncommingCallConvs.removeValue(forKey: callUUID)
+            } else {
+                self?.mediaManager?.setupAudioDevice()
+            }
+        }
+    }
+    
+    func requestEndCallV2(in conversationId: String, completion: (()->())? = nil) {
+        guard let callUUID = callUUIDV2(for: conversationId) else { return }
+        
+        let action = CXEndCallAction(call: callUUID)
+        let transaction = CXTransaction(action: action)
+        
+        log("request CXEndCallActionv2")
+        
+        callController.request(transaction) { [weak self] (error) in
+            if let error = error {
+                self?.log("Cannot end call: \(error)")
+            }
+            completion?()
+        }
+    }
+    
 }
 
 fileprivate extension Date {

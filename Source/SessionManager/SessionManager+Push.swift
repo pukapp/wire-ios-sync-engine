@@ -183,7 +183,8 @@ extension SessionManager: PKPushRegistryDelegate {
         guard let userName = payload.dictionaryPayload.userName(),
             let callUserId = payload.dictionaryPayload.callUserId(),
             let conversationId = payload.dictionaryPayload.conversationId(),
-            let video = payload.dictionaryPayload.video() else {
+            let video = payload.dictionaryPayload.video(),
+            let callType = payload.dictionaryPayload.callType() else {
                 return completion()
         }
         
@@ -208,11 +209,13 @@ extension SessionManager: PKPushRegistryDelegate {
                 Logging.push.safePublic("Processing push payload completed")
                 self?.notificationsTracker?.registerNotificationProcessingCompleted()
                 BackgroundActivityFactory.shared.endBackgroundActivity(activity)
-                completion()
             }
         }
-        callKitDelegate?.reportIncomingCallV2(from: callUserId, userName: userName, conversationId: conversationId, video: video)
-        Logging.push.info("-----ReportIncomingCallV2")
+        if callType == "1" {
+            callKitDelegate?.reportIncomingCallV2(from: callUserId, userName: userName, conversationId: conversationId, video: video)
+        } else {
+            callKitDelegate?.requestEndCallV2(in: conversationId)
+        }
         completion()
     }
     

@@ -29,6 +29,7 @@ let PushChannelCallUserIDKey = "call_user_id"
 let PushChannelCallUserNameKey = "call_user_name"
 let PushChannelCallConversationIDKey = "call_conv_id"
 let PushChannelVideoKey = "video"
+let PushChannelCallTypeKey = "call_type"
 
 extension Dictionary {
     
@@ -155,6 +156,20 @@ extension Dictionary {
         }
     
         guard let video = userInfoData[PushChannelVideoKey] as? Bool else {
+            return nil
+        }
+    
+        return video
+    }
+    
+    // calling类型
+    func callType() -> String? {
+        guard let userInfoData = self[PushChannelDataKey as! Key] as? [String: Any] else {
+            Logging.push.safePublic("No data dictionary in notification userInfo payload");
+            return nil
+        }
+    
+        guard let video = userInfoData[PushChannelCallTypeKey] as? String else {
             return nil
         }
     
