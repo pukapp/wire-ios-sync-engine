@@ -17,9 +17,7 @@ extension CallingRoomManager: CallingSocketStateDelegate {
     func socketConnected() {
         guard self.roomState == .socketConnecting else { return }
         self.roomState = .socketConnected
-        signalWorkQueue.async {
-            self.roomConnected()
-        }
+        self.roomConnected()
     }
     
     func socketDisconnected(needDestory: Bool) {
@@ -64,7 +62,7 @@ protocol CallingClientConnectStateObserve {
  * 由于目前im端消息的推送延迟问题，所以目前socket的peerLeave信令需要处理，im端的消息也需要处理，所以就会造成多个线程同时创建，或者同时释放的问题
  * 所以这需要是一条串行队列，否则会造成很多闪退bug
  */
-let signalWorkQueue: DispatchQueue = DispatchQueue.init(label: "MediasoupSignalWorkQueue")
+private let roomManagerQueue: DispatchQueue = DispatchQueue.init(label: "MediasoupSignalWorkQueue")
 
 class CallingRoomManager: NSObject {
     
@@ -127,7 +125,7 @@ class CallingRoomManager: NSObject {
     }
     
     func connectToRoom(with roomId: UUID, userId: UUID, roomMode: RoomMode, videoState: VideoState, isStarter: Bool) {
-        zmLog.info("CallingRoomManager-connectToRoom workQueue--\(signalWorkQueue.debugDescription)")
+        zmLog.info("CallingRoomManager-connectToRoom")
         guard let callingConfigure = self.callingConfigure,
             let wsUrl = callingConfigure.vaildGateway,
             self.roomId == nil else {
@@ -144,7 +142,7 @@ class CallingRoomManager: NSObject {
         
         self.mediaOutputManager = MediaOutputManager()
         self.roomMembersManager = CallingMembersManager(observer: self)
-        ///192.168.0.110:4443----27.124.45.111:4443
+        ///192.168.0.114:4443----27.124.45.111:4443
         self.signalManager.connectRoom(with: "wss://27.124.45.111:4443", roomId: roomId.transportString(), userId: self.userId!.transportString())
         
         switch roomMode {
@@ -162,30 +160,31 @@ class CallingRoomManager: NSObject {
     }
     
     private func roomConnected() {
-        self.roomState = .socketConnected
-        self.clientConnectManager?.webSocketConnected()
+        roomManagerQueue.async {
+            self.roomState = .socketConnected
+            self.clientConnectManager?.webSocketConnected()
+        }
     }
     
     ///网络断开连接
     fileprivate func disConnectedRoom() {
         ///需要在此线程中释放资源
-        signalWorkQueue.async {
+        roomManagerQueue.async {
             zmLog.info("CallingRoomManager-disConnectedRoom--thread:\(Thread.current)")
             self.clientConnectManager?.webSocketDisConnected()
         }
     }
     
     func leaveRoom(with roomId: UUID) {
-        //不应在signalWorkQueue中调用，否则会死锁
-        self.signalManager.readyToLeaveRoom()
-        
         ///需要在此线程中释放资源
-        signalWorkQueue.async {
+        roomManagerQueue.async {
             guard self.roomId == roomId else {
                 return
             }
             zmLog.info("CallingRoomManager-leaveRoom---thread:\(Thread.current)")
-        
+            
+            self.signalManager.readyToLeaveRoom()
+            
             self.signalManager.peerLeave()
             
             self.roomState = .none
@@ -208,7 +207,7 @@ class CallingRoomManager: NSObject {
     ///当外部收到end消息时，需要主动remove，确保该成员已经被移除
     func removePeer(with id: UUID) {
         ///接收end消息时会调用，所以需要放在此线程中
-        signalWorkQueue.async {
+        roomManagerQueue.async {
             self.roomMembersManager?.removeMember(with: id)
         }
     }
@@ -218,14 +217,18 @@ class CallingRoomManager: NSObject {
 extension CallingRoomManager {
     
     func setLocalAudio(mute: Bool) {
-        zmLog.info("CallingRoomManager-setLocalAudio--\(mute)")
-        self.clientConnectManager?.setLocalAudio(mute: mute)
+        roomManagerQueue.async {
+            zmLog.info("CallingRoomManager-setLocalAudio--\(mute)")
+            self.clientConnectManager?.setLocalAudio(mute: mute)
+        }
     }
     
     func setLocalVideo(state: VideoState) {
-        zmLog.info("CallingRoomManager-setLocalVideo--\(state)")
-        self.videoState = state
-        self.clientConnectManager?.setLocalVideo(state: state)
+        roomManagerQueue.async {
+            zmLog.info("CallingRoomManager-setLocalVideo--\(state)")
+            self.videoState = state
+            self.clientConnectManager?.setLocalVideo(state: state)
+        }
     }
 }
 
@@ -243,7 +246,7 @@ extension CallingRoomManager: CallingClientConnectStateObserve {
     private func switchMode(mode: RoomMode) {
         guard self.roomMode != mode else { return }
         zmLog.info("CallingRoomManager-switchMode:\(mode)")
-        signalWorkQueue.async {
+        roomManagerQueue.async {
             if self.roomState == .none { return }
             self.roomMode = mode
             if mode == .mp {

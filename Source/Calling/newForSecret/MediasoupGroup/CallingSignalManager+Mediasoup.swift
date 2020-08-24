@@ -103,7 +103,6 @@ extension CallingSignalManager {
      func connectWebRtcTransportRequest(with transportId: String, dtlsParameters: String) {
          let data: JSON = ["transportId": transportId,
                            "dtlsParameters": JSON(parseJSON: dtlsParameters)]
-         
          sendMediasoupAction(with: .connectWebRtcTransport, data: data)
      }
      

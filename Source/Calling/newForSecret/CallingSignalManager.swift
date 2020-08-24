@@ -31,13 +31,13 @@ extension CallingSignalManager: SocketActionDelegate {
         switch action {
         case .connected:
             zmLog.info("CallingSignalManager-SocketConnected--inThread:\(Thread.current)\n")
+            isSocketConnected = true
             self.socketStateDelegate.socketConnected()
         case .disconnected(let needDestory):
             zmLog.info("CallingSignalManager-SocketDisConnected--inThread:\(Thread.current)\n")
+            isSocketConnected = false
             self.leaveGroup()
-            signalWorkQueue.async {
-                self.socketStateDelegate.socketDisconnected(needDestory: needDestory)
-            }
+            self.socketStateDelegate.socketDisconnected(needDestory: needDestory)
         case .text(text: let str):
             self.receiveSocketData(with: JSON(parseJSON: str))
         case .data(data: let data):
@@ -62,9 +62,7 @@ extension CallingSignalManager {
         ///先发response回给服务器
         let response = CallingSignalResponse(response: true, ok: true,  id: request.id, data: nil, method: request.method, roomId: request.roomId, peerId: request.peerId)
         self.send(string: response.jsonString())
-        signalWorkQueue.async {
-            self.signalDelegate?.onReceiveRequest(with: request.method, info: request.data)
-        }
+        self.signalDelegate?.onReceiveRequest(with: request.method, info: request.data)
     }
     
     func receiveSocketResponse(with response: CallingSignalResponse) {
@@ -77,9 +75,7 @@ extension CallingSignalManager {
     }
     
     func receiveSocketNotification(with notification: CallingSignalNotification) {
-        signalWorkQueue.async {
-            self.signalDelegate?.onNewNotification(with: notification.method, info: notification.data)
-        }
+        self.signalDelegate?.onNewNotification(with: notification.method, info: notification.data)
     }
     
 }
@@ -111,6 +107,7 @@ class CallingSignalManager: NSObject {
     fileprivate var syncResponse: JSON!
     
     private var socket: CallingSignalSocket?
+    private var isSocketConnected: Bool = false
     
     ///socket的状态回调
     private let socketStateDelegate: CallingSocketStateDelegate
@@ -153,12 +150,15 @@ class CallingSignalManager: NSObject {
     }
 }
 
+private let sendSocketSignalQueue: DispatchQueue = DispatchQueue.init(label: "MediasoupSendSocketSignalQueue")
+
 ///socket 发送同步异步请求
 extension CallingSignalManager{
     
     //转发信令给房间里面的某人
     func forwardSocketMessage(to peerId: String, method: String, data: JSON?) {
-        signalWorkQueue.async {
+        sendSocketSignalQueue.async {
+            guard self.isSocketConnected else { return }
             zmLog.info("CallingSignalManager-forwardSocketMessage==method:\(method)-data:\(String(describing: data))")
             let request = CallingSignalForwardMessage.init(toId: peerId, method: method, data: data)
             self.send(string: request.jsonString())
@@ -166,21 +166,26 @@ extension CallingSignalManager{
     }
     
     func sendSocketRequest(with method: String, data: JSON?) {
-        signalWorkQueue.async {
+        sendSocketSignalQueue.async {
+            guard self.isSocketConnected else { return }
             zmLog.info("CallingSignalManager-sendSocketRequest==method:\(method)-data:\(String(describing: data))")
             let request = CallingSignalRequest.init(method: method, data: data)
             self.send(string: request.jsonString())
         }
     }
     
+    //发送同步请求(其实只是堵塞当前线程，等待响应而已)
     func sendAckSocketRequest(with method: String, data: JSON?) -> JSON? {
+        guard isSocketConnected else { return nil }
         let request = CallingSignalRequest(method: method, data: data)
         zmLog.info("CallingSignalManager-sendAckSocketRequest==method:\(method)-id:\(request.id)-data:\(request.data)-thread:\(Thread.current)\n")
         syncRequestMap[method] = request.id
         self.enterGroup()
         self.syncResponse = nil
         
-        self.socket?.send(string: request.jsonString())
+        sendSocketSignalQueue.async {
+            self.socket?.send(string: request.jsonString())
+        }
         
         let result = sendAckRequestDispatch.wait(timeout: .now() + 30)
         if result == .success {

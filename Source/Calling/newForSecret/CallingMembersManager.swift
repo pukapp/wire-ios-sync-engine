@@ -11,6 +11,8 @@ import WebRTC
 
 private let zmLog = ZMSLog(tag: "calling")
 
+private let membersManagerQueue: DispatchQueue = DispatchQueue.init(label: "CallingMembersManagerQueue")
+
 protocol CallingMembersManagerProtocol {
     
     init(observer: CallingMembersObserver)
@@ -43,45 +45,55 @@ class CallingMembersManager: CallingMembersManagerProtocol {
     }
     
     func addNewMember(with id: UUID, hasVideo: Bool) {
-        if let member = self.members.first(where: { return $0.memberId == id }) {
-            member.setMemberConnectState(with: .connecting)
-        } else {
-            let member = CallingMember(memberId: id, stateObserver: self, hasAudio: true, videoState: hasVideo ? .started : .stopped)
-            self.members.append(member)
+        membersManagerQueue.async {
+            if let member = self.members.first(where: { return $0.memberId == id }) {
+                member.setMemberConnectState(with: .connecting)
+            } else {
+                let member = CallingMember(memberId: id, stateObserver: self, hasAudio: true, videoState: hasVideo ? .started : .stopped)
+                self.members.append(member)
+            }
         }
     }
     
     func removeMember(with id: UUID) {
-        guard let member = self.members.first(where: { return $0.memberId == id }) else {
-            zmLog.info("CallingMembersManager--no peer to remove")
-            return
-        }
-        member.clear()
-        self.members = self.members.filter({ return $0.memberId != id })
-        member.setMemberConnectState(with: .unconnected)
-        if self.members.count == 0 {
-            self.observer.roomEmpty()
+        membersManagerQueue.async {
+            guard let member = self.members.first(where: { return $0.memberId == id }) else {
+                zmLog.info("CallingMembersManager--no peer to remove")
+                return
+            }
+            member.clear()
+            self.members = self.members.filter({ return $0.memberId != id })
+            member.setMemberConnectState(with: .unconnected)
+            if self.members.count == 0 {
+                self.observer.roomEmpty()
+            }
         }
     }
     
     func memberConnected(with id: UUID) {
-        if let member = self.members.first(where: { return $0.memberId == id }) {
-            member.setMemberConnectState(with: .connected(videoState: member.videoState))
+        membersManagerQueue.async {
+            if let member = self.members.first(where: { return $0.memberId == id }) {
+                member.setMemberConnectState(with: .connected(videoState: member.videoState))
+            }
         }
     }
     
     func memberConnecting(with id: UUID) {
-        if let member = self.members.first(where: { return $0.memberId == id }) {
-            member.setMemberConnectState(with: .connecting)
+        membersManagerQueue.async {
+            if let member = self.members.first(where: { return $0.memberId == id }) {
+                member.setMemberConnectState(with: .connecting)
+            }
         }
     }
     
     func memberDisConnect(with id: UUID) {
-        guard let member = self.members.first(where: { return $0.memberId == id }) else {
-            zmLog.info("CallingMembersManager--no peer to disConnect")
-            return
+        membersManagerQueue.async {
+            guard let member = self.members.first(where: { return $0.memberId == id }) else {
+                zmLog.info("CallingMembersManager--no peer to disConnect")
+                return
+            }
+            member.setMemberConnectState(with: .unconnected)
         }
-        member.setMemberConnectState(with: .unconnected)
     }
     
     var membersCount: Int {
@@ -89,11 +101,13 @@ class CallingMembersManager: CallingMembersManagerProtocol {
     }
     
     func setMemberVideo(_ state: VideoState, mid: UUID) {
-        guard let member = self.members.first(where: { return $0.memberId == mid }) else {
-            zmLog.info("CallingMembersManager--no peer to setMemberVideo")
-            return
+        membersManagerQueue.async {
+            guard let member = self.members.first(where: { return $0.memberId == mid }) else {
+                zmLog.info("CallingMembersManager--no peer to setMemberVideo")
+                return
+            }
+            member.setVideoState(state)
         }
-        member.setVideoState(state)
     }
     
     ///总共接收到的视频个数
@@ -102,8 +116,10 @@ class CallingMembersManager: CallingMembersManagerProtocol {
     }
     
     func clear() {
-        self.members.forEach({ $0.clear() })
-        self.members.removeAll()
+        membersManagerQueue.async {
+            self.members.forEach({ $0.clear() })
+            self.members.removeAll()
+        }
     }
     
     deinit {
@@ -125,18 +141,22 @@ protocol CallingMediaStateManagerProtocol {
 extension CallingMembersManager: CallingMediaStateManagerProtocol {
     
     func addVideoTrack(with mid: UUID, videoTrack: RTCVideoTrack) {
-        if let member = self.members.first(where: { return $0.memberId == mid }) {
-            member.videoTrack = videoTrack
-        } else {
-            zmLog.info("CallingMembersManager-addVideoTrack:---there is no member")
+        membersManagerQueue.async {
+            if let member = self.members.first(where: { return $0.memberId == mid }) {
+                member.videoTrack = videoTrack
+            } else {
+                zmLog.info("CallingMembersManager-addVideoTrack:---there is no member")
+            }
         }
     }
     
     func removeVideoTrack(with mid: UUID) {
-        if let member = self.members.first(where: { return $0.memberId == mid }) {
-            member.videoTrack = nil
-        } else {
-            zmLog.info("CallingMembersManager-removeVideoTrack:---there is no member")
+        membersManagerQueue.async {
+            if let member = self.members.first(where: { return $0.memberId == mid }) {
+                member.videoTrack = nil
+            } else {
+                zmLog.info("CallingMembersManager-removeVideoTrack:---there is no member")
+            }
         }
     }
     
