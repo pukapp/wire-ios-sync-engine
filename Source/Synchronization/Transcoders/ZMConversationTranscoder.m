@@ -503,7 +503,11 @@ NSNotificationName const ZMUpdateTaskListNotificationName = @"ZMUpdateTaskListNo
             [[NSNotificationCenter defaultCenter] postNotificationName:ConversationOtrMessageAdd object:nil userInfo:nil];
         }
         
-        
+        //itask刷新任务列表
+        if (event.type == ZMUpdateEventTypeITaskServiceMessageAdd ||
+            event.type == ZMUpdateEventTypeITaskDynamicMessageAdd){
+            [[NSNotificationCenter defaultCenter] postNotificationName:ZMUpdateTaskListNotificationName object:nil userInfo:nil];
+        }
         
         if (liveEvents) {
             [self processUpdateEvent:event forConversation:conversation previousLastServerTimestamp:currentLastTimestamp];
@@ -997,7 +1001,6 @@ NSNotificationName const ZMUpdateTaskListNotificationName = @"ZMUpdateTaskListNo
 {
     // itask群，不需要生成成员添加和删除的消息
     if (conversation.isITaskGroup && (event.type == ZMUpdateEventTypeConversationMemberJoin || event.type == ZMUpdateEventTypeConversationMemberLeave)) {
-        [[NSNotificationCenter defaultCenter] postNotificationName:ZMUpdateTaskListNotificationName object:nil userInfo:nil];
         return;
     }
     ZMSystemMessage *systemMessage = [ZMSystemMessage createOrUpdateMessageFromUpdateEvent:event inManagedObjectContext:self.managedObjectContext];
