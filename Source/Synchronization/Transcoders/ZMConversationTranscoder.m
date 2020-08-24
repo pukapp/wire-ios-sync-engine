@@ -56,6 +56,8 @@ static NSString *const ConversationAccessRoleKey = @"access_role";
 static NSString *const ConversationTeamIdKey = @"teamid";
 static NSString *const ConversationTeamManagedKey = @"managed";
 
+NSNotificationName const ZMUpdateTaskListNotificationName = @"ZMUpdateTaskListNotificationName";
+
 @interface ZMConversationTranscoder () <ZMSimpleListRequestPaginatorSync>
 
 @property (nonatomic) ZMUpstreamModifiedObjectSync *modifiedSync;
@@ -501,7 +503,11 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             [[NSNotificationCenter defaultCenter] postNotificationName:ConversationOtrMessageAdd object:nil userInfo:nil];
         }
         
-        
+        //itask刷新任务列表
+        if (event.type == ZMUpdateEventTypeITaskServiceMessageAdd ||
+            event.type == ZMUpdateEventTypeITaskDynamicMessageAdd){
+            [[NSNotificationCenter defaultCenter] postNotificationName:ZMUpdateTaskListNotificationName object:nil userInfo:nil];
+        }
         
         if (liveEvents) {
             [self processUpdateEvent:event forConversation:conversation previousLastServerTimestamp:currentLastTimestamp];
