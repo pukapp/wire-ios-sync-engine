@@ -85,7 +85,7 @@ extension SessionManager: PKPushRegistryDelegate {
         // 13.3以上只处理呼叫通话消息
         if #available(iOS 13.3, *) {
             // 呼叫消息
-            if let video = payload.dictionaryPayload.video(),
+            if let callType = payload.dictionaryPayload.callType(),
                 let userId = payload.dictionaryPayload.accountId() {
                 pushCallNotification(to: userId, payload: payload, completion: completion)
                 
