@@ -197,14 +197,14 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     ///创建transport
     private func createWebRtcTransports() {
         zmLog.info("MediasoupClientManager-createWebRtcTransports--PThread:\(Thread.current)")
-        guard let sendJson = signalManager.createWebRtcTransportRequest(with: true) else {
-            return
-        }
-        self.processWebRtcTransport(with: true, webRtcTransportData: sendJson)
         guard let recvJson = signalManager.createWebRtcTransportRequest(with: false) else {
             return
         }
         self.processWebRtcTransport(with: false, webRtcTransportData: recvJson)
+        guard let sendJson = signalManager.createWebRtcTransportRequest(with: true) else {
+            return
+        }
+        self.processWebRtcTransport(with: true, webRtcTransportData: sendJson)
         self.changeMediasoupConnectStep(.loginRoom)
     }
     
@@ -491,7 +491,10 @@ class MediasoupTransportListener: NSObject, SendTransportListener, RecvTransport
 
     func onProduce(_ transport: Transport!, kind: String!, rtpParameters: String!, appData: String!, callback: ((String?) -> Void)!) {
         zmLog.info("MediasoupClientManager-transport-onProduce====isProduce:\(isProduce)\n")
-        callback(self.delegate.onProduce(transport.getId(), kind: kind, rtpParameters: rtpParameters, appData: appData))
+        //暂时先将此接口延迟1s调用，来防止线程被堵塞
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            callback(self.delegate.onProduce(transport.getId(), kind: kind, rtpParameters: rtpParameters, appData: appData))
+        }
     }
     
     func onConnect(_ transport: Transport!, dtlsParameters: String!) {
