@@ -168,7 +168,7 @@ extension SessionManager {
 
 fileprivate extension BackupMetadata {
     
-    fileprivate static let nameAppName = "Itask"
+    fileprivate static let nameAppName = "iTask"
     fileprivate static let nameFileName = "Backup"
     fileprivate static let fileExtension = "ios_sbu"
 
