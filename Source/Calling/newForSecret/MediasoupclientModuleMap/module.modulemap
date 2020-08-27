@@ -1,4 +1,0 @@
-module Mediasoupclient {
-header "/Users/lco/Desktop/ios-secret-new/Carthage/Checkouts/wire-ios-sync-engine/Carthage/Build/iOS/mediasoup_client_ios.framework/Headers/Mediasoupclient.h"
-export *
-}

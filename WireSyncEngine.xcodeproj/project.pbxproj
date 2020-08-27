@@ -6,20 +6,6 @@
 	objectVersion = 46;
 	objects = {
 
-/* Begin PBXAggregateTarget section */
-		73FCF0F62466B1B400AB37ED /* MediasoupclientModuleMap */ = {
-			isa = PBXAggregateTarget;
-			buildConfigurationList = 73FCF0F72466B1B400AB37ED /* Build configuration list for PBXAggregateTarget "MediasoupclientModuleMap" */;
-			buildPhases = (
-				73FCF0FA2466B1D500AB37ED /* ShellScript */,
-			);
-			dependencies = (
-			);
-			name = MediasoupclientModuleMap;
-			productName = MediasoupclientModuleMap;
-		};
-/* End PBXAggregateTarget section */
-
 /* Begin PBXBuildFile section */
 		092083401BA95EE100F82B29 /* UserClientRequestFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0920833F1BA95EE100F82B29 /* UserClientRequestFactory.swift */; };
 		0920C4DA1B305FF500C55728 /* UserSessionGiphyRequestStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0920C4D81B305FF500C55728 /* UserSessionGiphyRequestStateTests.swift */; };
@@ -613,13 +599,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = 549815921A43232400A7CE2E;
 			remoteInfo = "WireSyncEngine-ios.framework";
-		};
-		73FCF0FB2466B23C00AB37ED /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 540029AB1918CA8500578793 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 73FCF0F62466B1B400AB37ED;
-			remoteInfo = MediasoupclientModuleMap;
 		};
 		A9FF8088195B17B3002CD44B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -2639,7 +2618,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				73FCF0FC2466B23C00AB37ED /* PBXTargetDependency */,
 			);
 			name = "WireSyncEngine-ios";
 			productName = "WireSyncEngine-ios";
@@ -2681,11 +2659,6 @@
 						LastSwiftMigration = 1000;
 						ProvisioningStyle = Automatic;
 					};
-					73FCF0F62466B1B400AB37ED = {
-						CreatedOnToolsVersion = 10.2.1;
-						DevelopmentTeam = K7PT8BFN3J;
-						ProvisioningStyle = Automatic;
-					};
 				};
 			};
 			buildConfigurationList = 540029AE1918CA8500578793 /* Build configuration list for PBXProject "WireSyncEngine" */;
@@ -2724,7 +2697,6 @@
 				549815921A43232400A7CE2E /* WireSyncEngine-ios */,
 				3E1860C2191A649D000FE027 /* WireSyncEngine-iOS-Tests */,
 				3E186087191A56F6000FE027 /* WireSyncEngine Test Host */,
-				73FCF0F62466B1B400AB37ED /* MediasoupclientModuleMap */,
 			);
 		};
 /* End PBXProject section */
@@ -2811,23 +2783,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "# to run locally, replace with $(BUILT_PRODUCTS_DIR)/WireSyncEngine.framework\n/usr/local/bin/carthage copy-frameworks\n";
-		};
-		73FCF0FA2466B1D500AB37ED /* ShellScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "if [ -d \"${SRCROOT}/Source/Calling/newForSecret/MediasoupclientModuleMap\" ]; then\necho \"${SRCROOT}/Source/Calling/newForSecret/MediasoupclientModuleMap directory already exists, so skipping the rest of the script.\"\nexit 0\nfi\n\nmkdir -p \"${SRCROOT}/Source/Calling/newForSecret/MediasoupclientModuleMap\"\ncat <<EOF > \"${SRCROOT}/Source/Calling/newForSecret/MediasoupclientModuleMap/module.modulemap\"\nmodule Mediasoupclient {\nheader \"${SRCROOT}/Carthage/Build/iOS/mediasoup_client_ios.framework/Headers/Mediasoupclient.h\"\nexport *\n}\nEOF\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -3343,11 +3298,6 @@
 			target = 549815921A43232400A7CE2E /* WireSyncEngine-ios */;
 			targetProxy = 54F4DC571A4438AC00FDB6EA /* PBXContainerItemProxy */;
 		};
-		73FCF0FC2466B23C00AB37ED /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 73FCF0F62466B1B400AB37ED /* MediasoupclientModuleMap */;
-			targetProxy = 73FCF0FB2466B23C00AB37ED /* PBXContainerItemProxy */;
-		};
 		A9FF8089195B17B3002CD44B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 3E186087191A56F6000FE027 /* WireSyncEngine Test Host */;
@@ -3558,7 +3508,7 @@
 				MOMC_NO_INVERSE_RELATIONSHIP_WARNINGS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.$(PRODUCT_NAME:rfc1034identifier)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Source/Calling/newForSecret\"";
+				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Carthage/Build/iOS\"";
 				SWIFT_OBJC_BRIDGING_HEADER = "";
 			};
 			name = Debug;
@@ -3582,26 +3532,8 @@
 				MOMC_NO_INVERSE_RELATIONSHIP_WARNINGS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.$(PRODUCT_NAME:rfc1034identifier)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Source/Calling/newForSecret\"";
+				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Carthage/Build/iOS\"";
 				SWIFT_OBJC_BRIDGING_HEADER = "";
-			};
-			name = Release;
-		};
-		73FCF0F82466B1B400AB37ED /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = K7PT8BFN3J;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-			};
-			name = Debug;
-		};
-		73FCF0F92466B1B400AB37ED /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = K7PT8BFN3J;
-				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
 		};
@@ -3640,15 +3572,6 @@
 			buildConfigurations = (
 				549815A71A43232500A7CE2E /* Debug */,
 				549815A91A43232500A7CE2E /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		73FCF0F72466B1B400AB37ED /* Build configuration list for PBXAggregateTarget "MediasoupclientModuleMap" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				73FCF0F82466B1B400AB37ED /* Debug */,
-				73FCF0F92466B1B400AB37ED /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
