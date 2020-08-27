@@ -230,7 +230,7 @@ extension ZMUserSession {
         let syncMOC = managedObjectContext.zm_sync!
         syncMOC.performGroupedBlock {
             guard let selfClient = ZMUser.selfUser(in: syncMOC).selfClient() else { return }
-            if selfClient.pushToken?.deviceToken != data {
+            if selfClient.pushToken?.deviceToken != data || selfClient.pushToken?.isiOS13Registered == false {
                 selfClient.pushToken = PushToken(deviceToken: data,
                                                  appIdentifier: metadata.appIdentifier,
                                                  transportType: metadata.transportType,
