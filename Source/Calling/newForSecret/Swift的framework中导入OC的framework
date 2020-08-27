@@ -1,4 +1,4 @@
 由于mediasoup_client_ios 是OC的库，所以想要在swift中使用的话需要进行module的配置
 解决方案：
-简书：https://www.jianshu.com/p/0efdbe18542f
-stackoverflow：https://stackoverflow.com/questions/25248598/importing-commoncrypto-in-a-swift-framework
+stackoverflow：https://stackoverflow.com/questions/33797212/import-objective-c-framework-into-swift-framework-project
+此问题的第二个答案是有效的，需要在与OC.Framework的同级目录下配置module.modulemap，并且在项目的buildSetting中的SWIFT_INCLUDE_PATHS设置为OC.Framework的目录
