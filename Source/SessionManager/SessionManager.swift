@@ -421,8 +421,8 @@ public protocol ForegroundNotificationResponder: class {
         
         
         // register for voIP push notifications
-        self.pushRegistry.delegate = self
-        self.pushRegistry.desiredPushTypes = Set(arrayLiteral: PKPushType.voIP)
+//        self.pushRegistry.delegate = self
+//        self.pushRegistry.desiredPushTypes = Set(arrayLiteral: PKPushType.voIP)
         self.urlHandler = SessionManagerURLHandler(userSessionSource: self)
 
         postLoginAuthenticationToken = PostLoginAuthenticationNotification.addObserver(self, queue: self.groupQueue)
