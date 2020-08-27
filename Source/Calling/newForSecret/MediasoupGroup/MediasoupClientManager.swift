@@ -236,7 +236,9 @@ class MediasoupClientManager: CallingClientConnectProtocol {
                 receiveNewPeer(peerInfo: info)
             }
         }
-        self.changeMediasoupConnectStep(.produce)
+        DispatchQueue.global().asyncAfter(deadline: .now() + 2) {
+            self.changeMediasoupConnectStep(.produce)
+        }
     }
     
      func produceAudio() {
@@ -492,9 +494,7 @@ class MediasoupTransportListener: NSObject, SendTransportListener, RecvTransport
     func onProduce(_ transport: Transport!, kind: String!, rtpParameters: String!, appData: String!, callback: ((String?) -> Void)!) {
         zmLog.info("MediasoupClientManager-transport-onProduce====isProduce:\(isProduce)\n")
         //暂时先将此接口延迟1s调用，来防止线程被堵塞
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            callback(self.delegate.onProduce(transport.getId(), kind: kind, rtpParameters: rtpParameters, appData: appData))
-        }
+        callback(self.delegate.onProduce(transport.getId(), kind: kind, rtpParameters: rtpParameters, appData: appData))
     }
     
     func onConnect(_ transport: Transport!, dtlsParameters: String!) {

@@ -142,8 +142,8 @@ class CallingRoomManager: NSObject {
         
         self.mediaOutputManager = MediaOutputManager()
         self.roomMembersManager = CallingMembersManager(observer: self)
-        ///192.168.0.114:4443----27.124.45.111:4443
-        self.signalManager.connectRoom(with: "wss://27.124.45.111:4443", roomId: roomId.transportString(), userId: self.userId!.transportString())
+        ///192.168.0.114:4443----143.92.53.170 :4443
+        self.signalManager.connectRoom(with: wsUrl, roomId: roomId.transportString(), userId: self.userId!.transportString())
         
         switch roomMode {
         case .p2p(let peerId):
