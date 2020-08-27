@@ -32,7 +32,7 @@ public protocol UserNotificationCenter: class {
     func setNotificationCategories(_ categories: Set<UNNotificationCategory>)
     
     // Requests authorization to use notifications.
-    func requestAuthorization(options: UNAuthorizationOptions, completionHandler: @escaping (Bool, Error?) -> Void)
+//    func requestAuthorization(options: UNAuthorizationOptions, completionHandler: @escaping (Bool, Error?) -> Void)
     
     /// Schedules the request to display a local notification.
     func add(_ request: UNNotificationRequest, withCompletionHandler: ((Error?) -> Void)?)

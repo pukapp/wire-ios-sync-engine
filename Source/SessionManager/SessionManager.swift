@@ -648,7 +648,7 @@ public protocol ForegroundNotificationResponder: class {
             self.urlHandler.sessionManagerActivated(userSession: session)
             
             // Configure user notifications if they weren't already previously configured.
-            self.configureUserNotifications()
+//            self.configureUserNotifications()
         }
     }
 

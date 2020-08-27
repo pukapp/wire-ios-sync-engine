@@ -215,10 +215,10 @@ extension SessionManager: PKPushRegistryDelegate {
     // MARK: Helpers
     
     @objc public func configureUserNotifications() {
-        guard application.shouldRegisterUserNotificationSettings ?? true else { return }
-        notificationCenter.setNotificationCategories(PushNotificationCategory.allCategories)
-        notificationCenter.requestAuthorization(options: [.alert, .badge, .sound], completionHandler: { _, _ in })
-        notificationCenter.delegate = self
+//        guard application.shouldRegisterUserNotificationSettings ?? true else { return }
+//        notificationCenter.setNotificationCategories(PushNotificationCategory.allCategories)
+//        notificationCenter.requestAuthorization(options: [.alert, .badge, .sound], completionHandler: { _, _ in })
+//        notificationCenter.delegate = self
     }
     
     public func updatePushToken(for session: ZMUserSession) {
