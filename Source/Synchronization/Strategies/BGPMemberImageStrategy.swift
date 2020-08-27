@@ -9,23 +9,6 @@
 import UIKit
 
 
-let NSManagedObjectContextBGPMemberAssetCacheKey = "BGPMemberAssetCache"
-extension NSManagedObjectContext
-{
-    @objc
-    public var zm_BGPMemberAssetCache: NSCache<NSUUID, NSData>? {
-        get {
-            guard zm_isUserInterfaceContext else { return nil }
-            return self.userInfo[NSManagedObjectContextBGPMemberAssetCacheKey] as? NSCache
-        }
-        
-        set {
-            guard zm_isUserInterfaceContext else { return }
-            self.userInfo[NSManagedObjectContextBGPMemberAssetCacheKey] = newValue
-        }
-    }
-}
-
 public extension Notification.Name {
     static let bgpMemberDidRequestPreviewAsset = Notification.Name("bgpMemberDidRequestPreviewAsset")
     static let requestBGPMemberPreviewAssetSuccess = Notification.Name("requestBGPMemberPreviewAssetSuccess")
@@ -67,7 +50,7 @@ public class BGPMemberImageStrategy : AbstractRequestStrategy {
     }
     
     @available (*, unavailable)
-    public override init(withManagedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         fatalError()
     }
     

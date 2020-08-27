@@ -36,7 +36,7 @@ public class SearchUserImageStrategy : AbstractRequestStrategy {
     fileprivate var observers: [Any] = []
     
     @available (*, unavailable)
-    public override init(withManagedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         fatalError()
     }
     

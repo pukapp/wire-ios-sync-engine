@@ -230,6 +230,29 @@ struct PushTokenMetadata {
     }()
 }
 
+struct ApnsPushTokenMetadata {
+    let isSandbox: Bool
+    let appIdentifier: String
+    var transportType: String {
+        if isSandbox {
+            return "APNS_SANDBOX"
+        }
+        else {
+            return "APNS"
+        }
+    }
+    static var current: ApnsPushTokenMetadata = {
+        let appId = Bundle.main.bundleIdentifier ?? ""
+        let buildType = BuildType.init(bundleID: appId)
+        
+        let isSandbox = ZMMobileProvisionParser().apsEnvironment == .sandbox
+        let appIdentifier = buildType.certificateName
+        
+        let metadata = ApnsPushTokenMetadata(isSandbox: isSandbox, appIdentifier: appIdentifier)
+        return metadata
+    }()
+}
+
 extension ZMUserSession {
 
     @objc public static let registerCurrentPushTokenNotificationName = Notification.Name(rawValue: "ZMUserSessionResetPushTokensNotification")
@@ -244,8 +267,23 @@ extension ZMUserSession {
         let syncMOC = managedObjectContext.zm_sync!
         syncMOC.performGroupedBlock {
             guard let selfClient = ZMUser.selfUser(in: syncMOC).selfClient() else { return }
-            if selfClient.pushToken?.deviceToken != data {
+            if selfClient.pushToken?.deviceToken != data || selfClient.pushToken?.isiOS13Registered == false {
                 selfClient.pushToken = PushToken(deviceToken: data,
+                                                 appIdentifier: metadata.appIdentifier,
+                                                 transportType: metadata.transportType,
+                                                 isRegistered: false)
+                syncMOC.saveOrRollback()
+            }
+        }
+    }
+    
+    func setApnsPushKitToken(_ token: String) {
+        let metadata = ApnsPushTokenMetadata.current
+        let syncMOC = managedObjectContext.zm_sync!
+        syncMOC.performGroupedBlock {
+            guard let selfClient = ZMUser.selfUser(in: syncMOC).selfClient() else { return }
+            if selfClient.apnsPushToken?.deviceToken != token {
+                selfClient.apnsPushToken = ApnsPushToken(deviceToken: token,
                                                  appIdentifier: metadata.appIdentifier,
                                                  transportType: metadata.transportType,
                                                  isRegistered: false)
@@ -267,6 +305,7 @@ extension ZMUserSession {
     @objc public func registerCurrentPushToken() {
         managedObjectContext.performGroupedBlock {
             self.sessionManager.updatePushToken(for: self)
+            self.sessionManager.updateApnsPushToken(for: self)
         }
     }
 

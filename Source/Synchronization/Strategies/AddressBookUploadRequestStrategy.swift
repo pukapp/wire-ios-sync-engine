@@ -46,12 +46,12 @@ private let addressBookLastUploadedIndex = "ZMAddressBookTranscoderLastIndexUplo
     /// Address book
     fileprivate let addressBookGenerator : ()->(AddressBookAccessor?)
     
-    public override convenience init(withManagedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override convenience init(withManagedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         self.init(managedObjectContext: moc, applicationStatus: applicationStatus, addressBookGenerator: { return AddressBook.factory() })
     }
     
     /// Use for testing only
-    internal init(managedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus, addressBookGenerator: @escaping ()->(AddressBookAccessor?) = { return AddressBook.factory() }) {
+    internal init(managedObjectContext moc: NSManagedObjectContext, applicationStatus: ApplicationStatus?, addressBookGenerator: @escaping ()->(AddressBookAccessor?) = { return AddressBook.factory() }) {
         // notify of denied access
         if addressBookGenerator() == nil {
             NotificationInContext(name: failedToAccessAddressBookNotificationName, context: moc.notificationContext).post()
