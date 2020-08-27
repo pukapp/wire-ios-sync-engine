@@ -458,6 +458,11 @@ NSNotificationName const ZMUpdateTaskListNotificationName = @"ZMUpdateTaskListNo
 //            [self createConversationAndJoinMemberFromEvent:event];
 //            continue;
 //        }
+        //itask刷新任务列表
+        if (event.type == ZMUpdateEventTypeITaskServiceMessageAdd ||
+            event.type == ZMUpdateEventTypeITaskDynamicMessageAdd){
+            [[NSNotificationCenter defaultCenter] postNotificationName:ZMUpdateTaskListNotificationName object:nil userInfo:nil];
+        }
 
         if (/*event.type == ZMUpdateEventTypeConversationServiceMessageAdd ||*/ event.type == ZMUpdateEventTypeITaskServiceMessageAdd) {
             [[NSNotificationCenter defaultCenter]postNotificationName:ConversationServiceMessageAdd object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
@@ -503,11 +508,7 @@ NSNotificationName const ZMUpdateTaskListNotificationName = @"ZMUpdateTaskListNo
             [[NSNotificationCenter defaultCenter] postNotificationName:ConversationOtrMessageAdd object:nil userInfo:nil];
         }
         
-        //itask刷新任务列表
-        if (event.type == ZMUpdateEventTypeITaskServiceMessageAdd ||
-            event.type == ZMUpdateEventTypeITaskDynamicMessageAdd){
-            [[NSNotificationCenter defaultCenter] postNotificationName:ZMUpdateTaskListNotificationName object:nil userInfo:nil];
-        }
+
         
         if (liveEvents) {
             [self processUpdateEvent:event forConversation:conversation previousLastServerTimestamp:currentLastTimestamp];
