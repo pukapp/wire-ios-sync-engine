@@ -19,7 +19,9 @@ extension MediasoupClientManager: CallingSignalManagerDelegate {
         zmLog.info("MediasoupClientManager-onReceiveRequest:action:\(action)")
         switch action {
         case .newConsumer:
-            self.handleNewConsumer(with: info)
+            produceConsumerSerialQueue.async {
+                self.handleNewConsumer(with: info)
+            }
         }
     }
     
@@ -50,6 +52,9 @@ extension MediasoupClientManager: CallingSignalManagerDelegate {
     
 }
 
+//由于sendTransport!.produce这个方法会堵塞线程以及不能在两个线程分别创建produce和consumer，所以需要将他们单独放置在另外一个串行队列中去创建它们
+private let produceConsumerSerialQueue: DispatchQueue = DispatchQueue(label: "produceConsumerSerialQueue")
+
 class MediasoupClientManager: CallingClientConnectProtocol {
     
     enum MediasoupConnectStep {
@@ -58,6 +63,8 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         case createTransport
         case loginRoom
         case produce
+        
+        case connectFailure
     }
     
     private var device: MPDevice?
@@ -118,8 +125,9 @@ class MediasoupClientManager: CallingClientConnectProtocol {
                 self.produceVideo()
             }
             self.handleRetainedConsumers()
+        case .connectFailure:
+            zmLog.info("MediasoupClientManager-changeMediasoupConnectStep--\(step)")
         }
-        
     }
     
     func webSocketConnected() {
@@ -185,58 +193,67 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             self.device = MPDevice()
         }
         if !self.device!.isLoaded() {
-            guard let rtpCapabilities = self.signalManager.requestToGetRoomRtpCapabilities() else {
-                return
+            self.signalManager.requestToGetRoomRtpCapabilities { (rtpCapabilities) in
+                guard let rtpCapabilities = rtpCapabilities else {
+                    self.changeMediasoupConnectStep(.connectFailure)
+                    return
+                }
+                self.device?.load(rtpCapabilities)
+                zmLog.info("MediasoupClientManager-configureDevice--rtpCapabilities:\(String(describing: self.device!.getRtpCapabilities()))")
+                self.changeMediasoupConnectStep(.createTransport)
             }
-            self.device!.load(rtpCapabilities)
         }
-        zmLog.info("MediasoupClientManager-configureDevice--rtpCapabilities:\(String(describing: self.device!.getRtpCapabilities()))")
-        self.changeMediasoupConnectStep(.createTransport)
     }
     
     ///创建transport
     private func createWebRtcTransports() {
         zmLog.info("MediasoupClientManager-createWebRtcTransports--PThread:\(Thread.current)")
-        guard let recvJson = signalManager.createWebRtcTransportRequest(with: false) else {
-            return
+        signalManager.createWebRtcTransportRequest(with: false) { (recvJson) in
+            guard let recvJson = recvJson else {
+                self.changeMediasoupConnectStep(.connectFailure)
+                return
+            }
+            self.processWebRtcTransport(with: false, webRtcTransportData: recvJson)
         }
-        self.processWebRtcTransport(with: false, webRtcTransportData: recvJson)
-        guard let sendJson = signalManager.createWebRtcTransportRequest(with: true) else {
-            return
+        signalManager.createWebRtcTransportRequest(with: true) { (recvJson) in
+            guard let recvJson = recvJson else {
+                self.changeMediasoupConnectStep(.connectFailure)
+                return
+            }
+            self.processWebRtcTransport(with: true, webRtcTransportData: recvJson)
+            self.changeMediasoupConnectStep(.loginRoom)
         }
-        self.processWebRtcTransport(with: true, webRtcTransportData: sendJson)
-        self.changeMediasoupConnectStep(.loginRoom)
     }
     
     private func processWebRtcTransport(with isProducing: Bool, webRtcTransportData: JSON) {
-           let id: String = webRtcTransportData["id"].stringValue
-           let iceParameters: String = webRtcTransportData["iceParameters"].description
-           let iceCandidates: String = webRtcTransportData["iceCandidates"].description
-           let dtlsParameters: String = webRtcTransportData["dtlsParameters"].description
+        let id: String = webRtcTransportData["id"].stringValue
+        let iceParameters: String = webRtcTransportData["iceParameters"].description
+        let iceCandidates: String = webRtcTransportData["iceCandidates"].description
+        let dtlsParameters: String = webRtcTransportData["dtlsParameters"].description
            
-           if isProducing {
-               self.sendTransportListen = MediasoupTransportListener(isProduce: true, delegate: self)
-               self.sendTransport = self.device!.createSendTransport(sendTransportListen, id: id, iceParameters: iceParameters, iceCandidates: iceCandidates, dtlsParameters: dtlsParameters)
-           } else {
-               self.recvTransportListen = MediasoupTransportListener(isProduce: false, delegate: self)
-               self.recvTransport = self.device!.createRecvTransport(recvTransportListen, id: id, iceParameters: iceParameters, iceCandidates: iceCandidates, dtlsParameters: dtlsParameters)
-               //创建好recvTransport之后就可以开始处理接收到暂存的Consumers了
-               handleRetainedConsumers()
-           }
-       }
+        if isProducing {
+            self.sendTransportListen = MediasoupTransportListener(isProduce: true, delegate: self)
+            self.sendTransport = self.device!.createSendTransport(sendTransportListen, id: id, iceParameters: iceParameters, iceCandidates: iceCandidates, dtlsParameters: dtlsParameters)
+        } else {
+            self.recvTransportListen = MediasoupTransportListener(isProduce: false, delegate: self)
+            self.recvTransport = self.device!.createRecvTransport(recvTransportListen, id: id, iceParameters: iceParameters, iceCandidates: iceCandidates, dtlsParameters: dtlsParameters)
+            //创建好recvTransport之后就可以开始处理接收到暂存的Consumers了
+            handleRetainedConsumers()
+        }
+        zmLog.info("MediasoupClientManager-processWebRtcTransport--isProducing:\(isProducing)")
+    }
     
     ///登录房间，并且获取房间内peer信息
     private func loginRoom() {
-        guard let response = self.signalManager.loginRoom(with: self.device!.getRtpCapabilities()) else {
-            return
-        }
-        if let peers = response["peers"].array,
-            peers.count > 0 {
-            for info in peers {
-                receiveNewPeer(peerInfo: info)
+        self.signalManager.loginRoom(with: self.device!.getRtpCapabilities()) { (res) in
+            guard let res = res else {
+                return
             }
-        }
-        DispatchQueue.global().asyncAfter(deadline: .now() + 2) {
+            if let peers = res["peers"].array, peers.count > 0 {
+                for info in peers {
+                    self.receiveNewPeer(peerInfo: info)
+                }
+            }
             self.changeMediasoupConnectStep(.produce)
         }
     }
@@ -281,16 +298,19 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         /** 需要注意：sendTransport!.produce 这个方法最好在一个线程里面同步的去执行
          *  webRTC 里面 peerConnection 的 各种状态设置不是线程安全的，并且当传入了错误的状态会报错，从而引起应用崩溃，所以这里一个一个的去创建produce
         */
-        guard let sendTransport = self.sendTransport else {
-            return
+        produceConsumerSerialQueue.async {
+            let listener = MediasoupProducerListener()
+            guard let sendTransport = self.sendTransport else {
+                return
+            }
+            //#Warning 此方法会堵塞线程，等待代理方法onProduce获得produceId回调才继续,所以千万不能在socket的接收线程中调用，会形成死循环
+            let producer: Producer = sendTransport.produce(listener, track: track, encodings: encodings, codecOptions: codecOptions)
+            listener.producerId =  producer.getId()
+            self.producers.append(producer)
+            self.producerListeners.append(listener)
+            
+            zmLog.info("MediasoupClientManager-createProducer id =" + producer.getId() + " kind =" + producer.getKind())
         }
-        let listener = MediasoupProducerListener()
-        let producer: Producer = sendTransport.produce(listener, track: track, encodings: encodings, codecOptions: codecOptions)
-        listener.producerId =  producer.getId()
-        self.producers.append(producer)
-        self.producerListeners.append(listener)
-        
-        zmLog.info("MediasoupClientManager-createProducer id =" + producer.getId() + " kind =" + producer.getKind())
     }
         
     func setLocalAudio(mute: Bool) {
@@ -453,12 +473,15 @@ class MediasoupProducerListener: NSObject, ProducerListener {
 
 extension MediasoupClientManager: MediasoupTransportListenerDelegate {
     
-    func onProduce(_ transportId: String, kind: String, rtpParameters: String, appData: String) -> String {
-        guard let produceId = signalManager.produceWebRtcTransportRequest(with: transportId, kind: kind, rtpParameters: rtpParameters, appData: appData) else {
-            //fatal("Mediasoup::onProduce:getProduceId-Error")
-            return ""
+    func onProduce(_ transportId: String, kind: String, rtpParameters: String, appData: String, callBack: @escaping (String?) -> Void) {
+        signalManager.produceWebRtcTransportRequest(with: transportId, kind: kind, rtpParameters: rtpParameters, appData: appData) { (produceId) in
+            guard let produceId = produceId else {
+                self.changeMediasoupConnectStep(.connectFailure)
+                return
+            }
+            zmLog.info("MediasoupClientManager-transport-onProduce====callBack-produceId:\(produceId)\n")
+            callBack(produceId)
         }
-        return produceId
     }
     
     func onConnect(_ transportId: String, dtlsParameters: String, isProduce: Bool) {
@@ -473,7 +496,7 @@ extension MediasoupClientManager: MediasoupTransportListenerDelegate {
 
 protocol MediasoupTransportListenerDelegate {
     //触发请求
-    func onProduce(_ transportId: String, kind: String, rtpParameters: String, appData: String) -> String
+    func onProduce(_ transportId: String, kind: String, rtpParameters: String, appData: String, callBack: @escaping (String?) -> Void)
     func onConnect(_ transportId: String, dtlsParameters: String, isProduce: Bool)
     //状态回调
     func onTransportConnectionStateChange(isProduce: Bool, connectionState: String)
@@ -492,14 +515,13 @@ class MediasoupTransportListener: NSObject, SendTransportListener, RecvTransport
     }
 
     func onProduce(_ transport: Transport!, kind: String!, rtpParameters: String!, appData: String!, callback: ((String?) -> Void)!) {
-        zmLog.info("MediasoupClientManager-transport-onProduce====isProduce:\(isProduce)\n")
-        //暂时先将此接口延迟1s调用，来防止线程被堵塞
-        callback(self.delegate.onProduce(transport.getId(), kind: kind, rtpParameters: rtpParameters, appData: appData))
+        zmLog.info("MediasoupClientManager-transportListener-onProduce====isProduce:\(isProduce) thread:\(Thread.current)")
+        self.delegate.onProduce(transport.getId(), kind: kind, rtpParameters: rtpParameters, appData: appData, callBack: callback)
     }
     
     func onConnect(_ transport: Transport!, dtlsParameters: String!) {
-        zmLog.info("MediasoupClientManager-transport-onConnect====isProduce:\(isProduce)\n")
-        self.delegate.onConnect(transport.getId(), dtlsParameters: dtlsParameters, isProduce: isProduce)
+        zmLog.info("MediasoupClientManager-transportListener-onConnect====isProduce:\(isProduce) thread:\(Thread.current)")
+        self.delegate.onConnect(transport.getId(), dtlsParameters: dtlsParameters, isProduce: self.isProduce)
     }
     
     func onConnectionStateChange(_ transport: Transport!, connectionState: String!) {

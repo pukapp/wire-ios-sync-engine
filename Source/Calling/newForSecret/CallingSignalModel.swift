@@ -16,7 +16,7 @@ import SwiftyJSON
 class CallingSignalRequest {
     let request: Bool
     let method: String
-    let id: Int
+    let id: UInt32
     let data: JSON
     
     var peerId: String?
@@ -26,14 +26,14 @@ class CallingSignalRequest {
         self.request = true
         self.method = method
         self.data = data ?? ""
-        self.id = Int(arc4random())
+        self.id = arc4random()
     }
     
     init(json: JSON) {
         self.request = json["request"].boolValue
         self.method = json["method"].stringValue
         self.data = json["data"]
-        self.id = json["id"].intValue
+        self.id = json["id"].uInt32Value
         
         self.peerId = json["peerId"].string
         self.roomId = json["roomId"].string
@@ -72,14 +72,14 @@ class CallingSignalForwardMessage: CallingSignalRequest {
 struct CallingSignalResponse {
     let response: Bool
     let ok: Bool
-    let id: Int
+    let id: UInt32
     let data: JSON?
     
     var method: String?
     var roomId: String?
     var peerId: String?
     
-    init(response: Bool, ok: Bool, id: Int, data: JSON?, method: String? = nil, roomId: String? = nil, peerId: String? = nil) {
+    init(response: Bool, ok: Bool, id: UInt32, data: JSON?, method: String? = nil, roomId: String? = nil, peerId: String? = nil) {
         self.response = response
         self.ok = ok
         self.id = id
@@ -94,7 +94,7 @@ struct CallingSignalResponse {
         self.response = json["response"].boolValue
         self.ok = json["ok"].boolValue
         self.data = json["data"]
-        self.id = json["id"].intValue
+        self.id = json["id"].uInt32Value
         
         self.method = json["method"].string
         self.roomId = json["roomId"].string

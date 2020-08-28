@@ -37,15 +37,19 @@ extension CallingSignalManager {
         self.forwardSocketMessage(to: peerId, method: "forward", data: message.json)
     }
     
-    func requestToJudgeIsPeerAlreadyInRoom() -> Bool {
-        guard let info = sendAckSocketRequest(with: "getP2PInfo", data: nil)  else {
-            return false
+    func requestToJudgeIsPeerAlreadyInRoom(completion: @escaping (Bool) -> Void) {
+        sendSocketRequest(with: "getP2PInfo", data: nil) { (res) in
+            guard !res.ok, res.data == nil, let peerCount = res.data!["peerCount"].int else {
+                completion(false)
+                return
+            }
+            completion(peerCount > 1)
         }
-        zmLog.info("WebRTCClientManager requestToJudgeIsPeerAlreadyInRoom -- \(info)")
-        return info["peerCount"].intValue > 1
     }
     
-    func requestToSwitchRoomMode(to mode: RoomMode) {
-        sendSocketRequest(with: WebRTCP2PSignalAction.sendRequest.switchRoomMode.rawValue, data: ["roomMode": mode.rawValue])
+    func requestToSwitchRoomMode(to mode: RoomMode, completion: @escaping (Bool) -> Void) {
+        sendSocketRequest(with: WebRTCP2PSignalAction.sendRequest.switchRoomMode.rawValue, data: ["roomMode": mode.rawValue], completion: { res in
+            completion(res.ok)
+        })
     }
 }

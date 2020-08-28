@@ -101,12 +101,18 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     
     func webSocketConnected() {
         guard self.connectState == .waitForPeerReady, self.peerConnection == nil else { return }
-        self.requestToSwitchToP2PMode()
+        self.requestToSwitchToP2PMode(completion: { isSuccess in
+            
+        })
         zmLog.info("WebRTCClientManager: startConnect")
         
-        if self.connectRole == .offer && self.signalManager.requestToJudgeIsPeerAlreadyInRoom() {
-            self.changeConnectState(.peerIsReady)
-            self.offer()
+        if self.connectRole == .offer {
+            self.signalManager.requestToJudgeIsPeerAlreadyInRoom { (isInRoom) in
+                if isInRoom {
+                    self.changeConnectState(.peerIsReady)
+                    self.offer()
+                }
+            }
         }
     }
     
@@ -278,7 +284,9 @@ extension WebRTCClientManager: ZMTimerClient {
             zmLog.info("webrtc: report--111\(report.statistics)")
         })
         self.invalidTimer()
-        self.requestToSwitchToChatMode()
+        self.requestToSwitchToChatMode(completion: { isSuccess in
+            
+        })
         self.forwardP2PMessage(.switchMode(.chat))
         //断开连接之后需要将视频重置
         self.membersManagerDelegate.setMemberVideo(.stopped, mid: self.peerId!)
@@ -355,12 +363,12 @@ extension WebRTCClientManager: RTCPeerConnectionDelegate {
 
 extension WebRTCClientManager: CallingSignalManagerDelegate {
     
-    private func requestToSwitchToP2PMode() {
-        self.signalManager.requestToSwitchRoomMode(to: .p2p)
+    private func requestToSwitchToP2PMode(completion: @escaping (Bool) -> Void) {
+        self.signalManager.requestToSwitchRoomMode(to: .p2p, completion: completion)
     }
     
-    private func requestToSwitchToChatMode() {
-        self.signalManager.requestToSwitchRoomMode(to: .chat)
+    private func requestToSwitchToChatMode(completion: @escaping (Bool) -> Void) {
+        self.signalManager.requestToSwitchRoomMode(to: .chat, completion: completion)
     }
     
     private func forwardP2PMessage(_ message: WebRTCP2PMessage) {

@@ -81,71 +81,90 @@ enum MediasoupSignalAction {
 ///mediasoup + send
 extension CallingSignalManager {
     
-    func requestToGetRoomRtpCapabilities() -> String? {
-         guard let info = sendAckMediasoupAction(with: .getRouterRtpCapabilities, data: nil)  else {
-             return nil
-         }
-         return info.description
+    func requestToGetRoomRtpCapabilities(completion: @escaping (String?) -> Void) {
+        sendMediasoupAction(with: .getRouterRtpCapabilities, data: nil) { (res) in
+            if res.ok && res.data != nil {
+                completion(res.data!.description)
+            } else {
+                completion(nil)
+            }
+        }
      }
      
-     func createWebRtcTransportRequest(with producing: Bool) -> JSON? {
+     func createWebRtcTransportRequest(with producing: Bool, completion: @escaping (JSON?) -> Void) {
          let data:JSON = ["forceTcp" : false,
                           "producing" : producing,
                           "consuming" : !producing,
                           "sctpCapabilities" : ""]
-         
-         guard let json = sendAckMediasoupAction(with: .createWebRtcTransport(producing: producing), data: data) else {
-             return nil
-         }
-         return json
+        sendMediasoupAction(with: .createWebRtcTransport(producing: producing), data: data) { (res) in
+            if res.ok {
+                completion(res.data)
+            } else {
+                completion(nil)
+            }
+        }
      }
      
      func connectWebRtcTransportRequest(with transportId: String, dtlsParameters: String) {
          let data: JSON = ["transportId": transportId,
                            "dtlsParameters": JSON(parseJSON: dtlsParameters)]
-         sendMediasoupAction(with: .connectWebRtcTransport, data: data)
+        sendMediasoupAction(with: .connectWebRtcTransport, data: data) { res in
+            zmLog.info("CallingSignalManager+Mediasoup -- connectWebRtcTransportRequest \(res.ok)")
+        }
      }
      
-     func loginRoom(with rtpCapabilities: String) -> JSON? {
+     func loginRoom(with rtpCapabilities: String, completion: @escaping (JSON?) -> Void) {
          let loginRoomRequestData: JSON = ["displayName" : "",
                                            "rtpCapabilities" : JSON(parseJSON: rtpCapabilities),
                                            "device" : "ios",
                                            "sctpCapabilities" : ""]
-         guard let json = sendAckMediasoupAction(with: .loginRoom, data: loginRoomRequestData) else {
-             return nil
-         }
-         return json
+        sendMediasoupAction(with: .loginRoom, data: loginRoomRequestData) { (res) in
+            if res.ok && res.data != nil {
+                completion(res.data)
+            } else {
+                completion(nil)
+            }
+        }
      }
      
-     func produceWebRtcTransportRequest(with transportId: String, kind: String, rtpParameters: String, appData: String) -> String? {
+     func produceWebRtcTransportRequest(with transportId: String, kind: String, rtpParameters: String, appData: String, completion: @escaping (String?) -> Void) {
          let data: JSON = [
              "transportId": transportId,
              "kind": kind,
              "rtpParameters": JSON.init(parseJSON: rtpParameters),
              "appData": appData
          ]
-         guard let json = sendAckMediasoupAction(with: .produceTransport, data: data) else {
-             return nil
-         }
-         return json["id"].stringValue
+        sendMediasoupAction(with: .produceTransport, data: data) { (res) in
+            if res.ok && res.data != nil {
+                completion(res.data!["id"].string)
+            } else {
+                completion(nil)
+            }
+        }
      }
 
      func setProduceState(with id: String, pause: Bool) {
          let data: JSON = [
              "producerId": id,
          ]
-         sendMediasoupAction(with: pause ? .pauseProducer : .resumeProducer, data: data)
+        sendMediasoupAction(with: pause ? .pauseProducer : .resumeProducer, data: data) { _ in
+            
+        }
      }
      
      func closeProduce(with id: String) {
          let data: JSON = [
              "producerId": id,
          ]
-         sendMediasoupAction(with: .closeProducer, data: data)
-     }
+        sendMediasoupAction(with: .closeProducer, data: data) { _ in
+            
+        }
+    }
      
      func peerLeave() {
-         sendMediasoupAction(with: .peerLeave, data: nil)
+        sendMediasoupAction(with: .peerLeave, data: nil) { _ in
+            
+        }
      }
     
 }
@@ -153,12 +172,8 @@ extension CallingSignalManager {
 ///mediasoup + receive
 extension CallingSignalManager {
 
-    private func sendMediasoupAction(with action: MediasoupSignalAction.SendRequest, data: JSON?) {
-        self.sendSocketRequest(with: action.description, data: data)
-    }
-    
-    private func sendAckMediasoupAction(with action: MediasoupSignalAction.SendRequest, data: JSON?) -> JSON? {
-        return self.sendAckSocketRequest(with: action.description, data: data)
+    private func sendMediasoupAction(with action: MediasoupSignalAction.SendRequest, data: JSON?, completion: @escaping CallingSignalResponseBlock) {
+        self.sendSocketRequest(with: action.description, data: data, completion: completion)
     }
     
 }

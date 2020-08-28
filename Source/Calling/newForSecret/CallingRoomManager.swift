@@ -61,8 +61,9 @@ protocol CallingClientConnectStateObserve {
  * 2.收到socket信令，然后判断当前房间状态，为空，则释放资源
  * 由于目前im端消息的推送延迟问题，所以目前socket的peerLeave信令需要处理，im端的消息也需要处理，所以就会造成多个线程同时创建，或者同时释放的问题
  * 所以这需要是一条串行队列，否则会造成很多闪退bug
+ * 目前，websocket的响应都是在此线程调用，用户的主动操作也都需要放在线程中操作
  */
-private let roomManagerQueue: DispatchQueue = DispatchQueue.init(label: "MediasoupSignalWorkQueue")
+let roomWorkQueue: DispatchQueue = DispatchQueue.init(label: "MediasoupSignalWorkQueue")
 
 class CallingRoomManager: NSObject {
     
@@ -160,31 +161,24 @@ class CallingRoomManager: NSObject {
     }
     
     private func roomConnected() {
-        roomManagerQueue.async {
-            self.roomState = .socketConnected
-            self.clientConnectManager?.webSocketConnected()
-        }
+        self.roomState = .socketConnected
+        self.clientConnectManager?.webSocketConnected()
     }
     
     ///网络断开连接
-    fileprivate func disConnectedRoom() {
-        ///需要在此线程中释放资源
-        roomManagerQueue.async {
-            zmLog.info("CallingRoomManager-disConnectedRoom--thread:\(Thread.current)")
-            self.clientConnectManager?.webSocketDisConnected()
-        }
+    private func disConnectedRoom() {
+        zmLog.info("CallingRoomManager-disConnectedRoom--thread:\(Thread.current)")
+        self.clientConnectManager?.webSocketDisConnected()
     }
     
     func leaveRoom(with roomId: UUID) {
         ///需要在此线程中释放资源
-        roomManagerQueue.async {
+        roomWorkQueue.async {
             guard self.roomId == roomId else {
                 return
             }
             zmLog.info("CallingRoomManager-leaveRoom---thread:\(Thread.current)")
-            
-            self.signalManager.readyToLeaveRoom()
-            
+
             self.signalManager.peerLeave()
             
             self.roomState = .none
@@ -206,8 +200,7 @@ class CallingRoomManager: NSObject {
     
     ///当外部收到end消息时，需要主动remove，确保该成员已经被移除
     func removePeer(with id: UUID) {
-        ///接收end消息时会调用，所以需要放在此线程中
-        roomManagerQueue.async {
+        roomWorkQueue.async {
             self.roomMembersManager?.removeMember(with: id)
         }
     }
@@ -217,14 +210,14 @@ class CallingRoomManager: NSObject {
 extension CallingRoomManager {
     
     func setLocalAudio(mute: Bool) {
-        roomManagerQueue.async {
+        roomWorkQueue.async {
             zmLog.info("CallingRoomManager-setLocalAudio--\(mute)")
             self.clientConnectManager?.setLocalAudio(mute: mute)
         }
     }
     
     func setLocalVideo(state: VideoState) {
-        roomManagerQueue.async {
+        roomWorkQueue.async {
             zmLog.info("CallingRoomManager-setLocalVideo--\(state)")
             self.videoState = state
             self.clientConnectManager?.setLocalVideo(state: state)
@@ -246,7 +239,7 @@ extension CallingRoomManager: CallingClientConnectStateObserve {
     private func switchMode(mode: RoomMode) {
         guard self.roomMode != mode else { return }
         zmLog.info("CallingRoomManager-switchMode:\(mode)")
-        roomManagerQueue.async {
+        roomWorkQueue.async {
             if self.roomState == .none { return }
             self.roomMode = mode
             if mode == .mp {
