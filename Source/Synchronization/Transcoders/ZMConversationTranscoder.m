@@ -413,20 +413,16 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         ZMLogError(@"Missing ID in conversation payload");
         return nil;
     }
-    BOOL conversationCreated = NO;
-    ZMConversation *conversation = [ZMConversation conversationWithRemoteID:convRemoteID createIfNeeded:YES inContext:self.managedObjectContext created:&conversationCreated];
+    NSUUID * const userId = [payloadData uuidForKey:@"from"];
+    ZMUser *user = [ZMUser userWithRemoteID:userId createIfNeeded:YES inContext:self.managedObjectContext];
+    ZMConversation *conversation = [ZMConversation conversationWithRemoteID:convRemoteID createIfNeeded:YES inContext:self.managedObjectContext];
     conversation.conversationType = ZMConversationTypeOneOnOne;
+    ZMConnection *connection = [ZMConnection connectionWithUserUUID:userId inContext:self.managedObjectContext];
+    conversation.connection = connection;
     [conversation updateLastModified:serverTimestamp];
     [conversation updateServerModified:serverTimestamp];
     conversation.isServiceNotice = YES;
-    NSUUID * const userId = [payloadData uuidForKey:@"from"];
-    ZMUser *user = [ZMUser userWithRemoteID:userId createIfNeeded:YES inContext:self.managedObjectContext];
-    //第一次创建ZMUser不需要设置也会下载一次，此处暂时不需要
-//        user.needsToBeUpdatedFromBackend = true;
-    [conversation internalAddParticipants:@[user]];
-    user.connection.conversation = conversation;
     return conversation;
-    
 }
 
 
