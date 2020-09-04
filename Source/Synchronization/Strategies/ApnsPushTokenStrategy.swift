@@ -28,6 +28,13 @@ import Foundation
     var allRequestGenerators : [ZMRequestGenerator] {
         return [pushKitTokenSync]
     }
+    
+    private var modifySyncFilter: NSPredicate {
+        return NSPredicate { object, _ -> Bool in
+            guard let o = object as? UserClient, o.apnsPushToken?.isRegistered == false else { return false }
+            return true
+        }
+    }
 
     private func modifiedPredicate() -> NSPredicate {
         let basePredicate = UserClient.predicateForObjectsThatNeedToBeUpdatedUpstream()
@@ -38,7 +45,7 @@ import Foundation
 
     @objc public init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?, analytics: AnalyticsType?) {
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
-        self.pushKitTokenSync = ZMUpstreamModifiedObjectSync(transcoder: self, entityName: UserClient.entityName(), update: modifiedPredicate(), filter: nil, keysToSync: [Keys.UserClientApnsPushTokenKey], managedObjectContext: managedObjectContext)
+        self.pushKitTokenSync = ZMUpstreamModifiedObjectSync(transcoder: self, entityName: UserClient.entityName(), update: modifiedPredicate(), filter: modifySyncFilter, keysToSync: [Keys.UserClientApnsPushTokenKey], managedObjectContext: managedObjectContext)
         if let analytics = analytics {
             self.notificationsTracker = NotificationsTracker(analytics: analytics)
         }

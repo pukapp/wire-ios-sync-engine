@@ -53,10 +53,17 @@ extension ZMSingleRequestSync : ZMRequestGenerator {}
 
         return NSCompoundPredicate(andPredicateWithSubpredicates: [basePredicate, nonNilPushToken])
     }
+    
+    private var modifySyncFilter: NSPredicate {
+        return NSPredicate { object, _ -> Bool in
+            guard let o = object as? UserClient, o.pushToken?.isRegistered == false else { return false }
+            return true
+        }
+    }
 
     @objc public init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?, analytics: AnalyticsType?) {
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
-        self.pushKitTokenSync = ZMUpstreamModifiedObjectSync(transcoder: self, entityName: UserClient.entityName(), update: modifiedPredicate(), filter: nil, keysToSync: [Keys.UserClientPushTokenKey], managedObjectContext: managedObjectContext)
+        self.pushKitTokenSync = ZMUpstreamModifiedObjectSync(transcoder: self, entityName: UserClient.entityName(), update: modifiedPredicate(), filter: modifySyncFilter, keysToSync: [Keys.UserClientPushTokenKey], managedObjectContext: managedObjectContext)
         if let analytics = analytics {
             self.notificationsTracker = NotificationsTracker(analytics: analytics)
         }

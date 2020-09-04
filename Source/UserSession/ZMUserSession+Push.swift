@@ -267,11 +267,12 @@ extension ZMUserSession {
         let syncMOC = managedObjectContext.zm_sync!
         syncMOC.performGroupedBlock {
             guard let selfClient = ZMUser.selfUser(in: syncMOC).selfClient() else { return }
-            if selfClient.pushToken?.deviceToken != data || selfClient.pushToken?.isiOS13Registered == false {
+            if selfClient.pushToken?.deviceToken != data || selfClient.pushToken?.isiOS13Registered == false ||
+                selfClient.pushToken?.isRegistered == false {
                 selfClient.pushToken = PushToken(deviceToken: data,
                                                  appIdentifier: metadata.appIdentifier,
                                                  transportType: metadata.transportType,
-                                                 isRegistered: false)
+                                                 isRegistered: false, randomCode: Int(arc4random() % 100))
                 syncMOC.saveOrRollback()
             }
         }
@@ -282,11 +283,12 @@ extension ZMUserSession {
         let syncMOC = managedObjectContext.zm_sync!
         syncMOC.performGroupedBlock {
             guard let selfClient = ZMUser.selfUser(in: syncMOC).selfClient() else { return }
-            if selfClient.apnsPushToken?.deviceToken != token {
+            if selfClient.apnsPushToken?.deviceToken != token ||
+                selfClient.apnsPushToken?.isRegistered == false  {
                 selfClient.apnsPushToken = ApnsPushToken(deviceToken: token,
                                                  appIdentifier: metadata.appIdentifier,
                                                  transportType: metadata.transportType,
-                                                 isRegistered: false)
+                                                 isRegistered: false, randomCode: Int(arc4random()) % 100)
                 syncMOC.saveOrRollback()
             }
         }
