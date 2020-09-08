@@ -54,6 +54,8 @@ extension ZMSyncStrategy: ZMUpdateEventConsumer {
                 }
                 self.eventProcessingTracker?.registerEventProcessed()
             }
+            
+            Logging.eventProcessing.debug("\(decryptedUpdateEvents.count) Events processed in \(-date.timeIntervalSinceNow)")
             localNotificationDispatcher?.processEvents(decryptedUpdateEvents, liveEvents: true, prefetchResult: nil)
             
             if let messages = fetchRequest.noncesToFetch as? Set<UUID>,
@@ -68,6 +70,11 @@ extension ZMSyncStrategy: ZMUpdateEventConsumer {
             syncMOC.saveOrRollback()
             
             Logging.eventProcessing.debug("Events processed in \(-date.timeIntervalSinceNow): \(self.eventProcessingTracker?.debugDescription ?? "")")
+            let time = -date.timeIntervalSinceNow
+            // 打印处理时间超过10的一组事件
+            if time > 10 {
+                Logging.eventProcessing.debug("**** Events processed in \(time)")
+            }
             
         }
         
