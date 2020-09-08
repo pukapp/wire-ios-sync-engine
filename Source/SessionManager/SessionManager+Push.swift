@@ -212,9 +212,9 @@ extension SessionManager: PKPushRegistryDelegate {
             }
         }
         if callType == "1" {
-            callKitDelegate?.reportIncomingCallV2(from: callUserId, userName: userName, conversationId: conversationId, video: video)
+            callKitManager?.reportIncomingCallV2(from: callUserId, userName: userName, conversationId: conversationId, video: video)
         } else {
-            callKitDelegate?.requestEndCallV2(in: conversationId)
+            callKitManager?.requestEndCallV2(in: conversationId)
         }
         completion()
     }

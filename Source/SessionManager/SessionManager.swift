@@ -62,7 +62,7 @@ public protocol SessionManagerType : class {
     
     weak var foregroundNotificationResponder: ForegroundNotificationResponder? { get }
     
-    var callKitDelegate : CallKitDelegate? { get }
+    var callKitManager : CallKitManager? { get }
     var callNotificationStyle: CallNotificationStyle { get }
     
     func withSession(for account: Account, perform completion: @escaping (ZMUserSession)->())
@@ -238,8 +238,8 @@ public protocol ForegroundNotificationResponder: class {
     fileprivate var memoryWarningObserver: NSObjectProtocol?
     fileprivate var isSelectingAccount : Bool = false
         
-    public var callKitDelegate : CallKitDelegate?
-
+    public var callKitManager : CallKitManager?
+    
     public var isSelectedAccountAuthenticated: Bool {
         guard let selectedAccount = accountManager.selectedAccount else {
             return false
@@ -823,19 +823,19 @@ public protocol ForegroundNotificationResponder: class {
     }
     
     @objc public func updateCallKitConfiguration() {
-        callKitDelegate?.updateConfiguration()
+        callKitManager?.updateConfiguration()
     }
     
     private func updateCallNotificationStyle() {
         switch callNotificationStyle {
         case .pushNotifications:
             authenticatedSessionFactory.mediaManager.setUiStartsAudio(false)
-            callKitDelegate = nil
+            callKitManager = nil
         case .callKit:
             // Should be set to true when CallKit is used. Then AVS will not start
             // the audio before the audio session is active
             authenticatedSessionFactory.mediaManager.setUiStartsAudio(true)
-            callKitDelegate = CallKitDelegate(sessionManager: self, mediaManager: authenticatedSessionFactory.mediaManager)
+            callKitManager = CallKitManager(delegate: self, mediaManager: authenticatedSessionFactory.mediaManager)
         }
     }
     
@@ -1124,9 +1124,9 @@ extension SessionManager: ZMConversationListObserver {
 
 extension SessionManager : WireCallCenterCallStateObserver {
     
-    public func callCenterDidChange(callState: CallState, conversation: ZMConversation, caller: ZMUser, timestamp: Date?, previousCallState: CallState?) {
+    public func callCenterDidChange(callState: CallState, conversation: ZMConversation, caller: UserType, timestamp: Date?, previousCallState: CallState?) {
         guard let moc = conversation.managedObjectContext else { return }
-    
+
         switch callState {
         case .answered, .outgoing:
             for (_, session) in backgroundUserSessions where session.managedObjectContext == moc && activeUserSession != session {

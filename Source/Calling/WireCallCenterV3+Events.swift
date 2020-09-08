@@ -55,6 +55,8 @@ extension WireCallCenterV3 : ZMConversationObserver {
 extension WireCallCenterV3 {
 
     private func handleEvent(_ description: String, _ handlerBlock: @escaping () -> Void) {
+        zmLog.debug("Handle AVS event: \(description)")
+        
         guard let context = self.uiMOC else {
             zmLog.error("Cannot handle event '\(description)' because the UI context is not available.")
             return
@@ -170,20 +172,40 @@ extension WireCallCenterV3 {
             self.isReady = true
         }
     }
-
-    /// Handles other users joining / leaving / connecting.
-    func handleGroupMemberChange(conversationId: UUID) {
-        handleEvent("group-member-change") {
-            let members = self.avsWrapper.members(in: conversationId)
-            self.callParticipantsChanged(conversationId: conversationId, participants: members)
+    
+    func handleParticipantChange(conversationId: UUID, data: String) {
+        handleEvent("participant-change") {
+            guard let data = data.data(using: .utf8) else {
+                zmLog.safePublic("Invalid participant change data")
+                return
+            }
+            // Example of `data`
+            //  {
+            //      "convid": "df371578-65cf-4f07-9f49-c72a49877ae7",
+            //      "members": [
+            //          {
+            //              "userid": "3f49da1d-0d52-4696-9ef3-0dd181383e8a",
+            //              "clientid": "24cc758f602fb1f4",
+            //              "aestab": 1,
+            //              "vrecv": 0
+            //          }
+            //      ]
+            //}
+            do {
+                let change = try JSONDecoder().decode(AVSParticipantsChange.self, from: data)
+                let members = change.members.map(AVSCallMember.init)
+                self.callParticipantsChanged(conversationId: change.convid, participants: members)
+            } catch {
+                zmLog.safePublic("Cannot decode participant change JSON")
+            }
         }
     }
 
     /// Handles video state changes.
-    func handleVideoStateChange(userId: UUID, newState: VideoState) {
+    func handleVideoStateChange(userId: UUID, clientId: String,  newState: VideoState) {
         handleEvent("video-state-change") {
             self.nonIdleCalls.forEach {
-                self.callParticipantVideoStateChanged(conversationId: $0.key, userId: userId, videoState: newState)
+                self.callParticipantVideoStateChanged(conversationId: $0.key, userId: userId, clientId: clientId, videoState: newState)
             }
         }
     }
@@ -212,6 +234,12 @@ extension WireCallCenterV3 {
                 self.callSnapshots[conversationId] = call.updateNetworkQuality(quality)
                 WireCallCenterNetworkQualityNotification(conversationId: conversationId, userId: userId, networkQuality: quality).post(in: $0.notificationContext)
             }
+        }
+    }
+    
+    func handleMuteChange(muted: Bool) {
+        handleEventInContext("mute-change") {
+            WireCallCenterMutedNotification(muted: muted).post(in: $0.notificationContext)
         }
     }
 }

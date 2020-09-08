@@ -49,16 +49,16 @@ public protocol CallProperties : NSObjectProtocol {
     var callStartDate: Date? { get }
     
     /// Voice channel participants. May be a subset of conversation participants.
-    var participants: NSOrderedSet { get }
+    var participants: [CallParticipant] { get }
     
     /// Voice channel is sending audio using a contant bit rate
     var isConstantBitRateAudioActive: Bool { get }
     var isVideoCall: Bool { get }
-    var initiator: ZMUser? { get }
+    var initiator: UserType? { get }
     var videoState: VideoState { get set }
     var networkQuality: NetworkQuality { get }
+    var muted: Bool { get set }
     
-    func state(forParticipant: ZMUser) -> CallParticipantState
     func setVideoCaptureDevice(_ device: CaptureDevice) throws
 }
 
@@ -97,6 +97,9 @@ public protocol CallObservers : NSObjectProtocol {
     /// Add observer of network quality. Returns a token which needs to be retained as long as the observer should be active.
     func addNetworkQualityObserver(_ observer: NetworkQualityObserver) -> Any
     
+    /// Add observer of the mute state. Returns a token which needs to be retained as long as the observer should be active.
+    func addMuteStateObserver(_ observer: MuteStateObserver) -> Any
+
     /// Add observer of the state of all voice channels. Returns a token which needs to be retained as long as the observer should be active.
     static func addCallStateObserver(_ observer: WireCallCenterCallStateObserver, userSession: ZMUserSession) -> Any
 }

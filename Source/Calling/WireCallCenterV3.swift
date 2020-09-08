@@ -68,6 +68,15 @@ private let zmLog = ZMSLog(tag: "calling")
      */
 
     var useConstantBitRateAudio: Bool = false
+    
+    var muted: Bool {
+        get {
+            return avsWrapper.muted
+        }
+        set {
+            avsWrapper.muted = newValue
+        }
+    }
 
     /// The snaphot of the call state for each non-idle conversation.
     var callSnapshots : [UUID : CallSnapshot] = [:]
@@ -288,10 +297,16 @@ extension WireCallCenterV3 {
 // MARK: - Call Participants
 
 extension WireCallCenterV3 {
-
+    
     /// Returns the callParticipants currently in the conversation
-    func callParticipants(conversationId: UUID) -> [UUID] {
-        return callSnapshots[conversationId]?.callParticipants.members.map { $0.remoteId } ?? []
+    func callParticipants(conversationId: UUID) -> [CallParticipant] {
+        guard let context = uiMOC,
+              let callParticipants = callSnapshots[conversationId]?.callParticipants
+        else { return [] }
+        
+        return callParticipants.members.map {
+            CallParticipant(user: ZMUser(remoteID: $0.remoteId, createIfNeeded: false, in: context)!, state: $0.callParticipantState)
+        }
     }
 
     /// Returns the remote identifier of the user that initiated the call.
@@ -306,20 +321,15 @@ extension WireCallCenterV3 {
     }
 
     /// Call this method when the video state of a participant changes and avs calls the `wcall_video_state_change_h`.
-    func callParticipantVideoStateChanged(conversationId: UUID, userId: UUID, videoState: VideoState) {
-        callSnapshots[conversationId]?.callParticipants.callParticpantVideoStateChanged(userId: userId, videoState: videoState)
+    func callParticipantVideoStateChanged(conversationId: UUID, userId: UUID, clientId: String, videoState: VideoState) {
+        callSnapshots[conversationId]?.callParticipants.callParticpantVideoStateChanged(userId: userId, clientId: clientId, videoState: videoState)
     }
 
     /// Call this method when the client established an audio connection with another user, and avs calls the `wcall_estab_h`.
     func callParticipantAudioEstablished(conversationId: UUID, userId: UUID) {
         callSnapshots[conversationId]?.callParticipants.callParticpantAudioEstablished(userId: userId)
     }
-
-    /// Returns the state for a call participant.
-    public func state(forUser userId: UUID, in conversationId: UUID) -> CallParticipantState {
-        return callSnapshots[conversationId]?.callParticipants.callParticipantState(forUser: userId) ?? .unconnected
-    }
-
+    
 }
 
 // MARK: - Actions
@@ -492,6 +502,7 @@ extension WireCallCenterV3 {
 
     /// Sends a call OTR message when requested by AVS through `wcall_send_h`.
     func send(token: WireCallMessageToken, conversationId: UUID, userId: UUID, clientId: String, data: Data, dataLength: Int) {
+        zmLog.debug("\(self): send call message, transport = \(String(describing: transport))")
         transport?.send(data: data, conversationId: conversationId, userId: userId, completionHandler: { [weak self] status in
             self?.avsWrapper.handleResponse(httpStatus: status, reason: "", context: token)
         })

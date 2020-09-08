@@ -43,35 +43,15 @@ public class VoiceChannelV3 : NSObject, VoiceChannel {
     
     weak public var conversation: ZMConversation?
     
-    /// Voice channel participants. May be a subset of conversation participants.
-    public var participants: NSOrderedSet {
-        guard let callCenter = self.callCenter,
-              let conversationId = conversation?.remoteIdentifier,
-              let context = conversation?.managedObjectContext
-        else { return NSOrderedSet() }
+    public var participants: [CallParticipant] {
+        guard let callCenter = callCenter, let conversationId = conversation?.remoteIdentifier else { return [] }
         
-        let userIds = callCenter.callParticipants(conversationId: conversationId)
-        let users = userIds.compactMap { ZMUser(remoteID: $0, createIfNeeded: false, in: conversation!, in:context) }
-        return NSOrderedSet(array: users)
+        return callCenter.callParticipants(conversationId: conversationId)
     }
     
     public required init(conversation: ZMConversation) {
         self.conversation = conversation
         super.init()
-    }
-
-    public func state(forParticipant participant: ZMUser) -> CallParticipantState {
-        guard let conv = self.conversation,
-            let convID = conv.remoteIdentifier,
-            let userID = participant.remoteIdentifier,
-            let callCenter = self.callCenter
-        else { return .unconnected }
-        
-        if participant.isSelfUser {
-            return callCenter.callState(conversationId: convID).callParticipantState
-        } else {
-            return callCenter.state(forUser: userID, in: convID)
-        }
     }
     
     public var state: CallState {
@@ -100,7 +80,7 @@ public class VoiceChannelV3 : NSObject, VoiceChannel {
         return callCenter.networkQuality(conversationId: remoteIdentifier)
     }
     
-    public var initiator : ZMUser? {
+    public var initiator: UserType? {
         guard let context = conversation?.managedObjectContext,
               let convId = conversation?.remoteIdentifier,
               let userId = self.callCenter?.initiatorForCall(conversationId: convId)
@@ -129,17 +109,24 @@ public class VoiceChannelV3 : NSObject, VoiceChannel {
         self.callCenter?.setVideoCaptureDevice(device, for: conversationId)
     }
     
+    public var muted: Bool {
+        get {
+            return callCenter?.muted ?? false
+        }
+        set {
+            callCenter?.muted = newValue
+        }
+    }
+    
 }
 
 extension VoiceChannelV3 : CallActions {
     
     public func mute(_ muted: Bool, userSession: ZMUserSession) {
         if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *) {
-            userSession.callKitDelegate?.requestMuteCall(in: conversation!, muted: muted)
+            userSession.callKitManager?.requestMuteCall(in: conversation!, muted: muted)
         } else {
-            if let manager = userSession.mediaManager as? AVSMediaManager {
-                manager.isMicrophoneMuted = muted
-            }
+            self.muted = muted
         }
     }
     
@@ -154,7 +141,7 @@ extension VoiceChannelV3 : CallActions {
         userSession.syncManagedObjectContext.performGroupedBlock {
             let conversationId = conversation.objectID
             if let syncConversation = (try? userSession.syncManagedObjectContext.existingObject(with: conversationId)) as? ZMConversation {
-                userSession.callingStrategy.dropPendingCallMessages(for: syncConversation)
+                userSession.syncStrategy?.callingRequestStrategy.dropPendingCallMessages(for: syncConversation)
             }
         }
         leave(userSession: userSession, completion: nil)
@@ -162,7 +149,7 @@ extension VoiceChannelV3 : CallActions {
     
     public func join(video: Bool, userSession: ZMUserSession) -> Bool {
         if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *) {
-            userSession.callKitDelegate?.requestJoinCall(in: conversation!, video: video)
+            userSession.callKitManager?.requestJoinCall(in: conversation!, video: video)
             return true
         } else {
             return join(video: video)
@@ -171,7 +158,7 @@ extension VoiceChannelV3 : CallActions {
     
     public func leave(userSession: ZMUserSession, completion: (() -> ())?) {
         if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *) {
-            userSession.callKitDelegate?.requestEndCall(in: conversation!, completion: completion)
+            userSession.callKitManager?.requestEndCall(in: conversation!, completion: completion)
         } else {
             leave()
             completion?()
@@ -242,23 +229,11 @@ extension VoiceChannelV3 : CallObservers {
     
     /// Add observer of the state of all voice channels. Returns a token which needs to be retained as long as the observer should be active.
     public class func addCallStateObserver(_ observer: WireCallCenterCallStateObserver, userSession: ZMUserSession) -> Any {
-        return WireCallCenterV3.addCallStateObserver(observer: observer, context: userSession.managedObjectContext!)
+        return WireCallCenterV3.addCallStateObserver(observer: observer, context: userSession.managedObjectContext)
     }
     
-}
-
-public extension CallState {
-        
-    var callParticipantState : CallParticipantState {
-        switch self {
-        case .unknown, .terminating, .incoming, .none, .establishedDataChannel, .mediaStopped:
-            return .unconnected
-        case .established:
-            return .connected(videoState: .stopped)
-        case .outgoing, .answered:
-            return .connecting
-        }
+    /// Add observer of the mute state. Returns a token which needs to be retained as long as the observer should be active.
+    public func addMuteStateObserver(_ observer: MuteStateObserver) -> Any {
+        return WireCallCenterV3.addMuteStateObserver(observer: observer, context: conversation!.managedObjectContext!)
     }
-    
 }
-
