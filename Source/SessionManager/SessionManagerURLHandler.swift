@@ -42,6 +42,7 @@ public enum URLAction: Equatable {
     case groupInvite(userIdentifier: String) //群邀请
     case authLogin(appid: String, key: String) //授权登录
     case thirdLogin(fromid: String, email: String, userid: String)//双向授权
+    case homeScreen(cid: UUID, conversation: ZMConversation?) // 主屏幕快捷方式打开
     
     case groupInviteError(error: GroupInviteError)
     case authLoginError(error: AuthLoginError)
@@ -81,8 +82,15 @@ public enum URLAction: Equatable {
             }
 
             self = .openConversation(id: id, conversation: conversation)
-        default:
-            break
+            
+        case .homeScreen(let cid, _):
+            guard let conversation = ZMConversation(remoteID: cid, createIfNeeded: false, in: moc) else {
+                self = .warnInvalidDeepLink(error: .invalidHomeScreenLink)
+                return
+            }
+            self = .homeScreen(cid: cid, conversation: conversation)
+            
+        default:  break
         }
     }
 
@@ -95,9 +103,12 @@ public enum URLAction: Equatable {
 
     var requiresAuthentication: Bool {
         switch self {
-        case .connectBot,.groupInvite,.authLogin: return true
-        case .openConversation,
-             .openUserProfile:
+        case .connectBot,
+             .groupInvite,
+             .authLogin,
+             .openConversation,
+             .openUserProfile,
+             .homeScreen:
              return true
         default: return false
         }
@@ -106,7 +117,8 @@ public enum URLAction: Equatable {
     var opensDeepLink: Bool {
         switch self {
         case .openConversation,
-             .openUserProfile:
+             .openUserProfile,
+             .homeScreen:
             return true
         default: return false
         }
@@ -143,6 +155,14 @@ extension URLAction {
                 self = .openConversation(id: uuid, conversation: nil)
             } else {
                 self = .warnInvalidDeepLink(error: .invalidConversationLink)
+            }
+            
+        case URL.DeepLink.homeScreen:
+            if let lastComponent = url.pathComponents.last,
+                let uuid = UUID(uuidString: lastComponent) {
+                self = .homeScreen(cid: uuid, conversation: nil)
+            } else {
+                self = .warnInvalidDeepLink(error: .invalidHomeScreenLink)
             }
 
         case URL.Host.startSSO:
@@ -331,7 +351,6 @@ public final class SessionManagerURLHandler: NSObject {
         guard let action = URLAction(url: url) else {
             return false
         }
-
 
         if action.opensDeepLink {
             guard let userSessionSource = userSessionSource else {

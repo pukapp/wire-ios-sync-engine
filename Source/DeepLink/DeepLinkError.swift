@@ -27,4 +27,5 @@ public enum DeepLinkRequestError: Error, Equatable {
     case invalidConversationLink
     case malformedLink
     case notLoggedIn
+    case invalidHomeScreenLink
 }
