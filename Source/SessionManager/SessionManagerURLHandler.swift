@@ -303,7 +303,7 @@ public final class SessionManagerURLHandler: NSObject {
     }
 
     @objc @discardableResult
-    public func openURL(_ url: URL, options: [UIApplication.OpenURLOptionsKey: AnyObject]) -> Bool {
+    public func openURL(_ url: URL, options: [UIApplication.OpenURLOptionsKey: Any]) -> Bool {
         guard let action = URLAction(url: url) else {
             return false
         }
