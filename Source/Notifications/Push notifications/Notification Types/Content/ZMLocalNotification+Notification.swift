@@ -22,12 +22,11 @@ extension ZMLocalNotification {
              .conversationOtrAssetAdd,
              .conversationServiceMessageAdd,
              .conversationJsonMessageAdd,
-             .conversationMemberJoinask,
              .conversationBgpMessageAdd:
-            guard let message = ZMOTRMessage.createOrUpdate(from: event, in: moc, prefetchResult: nil) else { return nil}
-            message.markAsSent()
-            builder = MessageNotificationBuilder(message: message)
-        
+            let array = ZMOTRMessage.createNotificationMessage(from: event, in: moc)
+            guard let message = array.firstObject as? ZMMessage,
+                  let conversation = array.lastObject as? ZMConversation else { return nil }
+            builder = NSEMessageNotificationBuilder(message: message, conversation: conversation)
             
         case .conversationCreate:
             builder = ConversationCreateEventNotificationBuilder(event: event, conversation: conversation, managedObjectContext: moc)
@@ -44,18 +43,6 @@ extension ZMLocalNotification {
         default:
             builder = nil
         }
-
-        let conversationTranscoder = ZMConversationTranscoder(managedObjectContext: moc, applicationStatus: nil, localNotificationDispatcher: nil, syncStatus: nil)
-        let userPropertyStrategy = UserPropertyRequestStrategy(withManagedObjectContext: moc, applicationStatus: nil)
-        let pushTokenStrategy = PushTokenStrategy(withManagedObjectContext: moc, applicationStatus: nil, analytics: nil)
-        let labelDownstreamRequestStrategy = LabelDownstreamRequestStrategy(withManagedObjectContext: moc, applicationStatus: nil, syncStatus: nil)
-        let transcoders = [conversationTranscoder, userPropertyStrategy, pushTokenStrategy, labelDownstreamRequestStrategy]
-        transcoders.forEach { (ob) in
-            if let o = ob as? ZMEventConsumer {
-                o.processEvents([event], liveEvents: true, prefetchResult: nil)
-            }
-        }
-        moc.enqueueDelayedSave()
         
         if let builder = builder {
             self.init(conversation: conversation, builder: builder)

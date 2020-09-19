@@ -376,6 +376,7 @@
 		A03078FC24D80F0E008D2561 /* ZMSimpleListRequestPaginator+Internal.h in Headers */ = {isa = PBXBuildFile; fileRef = A03078F924D80F0D008D2561 /* ZMSimpleListRequestPaginator+Internal.h */; };
 		A0AC16D724EA337A0027C4A2 /* ApnsPushTokenStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0AC16D624EA337A0027C4A2 /* ApnsPushTokenStrategy.swift */; };
 		A0CA818324E5405200074AE6 /* ZMLocalNotification+Notification.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0CA818224E5405200074AE6 /* ZMLocalNotification+Notification.swift */; };
+		A0DA4ADC2514BB9400B3E17F /* ZMLocalNotification+NSEMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0DA4ADB2514BB9400B3E17F /* ZMLocalNotification+NSEMessages.swift */; };
 		A0EDE7222272B0D100B2D4E2 /* UserDisableSendMsgStatusStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0EDE7212272B0D100B2D4E2 /* UserDisableSendMsgStatusStrategy.swift */; };
 		A907771A192E33A500141F13 /* SlowSyncTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 85D85D997334755E841D13EA /* SlowSyncTests.m */; };
 		A9692F8A1986476900849241 /* NSString_NormalizationTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A9692F881986476900849241 /* NSString_NormalizationTests.m */; };
@@ -995,6 +996,7 @@
 		A03078F924D80F0D008D2561 /* ZMSimpleListRequestPaginator+Internal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "ZMSimpleListRequestPaginator+Internal.h"; sourceTree = "<group>"; };
 		A0AC16D624EA337A0027C4A2 /* ApnsPushTokenStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApnsPushTokenStrategy.swift; sourceTree = "<group>"; };
 		A0CA818224E5405200074AE6 /* ZMLocalNotification+Notification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZMLocalNotification+Notification.swift"; sourceTree = "<group>"; };
+		A0DA4ADB2514BB9400B3E17F /* ZMLocalNotification+NSEMessages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZMLocalNotification+NSEMessages.swift"; sourceTree = "<group>"; };
 		A0EDE7212272B0D100B2D4E2 /* UserDisableSendMsgStatusStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDisableSendMsgStatusStrategy.swift; sourceTree = "<group>"; };
 		A9692F881986476900849241 /* NSString_NormalizationTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NSString_NormalizationTests.m; sourceTree = "<group>"; };
 		AF6415A01C9C151700A535F5 /* EncryptedBase64EncondedExternalMessageTestFixture.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = EncryptedBase64EncondedExternalMessageTestFixture.txt; sourceTree = "<group>"; };
@@ -2001,6 +2003,7 @@
 				EEEA75F71F8A6141006D1070 /* ZMLocalNotification+Calling.swift */,
 				EEEA75F61F8A6140006D1070 /* ZMLocalNotification+Events.swift */,
 				1639A8262260CE5000868AB9 /* ZMLocalNotification+AvailabilityAlert.swift */,
+				A0DA4ADB2514BB9400B3E17F /* ZMLocalNotification+NSEMessages.swift */,
 				EEEA75F51F8A613F006D1070 /* ZMLocalNotification+Messages.swift */,
 				A0CA818224E5405200074AE6 /* ZMLocalNotification+Notification.swift */,
 			);
@@ -3069,6 +3072,7 @@
 				161D3ACB213417C90053D39A /* ZMSyncStrategy+EventProcessing.swift in Sources */,
 				549816321A432BC800A7CE2E /* ZMUserTranscoder.m in Sources */,
 				54257C081DF1C94200107FE7 /* TopConversationsDirectory.swift in Sources */,
+				A0DA4ADC2514BB9400B3E17F /* ZMLocalNotification+NSEMessages.swift in Sources */,
 				16962EE220286A4C0069D88D /* LocalNotificationType+Localization.swift in Sources */,
 				7399F57323A1E1F9002DA207 /* ConversationAvatarUpdateStategy.swift in Sources */,
 				EEEA75FD1F8A6142006D1070 /* ZMLocalNotification.swift in Sources */,
