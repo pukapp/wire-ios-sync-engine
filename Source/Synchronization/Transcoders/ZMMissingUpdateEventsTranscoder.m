@@ -176,13 +176,6 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
             [eventIds addObject:event.uuid];
             
             if (!event.isTransient) {
-//                if (latestEventId == nil) {
-//                    latestEventId = event.uuid;
-//                }
-                
-//                if ([latestEventId compareWithType1UUID:event.uuid] == NSOrderedAscending) {
-//                    latestEventId = event.uuid;
-//                }
                 latestEventId = event.uuid;
             }
         }

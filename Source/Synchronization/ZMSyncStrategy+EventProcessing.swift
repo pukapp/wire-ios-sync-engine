@@ -53,11 +53,20 @@ extension ZMSyncStrategy: ZMUpdateEventConsumer {
                     Logging.eventProcessing.debug("Event processed in \(time): \(event.type.stringValue ?? ""))")
                 }
                 self.eventProcessingTracker?.registerEventProcessed()
+                let time1 = -date1.timeIntervalSinceNow
+                // 打印处理时间超过0.001的事件
+                if time1 > 0.001 {
+                    Logging.eventProcessing.debug("Event processed and registerEvent in \(time): \(event.type.stringValue ?? ""))")
+                }
             }
             
-            Logging.eventProcessing.debug("\(decryptedUpdateEvents.count) Events processed in \(-date.timeIntervalSinceNow)")
-            localNotificationDispatcher?.processEvents(decryptedUpdateEvents, liveEvents: true, prefetchResult: nil)
+            Logging.eventProcessing.debug("\(decryptedUpdateEvents.count) Events processed and registerEvent in \(-date.timeIntervalSinceNow)")
             
+            let date1 = Date()
+            localNotificationDispatcher?.processEvents(decryptedUpdateEvents, liveEvents: true, prefetchResult: nil)
+            Logging.eventProcessing.debug("localNotificationDispatcher?.processEvents in \(-date1.timeIntervalSinceNow)")
+            
+            let date2 = Date()
             if let messages = fetchRequest.noncesToFetch as? Set<UUID>,
                 messages.count > 0,
                 let conversations = fetchRequest.remoteIdentifiersToFetch as? Set<UUID> {
@@ -65,15 +74,17 @@ extension ZMSyncStrategy: ZMUpdateEventConsumer {
                 for message in confirmationMessages {
                     self.applicationStatusDirectory?.deliveryConfirmation.needsToConfirmMessage(message.nonce!)
                 }
+                Logging.eventProcessing.debug("ConfirmMessage:\(confirmationMessages.count) in \(-date2.timeIntervalSinceNow)")
             }
             
             syncMOC.saveOrRollback()
+            Logging.eventProcessing.debug("syncMOC.saveOrRollback()")
             
-            Logging.eventProcessing.debug("Events processed in \(-date.timeIntervalSinceNow): \(self.eventProcessingTracker?.debugDescription ?? "")")
+            Logging.eventProcessing.debug("\(decryptedUpdateEvents.count) Events processed in \(-date.timeIntervalSinceNow): \(self.eventProcessingTracker?.debugDescription ?? "")")
             let time = -date.timeIntervalSinceNow
             // 打印处理时间超过10的一组事件
             if time > 10 {
-                Logging.eventProcessing.debug("**** Events processed in \(time)")
+                Logging.eventProcessing.debug("\(decryptedUpdateEvents.count) Events processed over 10 in \(time)")
             }
             
         }
