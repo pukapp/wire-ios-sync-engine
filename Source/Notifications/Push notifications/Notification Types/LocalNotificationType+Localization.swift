@@ -190,15 +190,10 @@ extension LocalNotificationType {
             }
         }
         
-        let teamName = selfUser.team?.name
-        let conversationName = conversation?.meaningfulDisplayName
+        let conversationName = conversation?.pureMeaningfulDisplayName
         
-        if let conversationName = conversationName, let teamName = teamName {
-            return .localizedStringWithFormat(ZMPushStringTitle.pushFormatString, arguments: [conversationName, teamName])
-        } else if let conversationName = conversationName {
+        if let conversationName = conversationName {
             return conversationName
-        } else if let teamName = teamName {
-            return teamName
         }
         
         return nil
@@ -255,6 +250,7 @@ extension LocalNotificationType {
         case .message(let contentType):
             switch contentType {
             case let .text(content, isMention, isReply):
+                print("content: \(content)")
                 arguments.append(content)
                 mentionOrReplyKey = isMention ? MentionKey : (isReply ? ReplyKey : nil)
             

@@ -50,7 +50,10 @@ public enum LocalNotificationContentType : Equatable {
             }
         }
         
-        if let messageData = message.textMessageData, let text = messageData.messageText , !text.isEmpty {
+        if  let messageData = message.textMessageData,
+            let text = messageData.messageText ,
+            !text.isEmpty {
+            print("text: \(text)")
             return .text(text, isMention: messageData.isMentioningSelf, isReply: messageData.isQuotingSelf)
         }
         

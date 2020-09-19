@@ -691,12 +691,12 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 //万人群加人时，只生成谁+谁这条系统消息，不在把加的人生成user入库
 - (void)processMemberJoinEvent:(ZMUpdateEvent *)event forHugeConversation:(ZMConversation *)hugeConversation
 {
-    if (!hugeConversation.remoteIdentifier.transportString) {
-        return;
-    }
-    [self appendSystemMessageForUpdateEvent:event inConversation:hugeConversation];
-    
-    [self assignMembersCountWithEvent:event forConversation:hugeConversation];
+//    if (!hugeConversation.remoteIdentifier.transportString) {
+//        return;
+//    }
+//    [self appendSystemMessageForUpdateEvent:event inConversation:hugeConversation];
+//
+//    [self assignMembersCountWithEvent:event forConversation:hugeConversation];
 }
     
 - (void)processMemberJoinEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
@@ -719,15 +719,15 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 //万人群删人时，只生成谁-谁这条系统消息，如果本地有这个用户则删除
 - (void)processMemberLeaveEvent:(ZMUpdateEvent *)event forHugeConversation:(ZMConversation *)hugeConversation
 {
-    [self appendSystemMessageForUpdateEvent:event inConversation:hugeConversation];
-    NSUUID *senderUUID = event.senderUUID;
-    ZMUser *sender = [ZMUser userWithRemoteID:senderUUID createIfNeeded:YES inConversation:hugeConversation inContext:self.managedObjectContext];
-    NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext createIfNeeded:NO];
-    for (ZMUser *user in users) {
-        [hugeConversation internalRemoveParticipants:@[user] sender:sender];
-    }
-    
-    [self assignMembersCountWithEvent:event forConversation:hugeConversation];
+//    [self appendSystemMessageForUpdateEvent:event inConversation:hugeConversation];
+//    NSUUID *senderUUID = event.senderUUID;
+//    ZMUser *sender = [ZMUser userWithRemoteID:senderUUID createIfNeeded:YES inConversation:hugeConversation inContext:self.managedObjectContext];
+//    NSSet *users = [event usersFromUserIDsInManagedObjectContext:self.managedObjectContext createIfNeeded:NO];
+//    for (ZMUser *user in users) {
+//        [hugeConversation internalRemoveParticipants:@[user] sender:sender];
+//    }
+//
+//    [self assignMembersCountWithEvent:event forConversation:hugeConversation];
 }
 
 - (void)processMemberLeaveEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation
