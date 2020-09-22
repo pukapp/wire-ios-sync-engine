@@ -32,7 +32,7 @@ public enum VoiceChannelV3Error: LocalizedError {
 public class VoiceChannelV3 : NSObject, VoiceChannel {
 
     public var callCenter: WireCallCenterV3? {
-        return self.conversation?.managedObjectContext?.zm_callCenter
+        return self.relyModel?.managedObjectContext?.zm_callCenter
     }
     
     /// The date and time of current call start
@@ -40,28 +40,36 @@ public class VoiceChannelV3 : NSObject, VoiceChannel {
         return self.callCenter?.establishedDate
     }
     
-    weak public var conversation: ZMConversation?
+    weak public var relyModel: CallRelyModel?
+    
+    public var callTitle: String? {
+        return self.relyModel?.callTitle
+    }
     
     /// Voice channel participants. May be a subset of conversation participants.
     public var participants: NSOrderedSet {
         guard let callCenter = self.callCenter,
-              let conversationId = conversation?.remoteIdentifier,
-              let context = conversation?.managedObjectContext
+              let remoteIdentifier = relyModel?.remoteIdentifier,
+              let context = relyModel?.managedObjectContext
         else { return NSOrderedSet() }
         
-        let userIds = callCenter.callParticipants(conversationId: conversationId)
-        let users = userIds.compactMap { ZMUser(remoteID: $0, createIfNeeded: false, in: conversation!, in:context) }
-        return NSOrderedSet(array: users)
+        if let conversation = relyModel as? ZMConversation {
+            let userIds = callCenter.callParticipants(conversationId: remoteIdentifier)
+            let users = userIds.compactMap({ ZMUser(remoteID: $0, createIfNeeded: false, in: conversation, in:context) })
+            return NSOrderedSet(array: users)
+        } else {
+            return NSOrderedSet(array: callCenter.meetingParticipants(meetingId: remoteIdentifier))
+        }
     }
     
-    public required init(conversation: ZMConversation) {
-        self.conversation = conversation
+    public required init(relyModel: CallRelyModel) {
+        self.relyModel = relyModel
         super.init()
     }
 
-    public func state(forParticipant participant: ZMUser) -> CallParticipantState {
-        guard let conv = self.conversation,
-            let convID = conv.remoteIdentifier,
+    public func connectState(forParticipant participant: ZMUser) -> CallParticipantState {
+        guard let relyModel = self.relyModel,
+            let convID = relyModel.remoteIdentifier,
             let userID = participant.remoteIdentifier,
             let callCenter = self.callCenter
         else { return .unconnected }
@@ -73,8 +81,22 @@ public class VoiceChannelV3 : NSObject, VoiceChannel {
         }
     }
     
+    public func videoState(forParticipant participant: ZMUser) -> VideoState {
+        guard let relyModel = self.relyModel,
+            let convID = relyModel.remoteIdentifier,
+            let userID = participant.remoteIdentifier,
+            let callCenter = self.callCenter
+        else { return .stopped }
+        
+        if participant.isSelfUser {
+             return callCenter.videoState(conversationId: convID)
+        } else {
+            return callCenter.callParticipantVideoState(conversationId: convID, userId: userID)
+        }
+    }
+    
     public var state: CallState {
-        if let conversation = conversation, let remoteIdentifier = conversation.remoteIdentifier, let callCenter = self.callCenter {
+        if let remoteIdentifier = relyModel?.remoteIdentifier, let callCenter = self.callCenter {
             return callCenter.callState(conversationId: remoteIdentifier)
         } else {
             return .none
@@ -82,26 +104,26 @@ public class VoiceChannelV3 : NSObject, VoiceChannel {
     }
     
     public var isVideoCall: Bool {
-        guard let remoteIdentifier = conversation?.remoteIdentifier else { return false }
+        guard let remoteIdentifier = relyModel?.remoteIdentifier else { return false }
         
         return self.callCenter?.isVideoCall(conversationId: remoteIdentifier) ?? false
     }
     
     public var isConstantBitRateAudioActive: Bool {
-        guard let remoteIdentifier = conversation?.remoteIdentifier else { return false }
+        guard let remoteIdentifier = relyModel?.remoteIdentifier else { return false }
         
         return self.callCenter?.isContantBitRate(conversationId: remoteIdentifier) ?? false
     }
 
     public var networkQuality: NetworkQuality {
-        guard let remoteIdentifier = conversation?.remoteIdentifier, let callCenter = self.callCenter else { return .normal }
+        guard let remoteIdentifier = relyModel?.remoteIdentifier, let callCenter = self.callCenter else { return .normal }
 
         return callCenter.networkQuality(conversationId: remoteIdentifier)
     }
     
     public var initiator : ZMUser? {
-        guard let context = conversation?.managedObjectContext,
-              let convId = conversation?.remoteIdentifier,
+        guard let context = relyModel?.managedObjectContext,
+              let convId = relyModel?.remoteIdentifier,
               let userId = self.callCenter?.initiatorForCall(conversationId: convId)
         else {
             return nil
@@ -111,19 +133,19 @@ public class VoiceChannelV3 : NSObject, VoiceChannel {
     
     public var videoState: VideoState {
         get {
-            guard let remoteIdentifier = conversation?.remoteIdentifier else { return .stopped }
+            guard let remoteIdentifier = relyModel?.remoteIdentifier else { return .stopped }
             
             return self.callCenter?.videoState(conversationId: remoteIdentifier) ?? .stopped
         }
         set {
-            guard let remoteIdentifier = conversation?.remoteIdentifier else { return }
+            guard let remoteIdentifier = relyModel?.remoteIdentifier else { return }
             
             callCenter?.setVideoState(conversationId: remoteIdentifier, videoState: newValue)
         }
     }
     
     public func setVideoCaptureDevice(_ device: CaptureDevice) throws {
-        guard let conversationId = conversation?.remoteIdentifier else { throw VoiceChannelV3Error.switchToVideoNotAllowed }
+        guard let conversationId = relyModel?.remoteIdentifier else { throw VoiceChannelV3Error.switchToVideoNotAllowed }
         
         self.callCenter?.setVideoCaptureDevice(device, for: conversationId)
     }
@@ -146,12 +168,12 @@ extension VoiceChannelV3 : CallActions {
     }
     
     public func continueByDecreasingConversationSecurity(userSession: ZMUserSession) {
-        guard let conversation = conversation else { return }
+        guard let conversation = relyModel as? ZMConversation else { return }
         conversation.acknowledgePrivacyWarning(withResendIntent: false)
     }
     
     public func leaveAndDecreaseConversationSecurity(userSession: ZMUserSession) {
-        guard let conversation = conversation else { return }
+        guard let conversation = relyModel as? ZMConversation else { return }
         conversation.acknowledgePrivacyWarning(withResendIntent: false)
         userSession.syncManagedObjectContext.performGroupedBlock {
             let conversationId = conversation.objectID
@@ -163,8 +185,9 @@ extension VoiceChannelV3 : CallActions {
     }
     
     public func join(video: Bool, userSession: ZMUserSession) -> Bool {
-        if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *) {
-            userSession.callKitDelegate?.requestJoinCall(in: conversation!, video: video)
+        if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *),
+            relyModel?.needCallKit ?? false {
+            userSession.callKitDelegate?.requestJoinCall(in: relyModel as! ZMConversation, video: video)
             return true
         } else {
             return join(video: video)
@@ -172,8 +195,9 @@ extension VoiceChannelV3 : CallActions {
     }
     
     public func leave(userSession: ZMUserSession, completion: (() -> ())?) {
-        if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *) {
-            userSession.callKitDelegate?.requestEndCall(in: conversation!, completion: completion)
+        if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *),
+            relyModel?.needCallKit ?? false  {
+            userSession.callKitDelegate?.requestEndCall(in: relyModel as! ZMConversation, completion: completion)
         } else {
             leave()
             completion?()
@@ -185,25 +209,25 @@ extension VoiceChannelV3 : CallActions {
 extension VoiceChannelV3 : CallActionsInternal {
     
     public func join(video: Bool) -> Bool {
-        guard let conversation = conversation else { return false }
+        guard let relyModel = relyModel else { return false }
         
         var joined = false
         
         switch state {
         case .incoming(video: _, shouldRing: _, degraded: let degraded):
             if !degraded {
-                joined = callCenter?.answerCall(conversation: conversation, video: video) ?? false
+                joined = callCenter?.answerCall(relyModel: relyModel, video: video) ?? false
             }
         default:
-            joined = self.callCenter?.startCall(conversation: conversation, video: video) ?? false
+            joined = self.callCenter?.startCall(relyModel: relyModel, video: true) ?? false
         }
         
         return joined
     }
     
     public func leave() {
-        guard let conv = conversation,
-              let remoteID = conv.remoteIdentifier
+        guard let relyModel = relyModel,
+              let remoteID = relyModel.remoteIdentifier
         else { return }
         
         switch state {
@@ -219,27 +243,27 @@ extension VoiceChannelV3 : CallActionsInternal {
 extension VoiceChannelV3 : CallObservers {
 
     public func addNetworkQualityObserver(_ observer: NetworkQualityObserver) -> Any {
-        return WireCallCenterV3.addNetworkQualityObserver(observer: observer, for: conversation!, context: conversation!.managedObjectContext!)
+        return WireCallCenterV3.addNetworkQualityObserver(observer: observer, for: relyModel!, context: relyModel!.managedObjectContext!)
     }
     
     /// Add observer of voice channel state. Returns a token which needs to be retained as long as the observer should be active.
     public func addCallStateObserver(_ observer: WireCallCenterCallStateObserver) -> Any {
-        return WireCallCenterV3.addCallStateObserver(observer: observer, for: conversation!, context: conversation!.managedObjectContext!)
+        return WireCallCenterV3.addCallStateObserver(observer: observer, for: relyModel!, context: relyModel!.managedObjectContext!)
     }
     
     /// Add observer of voice channel participants. Returns a token which needs to be retained as long as the observer should be active.
     public func addParticipantObserver(_ observer: WireCallCenterCallParticipantObserver) -> Any {
-        return WireCallCenterV3.addCallParticipantObserver(observer: observer, for: conversation!, context: conversation!.managedObjectContext!)
+        return WireCallCenterV3.addCallParticipantObserver(observer: observer, for: relyModel!, context: relyModel!.managedObjectContext!)
     }
     
     /// Add observer of voice gain. Returns a token which needs to be retained as long as the observer should be active.
     public func addVoiceGainObserver(_ observer: VoiceGainObserver) -> Any {
-        return WireCallCenterV3.addVoiceGainObserver(observer: observer, for: conversation!, context: conversation!.managedObjectContext!)
+        return WireCallCenterV3.addVoiceGainObserver(observer: observer, for: relyModel!, context: relyModel!.managedObjectContext!)
     }
         
     /// Add observer of constant bit rate audio. Returns a token which needs to be retained as long as the observer should be active.
     public func addConstantBitRateObserver(_ observer: ConstantBitRateAudioObserver) -> Any {
-        return WireCallCenterV3.addConstantBitRateObserver(observer: observer, context: conversation!.managedObjectContext!)
+        return WireCallCenterV3.addConstantBitRateObserver(observer: observer, context: relyModel!.managedObjectContext!)
     }
     
     /// Add observer of the state of all voice channels. Returns a token which needs to be retained as long as the observer should be active.
@@ -256,7 +280,7 @@ public extension CallState {
         case .unknown, .terminating, .incoming, .none, .establishedDataChannel, .mediaStopped:
             return .unconnected
         case .established:
-            return .connected(videoState: .stopped)
+            return .connected
         case .outgoing, .answered, .reconnecting, .answeredIncomingCall:
             return .connecting
         }

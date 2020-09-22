@@ -126,7 +126,7 @@ class CallingRoomManager: NSObject {
     }
     
     func connectToRoom(with roomId: UUID, userId: UUID, roomMode: RoomMode, videoState: VideoState, isStarter: Bool) {
-        zmLog.info("CallingRoomManager-connectToRoom")
+        zmLog.info("CallingRoomManager-connectToRoom roomId:\(roomId) userId:\(userId)")
         guard let callingConfigure = self.callingConfigure,
             let wsUrl = callingConfigure.vaildGateway,
             self.roomId == nil else {
@@ -151,7 +151,7 @@ class CallingRoomManager: NSObject {
             self.clientConnectManager = WebRTCClientManager(signalManager: self.signalManager, mediaManager: self.mediaOutputManager!, membersManagerDelegate: self.roomMembersManager!, mediaStateManagerDelegate: self.roomMembersManager!, observe: self, isStarter: self.isStarter, videoState: self.videoState)
             //单聊通话需要知道好友信息，并且将其添加至房间成员管理类中
             (clientConnectManager as! WebRTCClientManager).setPeerInfo(peerId: peerId)
-            self.roomMembersManager?.addNewMember(with: peerId, hasVideo: false)
+            self.roomMembersManager?.addNewMember(with: peerId, isSelf: false, hasVideo: false)
             //获取穿透服务器地址
             (clientConnectManager as! WebRTCClientManager).callingConfigure = callingConfigure
         case .mp:
@@ -267,7 +267,7 @@ extension CallingRoomManager: CallingMembersObserver {
         guard let roomId = self.roomId else {
             return
         }
-        zmLog.info("CallingRoomManager-roomMembersConnectStateChange-mid:\(mid),isConnected:\(isConnected)")
+        zmLog.info("CallingRoomManager-roomMembersConnectStateChange-mid:\(mid),isConnected:\(isConnected), membersCount:\(self.roomMembersManager!.membersCount)")
         if isConnected {
             ///只要有一个用户连接，就认为此次会话已经连接
             self.roomState = .connected

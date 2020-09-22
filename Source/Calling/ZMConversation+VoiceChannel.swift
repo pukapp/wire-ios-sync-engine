@@ -30,7 +30,7 @@ public extension ZMConversation {
             if let voiceChannel = objc_getAssociatedObject(self, &voiceChannelAssociatedKey) as? VoiceChannel {
                 return voiceChannel
             } else {
-                let voiceChannel = WireCallCenterV3Factory.voiceChannelClass.init(conversation: self)
+                let voiceChannel = WireCallCenterV3Factory.voiceChannelClass.init(relyModel: self)
                 objc_setAssociatedObject(self, &voiceChannelAssociatedKey, voiceChannel, .OBJC_ASSOCIATION_RETAIN)
                 return voiceChannel
             }

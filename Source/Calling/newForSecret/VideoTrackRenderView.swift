@@ -15,15 +15,24 @@ open class SelfVideoRenderView : RTCEAGLVideoView {
     
     private var attached: Bool = false
     
+    private var outputManager: MediaOutputManager?
     
     override open func didMoveToWindow() {
-        guard let videoTrack = CallingRoomManager.shareInstance.mediaOutputManager?.produceVideoTrack(with: .high) else {
-            zmLog.info("SelfVideoRenderView-videoTrack == nil  mediaOutputManager:\(CallingRoomManager.shareInstance.mediaOutputManager == nil)")
+        if TARGET_OS_SIMULATOR == 1 {
             return
         }
         
+        if self.transform != CGAffineTransform(scaleX: -1.0, y: 1.0) {
+            self.transform = CGAffineTransform(scaleX: -1.0, y: 1.0)
+        }
+        
+        if outputManager == nil {
+            outputManager = MediaOutputManager()
+        }
+        let videoTrack = outputManager!.produceVideoTrack(with: .high)
+        
         if self.window != nil && !attached {
-            zmLog.info("SelfVideoRenderView-addTrack")
+            zmLog.info("SelfVideoRenderView-addTrack-- \(videoTrack)")
             videoTrack.add(self)
         } else {
             zmLog.info("SelfVideoRenderView-removeTrack")
@@ -33,11 +42,15 @@ open class SelfVideoRenderView : RTCEAGLVideoView {
     }
     
     open func startVideoCapture() {
-        CallingRoomManager.shareInstance.mediaOutputManager?.startVideoCapture()
+        self.outputManager?.startVideoCapture()
     }
     
     open func stopVideoCapture() {
-        CallingRoomManager.shareInstance.mediaOutputManager?.stopVideoCapture()
+        self.outputManager?.stopVideoCapture()
+    }
+    
+    open func switchCamera(isFront: Bool) {
+        self.outputManager?.flipCamera(isFront: isFront)
     }
     
     deinit {
@@ -55,15 +68,30 @@ open class VideoRenderView : RTCEAGLVideoView {
     open var shouldFill: Bool = false
     open var fillRatio: CGFloat = 0.0
     open var videoSize: CGSize = CGSize(width: 100, height: 100)
+    
+    open var isSelf: Bool = false {
+        didSet {
+            if isSelf {
+                if TARGET_OS_SIMULATOR == 1 {
+                    return
+                }
+                if self.transform != CGAffineTransform(scaleX: -1.0, y: 1.0) {
+                    self.transform = CGAffineTransform(scaleX: -1.0, y: 1.0)
+                }
+                self.videoTrack = CallingRoomManager.shareInstance.mediaOutputManager?.produceVideoTrack(with: .high)
+            }
+        }
+    }
+    
     open var userid: String? {
         didSet {
             zmLog.info("VideoRenderView--userid--newValue:\(String(describing: userid)),oldValue\(String(describing: oldValue))")
-            if let id = userid,
+            guard let id = userid,
                 let uid = UUID(uuidString: id),
-                let track = CallingRoomManager.shareInstance.roomMembersManager?.getVideoTrack(with: uid)
-            {
-                self.videoTrack = track
+                let roomMembersManager = CallingRoomManager.shareInstance.roomMembersManager else {
+                return
             }
+            self.videoTrack = roomMembersManager.getVideoTrack(with: uid)
         }
     }
     

@@ -460,7 +460,8 @@ extension CallKitDelegate : CXProviderDelegate {
 
 extension CallKitDelegate : WireCallCenterCallStateObserver, WireCallCenterMissedCallObserver {
     
-    public func callCenterDidChange(callState: CallState, conversation: ZMConversation, caller: ZMUser, timestamp: Date?, previousCallState: CallState?) {
+    public func callCenterDidChange(callState: CallState, relyModel: CallRelyModel, caller: ZMUser, timestamp: Date?, previousCallState: CallState?) {
+        guard let conversation = relyModel as? ZMConversation else { return }
         
         switch callState {
         case .incoming(video: let video, shouldRing: let shouldRing, degraded: _):
@@ -478,7 +479,7 @@ extension CallKitDelegate : WireCallCenterCallStateObserver, WireCallCenterMisse
         }
     }
     
-    public func callCenterMissedCall(conversation: ZMConversation, caller: ZMUser, timestamp: Date, video: Bool) {
+    public func callCenterMissedCall(relyModel: CallRelyModel, caller: ZMUser, timestamp: Date, video: Bool) {
         // Since we missed the call we will not have an assigned callUUID and can just create a random one
         provider.reportCall(with: UUID(), endedAt: timestamp, reason: .unanswered)
     }
@@ -566,7 +567,7 @@ class CallObserver : WireCallCenterCallStateObserver {
         token = WireCallCenterV3.addCallStateObserver(observer: self, for: conversation, context: conversation.managedObjectContext!)
     }
     
-    public func callCenterDidChange(callState: CallState, conversation: ZMConversation, caller: ZMUser, timestamp: Date?, previousCallState: CallState?) {
+    public func callCenterDidChange(callState: CallState, relyModel: CallRelyModel, caller: ZMUser, timestamp: Date?, previousCallState: CallState?) {
         switch callState {
         case .answered(degraded: false):
             onAnswered?()

@@ -16,7 +16,7 @@ extension MediasoupClientManager: CallingSignalManagerDelegate {
     
     func onReceiveRequest(with method: String, info: JSON) {
         guard let action = MediasoupSignalAction.ReceiveRequest(rawValue: method) else { return }
-        zmLog.info("MediasoupClientManager-onReceiveRequest:action:\(action)")
+        zmLog.info("MediasoupClientManager-onReceiveRequest:action:\(action) queue: \(Thread.current)")
         switch action {
         case .newConsumer:
             produceConsumerSerialQueue.async {
@@ -26,8 +26,15 @@ extension MediasoupClientManager: CallingSignalManagerDelegate {
     }
     
     func onNewNotification(with noti: String, info: JSON) {
-        guard let action = MediasoupSignalAction.Notification(rawValue: noti) else { return }
-        zmLog.info("MediasoupClientManager-onNewNotification:action:\(action)")
+        if let action = MeetingSignalAction.Notification(rawValue: noti) {
+            self.onReceiveMeetingNotification(with: action, info: info)
+        } else if let action = MediasoupSignalAction.Notification(rawValue: noti) {
+            self.onReceiveMediasoupNotification(with: action, info: info)
+        }
+    }
+    
+    func onReceiveMediasoupNotification(with action: MediasoupSignalAction.Notification, info: JSON) {
+        zmLog.info("MediasoupClientManager-onReceiveMediasoupNotification:action:\(action)")
         switch action {
         case .consumerPaused, .consumerResumed, .consumerClosed:
             self.handleConsumerState(with: action, consumerInfo: info)
@@ -36,7 +43,7 @@ extension MediasoupClientManager: CallingSignalManagerDelegate {
                 let pUid = UUID(uuidString: peerId) else {
                 return
             }
-            self.membersManagerDelegate.memberDisConnect(with: pUid)
+            self.membersManagerDelegate.memberConnectStateChanged(with: pUid, state: .connecting)
         case .newPeer:
             self.receiveNewPeer(peerInfo: info)
         case .peerLeave:
@@ -53,7 +60,7 @@ extension MediasoupClientManager: CallingSignalManagerDelegate {
 }
 
 //由于sendTransport!.produce这个方法会堵塞线程以及不能在两个线程分别创建produce和consumer，所以需要将他们单独放置在另外一个串行队列中去创建它们
-private let produceConsumerSerialQueue: DispatchQueue = DispatchQueue(label: "produceConsumerSerialQueue")
+private let produceConsumerSerialQueue: DispatchQueue = DispatchQueue.init(label: "produceConsumerSerialQueue")
 
 class MediasoupClientManager: CallingClientConnectProtocol {
     
@@ -275,7 +282,9 @@ class MediasoupClientManager: CallingClientConnectProtocol {
                 zmLog.info("MediasoupClientManager-can not produceVideo")
                 return
         }
-        
+        if TARGET_OS_SIMULATOR == 1 {
+            return
+        }
         let videoTrack = self.mediaManager.produceVideoTrack(with: VideoOutputFormat(count: self.mediaStateManagerDelegate.totalVideoTracksCount))
         videoTrack.isEnabled = true
         self.createProducer(track: videoTrack, codecOptions: nil, encodings: nil)
@@ -295,7 +304,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     }
     
     private func createProducer(track: RTCMediaStreamTrack, codecOptions: String?, encodings: Array<RTCRtpEncodingParameters>?) {
-        /** 需要注意：sendTransport!.produce 这个方法最好在一个线程里面同步的去执行
+        /** 需要注意：sendTransport!.produce 这个方法最好在一个线程里面同步的去执行,并且需要和关闭peerConnection在同一线程之内
          *  webRTC 里面 peerConnection 的 各种状态设置不是线程安全的，并且当传入了错误的状态会报错，从而引起应用崩溃，所以这里一个一个的去创建produce
         */
         produceConsumerSerialQueue.async {
@@ -314,7 +323,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     }
         
     func setLocalAudio(mute: Bool) {
-        if let audioProduce = self.producers.first(where: {return $0.getKind() == "audio" }) {
+        if let audioProduce = self.producers.first(where: { return $0.getKind() == "audio" }) {
             if mute {
                 audioProduce.pause()
             } else {
@@ -352,12 +361,19 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         }
     }
     
+    private var temp: [String: UUID] = [:]
+    
     func receiveNewPeer(peerInfo: JSON) {
-        guard let peerId = peerInfo["id"].string,
-            let uid = UUID(uuidString: peerId) else {
+        zmLog.info("MediasoupClientManager--receiveNewPeer \(peerInfo)")
+        guard let peerId = peerInfo["id"].string else {
             return
         }
-        self.membersManagerDelegate.addNewMember(with: uid, hasVideo: false)
+        var uid: UUID! = UUID(uuidString: peerId)
+        if uid == nil {
+            uid = UUID()
+            temp[peerId] = uid
+        }
+        self.membersManagerDelegate.addNewMember(with: uid, isSelf: false, hasVideo: false)
     }
     
     func removePeer(with id: UUID) {
@@ -379,9 +395,9 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             return
         }
         
-        guard let peerId = consumerInfo["appData"]["peerId"].string,
-            let peerUId = UUID(uuidString: peerId),
-            let recvTransport = self.recvTransport else {
+        guard let recvTransport = self.recvTransport,
+            let peerId = consumerInfo["appData"]["peerId"].string,
+            let peerUId = UUID(uuidString: peerId) ?? temp[peerId] else {
             return
         }
         
@@ -391,10 +407,8 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         let rtpParameters: JSON = consumerInfo["rtpParameters"]
         
         zmLog.info("MediasoupClientManager-handleNewConsumer--peer:\(peerId)--kind:\(kind)---id:\(id)")
-        
         let consumerListen = MediasoupConsumerListener(consumerId: id)
         let consumer: Consumer = recvTransport.consume(consumerListen, id: id, producerId: producerId, kind: kind, rtpParameters: rtpParameters.description)
-        
         if let peer = self.peerConsumers.first(where: { return $0.peerId == peerUId }) {
             peer.addConsumer(consumer, listener: consumerListen)
         } else {
@@ -402,8 +416,8 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             peer.addConsumer(consumer, listener: consumerListen)
             self.peerConsumers.append(peer)
         }
-        
-        self.membersManagerDelegate.memberConnected(with: peerUId)
+        self.membersManagerDelegate.memberConnectStateChanged(with: peerUId, state: .connected)
+
         if kind == "video" {
             self.mediaStateManagerDelegate.addVideoTrack(with: peerUId, videoTrack: consumer.getTrack() as! RTCVideoTrack)
             self.membersManagerDelegate.setMemberVideo(.started, mid: peerUId)

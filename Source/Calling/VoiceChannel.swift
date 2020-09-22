@@ -33,9 +33,86 @@ public enum CaptureDevice : Int {
     }
 }
 
+public protocol CallRelyModel: NSObjectProtocol {
+    
+    var remoteIdentifier: UUID? { get }
+    
+    var managedObjectContext: NSManagedObjectContext? { get }
+    
+    var needCallKit: Bool { get }
+    
+    var activeParticipants: Set<ZMUser> { get }
+    
+    var callType: AVSConversationType { get }
+    
+    var peerId: UUID? { get }
+    
+    var initialMember: [AVSCallMember] { get }
+    
+    var callTitle: String? { get }
+}
+
+extension ZMMeeting: CallRelyModel {
+    public var remoteIdentifier: UUID? {
+        return UUID.init(uuidString: "C24461AA-E4D4-4D45-B9EE-58ABD3B07D7B")
+    }
+    
+    public var needCallKit: Bool {
+        return false
+    }
+    
+    public var activeParticipants: Set<ZMUser> {
+        return []
+    }
+    
+    public var callType: AVSConversationType {
+        return .conference
+    }
+    
+    public var peerId: UUID? {
+        return nil
+    }
+    
+    public var initialMember: [AVSCallMember] {
+        return []
+    }
+    
+    public var callTitle: String? {
+        return self.title
+    }
+}
+
+extension ZMConversation: CallRelyModel {
+    
+    public var callType: AVSConversationType {
+        return self.conversationType == .group ? .group : .oneToOne
+    }
+    
+    public var needCallKit: Bool {
+        return true
+    }
+    
+    public var peerId: UUID? {
+        if self.conversationType == .oneOnOne {
+            return self.connectedUser!.remoteIdentifier
+        } else {
+            return nil
+        }
+    }
+    
+    public var initialMember: [AVSCallMember]  {
+        guard let user = self.connectedUser, self.conversationType == .oneOnOne else { return [] }
+        return [AVSCallMember(userId: user.remoteIdentifier, callParticipantState: .connecting, videoState: .stopped)]
+    }
+    
+    public var callTitle: String? {
+        return self.displayName
+    }
+}
+
 public protocol VoiceChannel : class, CallProperties, CallActions, CallActionsInternal, CallObservers {
     
-    init(conversation: ZMConversation)
+    init(relyModel: CallRelyModel)
     
 }
 
@@ -43,7 +120,9 @@ public protocol CallProperties : NSObjectProtocol {
     
     var state: CallState { get }
     
-    var conversation: ZMConversation? { get }
+    var relyModel: CallRelyModel? { get }
+    
+    var callTitle: String? { get }
     
     /// The date and time of current call start
     var callStartDate: Date? { get }
@@ -58,7 +137,8 @@ public protocol CallProperties : NSObjectProtocol {
     var videoState: VideoState { get set }
     var networkQuality: NetworkQuality { get }
     
-    func state(forParticipant: ZMUser) -> CallParticipantState
+    func connectState(forParticipant: ZMUser) -> CallParticipantState
+    func videoState(forParticipant: ZMUser) -> VideoState
     func setVideoCaptureDevice(_ device: CaptureDevice) throws
 }
 

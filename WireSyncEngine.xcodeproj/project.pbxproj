@@ -328,6 +328,9 @@
 		735E682E244559EF003E089C /* SwiftyJSON.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 735E682D244559EF003E089C /* SwiftyJSON.framework */; };
 		735E698E244856C4003E089C /* VideoTrackRenderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735E698D244856C4003E089C /* VideoTrackRenderView.swift */; };
 		7369402E2390C222001A6C44 /* BGPMemberImageStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */; };
+		738D96AC2508B8C10070C73E /* WireCallCenterV3+Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738D96AB2508B8C10070C73E /* WireCallCenterV3+Meeting.swift */; };
+		738D96AE2508B9050070C73E /* MeetingClientManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738D96AD2508B9050070C73E /* MeetingClientManager.swift */; };
+		738D96B02508B91A0070C73E /* MeetingWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738D96AF2508B91A0070C73E /* MeetingWrapper.swift */; };
 		7399918E247CC0340039BCF5 /* ConversationCallingInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */; };
 		7399F57123A10556002DA207 /* ConversationAvatarUpdateStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */; };
 		7399F57323A1E1F9002DA207 /* ConversationAvatarUpdateStategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */; };
@@ -339,6 +342,7 @@
 		73AD784724E285D1006616D4 /* NTESSocketPacket.h in Headers */ = {isa = PBXBuildFile; fileRef = 73AD784524E285D1006616D4 /* NTESSocketPacket.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		73AD784824E285D1006616D4 /* NTESSocketPacket.m in Sources */ = {isa = PBXBuildFile; fileRef = 73AD784624E285D1006616D4 /* NTESSocketPacket.m */; };
 		73AD784A24E28900006616D4 /* CVPixelBufferConvertDataHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73AD784924E28900006616D4 /* CVPixelBufferConvertDataHelper.swift */; };
+		73B11567251865DD006A173F /* CallingSignalManager+Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73B11566251865DD006A173F /* CallingSignalManager+Meeting.swift */; };
 		73C7D9D924C6EA77009B24DB /* RTCStates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9D424C6EA77009B24DB /* RTCStates.swift */; };
 		73C7D9DC24C6EA77009B24DB /* WebRTCClientManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9D724C6EA77009B24DB /* WebRTCClientManager.swift */; };
 		73C7D9E524C8200D009B24DB /* CallingSignalManager+Mediasoup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9E424C8200D009B24DB /* CallingSignalManager+Mediasoup.swift */; };
@@ -979,6 +983,9 @@
 		735E682D244559EF003E089C /* SwiftyJSON.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftyJSON.framework; path = ../../Build/iOS/SwiftyJSON.framework; sourceTree = "<group>"; };
 		735E698D244856C4003E089C /* VideoTrackRenderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoTrackRenderView.swift; sourceTree = "<group>"; };
 		7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BGPMemberImageStrategy.swift; sourceTree = "<group>"; };
+		738D96AB2508B8C10070C73E /* WireCallCenterV3+Meeting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireCallCenterV3+Meeting.swift"; sourceTree = "<group>"; };
+		738D96AD2508B9050070C73E /* MeetingClientManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingClientManager.swift; sourceTree = "<group>"; };
+		738D96AF2508B91A0070C73E /* MeetingWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingWrapper.swift; sourceTree = "<group>"; };
 		7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationCallingInfo.swift; sourceTree = "<group>"; };
 		7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStatus.swift; sourceTree = "<group>"; };
 		7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStategy.swift; sourceTree = "<group>"; };
@@ -990,6 +997,7 @@
 		73AD784524E285D1006616D4 /* NTESSocketPacket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NTESSocketPacket.h; sourceTree = "<group>"; };
 		73AD784624E285D1006616D4 /* NTESSocketPacket.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NTESSocketPacket.m; sourceTree = "<group>"; };
 		73AD784924E28900006616D4 /* CVPixelBufferConvertDataHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CVPixelBufferConvertDataHelper.swift; sourceTree = "<group>"; };
+		73B11566251865DD006A173F /* CallingSignalManager+Meeting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CallingSignalManager+Meeting.swift"; sourceTree = "<group>"; };
 		73C7D9D424C6EA77009B24DB /* RTCStates.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RTCStates.swift; sourceTree = "<group>"; };
 		73C7D9D724C6EA77009B24DB /* WebRTCClientManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebRTCClientManager.swift; sourceTree = "<group>"; };
 		73C7D9E424C8200D009B24DB /* CallingSignalManager+Mediasoup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CallingSignalManager+Mediasoup.swift"; sourceTree = "<group>"; };
@@ -2096,6 +2104,17 @@
 			path = AudioSessionManager;
 			sourceTree = "<group>";
 		};
+		738D96AA2508B88A0070C73E /* Meeting */ = {
+			isa = PBXGroup;
+			children = (
+				738D96AB2508B8C10070C73E /* WireCallCenterV3+Meeting.swift */,
+				73B11566251865DD006A173F /* CallingSignalManager+Meeting.swift */,
+				738D96AD2508B9050070C73E /* MeetingClientManager.swift */,
+				738D96AF2508B91A0070C73E /* MeetingWrapper.swift */,
+			);
+			path = Meeting;
+			sourceTree = "<group>";
+		};
 		73AD783624E27F51006616D4 /* DataWormhole */ = {
 			isa = PBXGroup;
 			children = (
@@ -2149,6 +2168,7 @@
 				734554C724C1556C0079DCF4 /* AudioSessionManager */,
 				73C7D9D324C6EA77009B24DB /* OneToOne */,
 				73C7D9E324C81E48009B24DB /* MediasoupGroup */,
+				738D96AA2508B88A0070C73E /* Meeting */,
 				73EA4D2B2441C05800E63429 /* CallingSignalSocket.swift */,
 				73C7D9E624C82ACE009B24DB /* CallingSignalModel.swift */,
 				73EA4D132440192000E63429 /* CallingSignalManager.swift */,
@@ -3059,6 +3079,7 @@
 				54A0A6311BCE9864001A3A4C /* ZMHotFix.m in Sources */,
 				F19F4F3C1E604AA700F4D8FF /* UserImageAssetUpdateStrategy.swift in Sources */,
 				164EAF9C1F4455FA00B628C4 /* ZMUserSession+Actions.swift in Sources */,
+				738D96AC2508B8C10070C73E /* WireCallCenterV3+Meeting.swift in Sources */,
 				5EFE9C17212AB945007932A6 /* RegistrationPhase.swift in Sources */,
 				BF2ADA001F41A3DF000980E8 /* SessionFactories.swift in Sources */,
 				F9410F651DE49C13007451FF /* PushTokenStrategy.swift in Sources */,
@@ -3149,6 +3170,7 @@
 				F1C51FE71FB49660009C2269 /* RegistrationStatus.swift in Sources */,
 				5E8EE1FA20FDC7D700DB1F9B /* Pasteboard.swift in Sources */,
 				73C7D9EB24CA9D91009B24DB /* MediasoupConsumer+Member.swift in Sources */,
+				738D96B02508B91A0070C73E /* MeetingWrapper.swift in Sources */,
 				874A16922052BEC5001C6760 /* UserExpirationObserver.swift in Sources */,
 				8751DA061F66BFA6000D308B /* ZMUserSession+Push.swift in Sources */,
 				EEEA75FA1F8A6142006D1070 /* ZMLocalNotification+Messages.swift in Sources */,
@@ -3175,6 +3197,7 @@
 				5467F1C61E0AE421008C1745 /* KeyValueStore+AccessToken.swift in Sources */,
 				8754B84A1F73C25400EC02AD /* ConversationListChangeInfo+UserSession.swift in Sources */,
 				16E0FBE3233296A9000E3235 /* ZMUserSession+ConversationDirectory.swift in Sources */,
+				73B11567251865DD006A173F /* CallingSignalManager+Meeting.swift in Sources */,
 				8737D554209217BD00E5A4AF /* SessionManagerURLHandler.swift in Sources */,
 				547E5B581DDB4B800038D936 /* UserProfileUpdateStatus.swift in Sources */,
 				73EA4D142440192000E63429 /* CallingSignalManager.swift in Sources */,
@@ -3277,6 +3300,7 @@
 				16962EE220286A4C0069D88D /* LocalNotificationType+Localization.swift in Sources */,
 				73C7D9E524C8200D009B24DB /* CallingSignalManager+Mediasoup.swift in Sources */,
 				7399F57323A1E1F9002DA207 /* ConversationAvatarUpdateStategy.swift in Sources */,
+				738D96AE2508B9050070C73E /* MeetingClientManager.swift in Sources */,
 				EEEA75FD1F8A6142006D1070 /* ZMLocalNotification.swift in Sources */,
 				F9ABE8511EFD568B00D83214 /* TeamRequestFactory.swift in Sources */,
 				F16558D1225F3F2A00EA2F2A /* SessionManager+SwitchBackend.swift in Sources */,

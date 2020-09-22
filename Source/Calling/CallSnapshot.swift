@@ -26,8 +26,8 @@ struct CallSnapshot {
     let callParticipants: CallParticipantsSnapshot
     let callState: CallState
     let callStarter: UUID
-    let isVideo: Bool
-    let isGroup: Bool
+    let mediaState: AVSCallMediaState
+    let callType: AVSConversationType
     let isConstantBitRate: Bool
     let videoState: VideoState
     let networkQuality: NetworkQuality
@@ -42,8 +42,8 @@ struct CallSnapshot {
         return CallSnapshot(callParticipants: callParticipants,
                             callState: callState,
                             callStarter: callStarter,
-                            isVideo: isVideo,
-                            isGroup: isGroup,
+                            mediaState: mediaState,
+                            callType: callType,
                             isConstantBitRate: isConstantBitRate,
                             videoState: videoState,
                             networkQuality: networkQuality,
@@ -59,8 +59,8 @@ struct CallSnapshot {
         return CallSnapshot(callParticipants: callParticipants,
                             callState: callState,
                             callStarter: callStarter,
-                            isVideo: isVideo,
-                            isGroup: isGroup,
+                            mediaState: mediaState,
+                            callType: callType,
                             isConstantBitRate: enabled,
                             videoState: videoState,
                             networkQuality: networkQuality,
@@ -76,8 +76,8 @@ struct CallSnapshot {
         return CallSnapshot(callParticipants: callParticipants,
                             callState: callState,
                             callStarter: callStarter,
-                            isVideo: isVideo,
-                            isGroup: isGroup,
+                            mediaState: mediaState,
+                            callType: callType,
                             isConstantBitRate: isConstantBitRate,
                             videoState: videoState,
                             networkQuality: networkQuality,
@@ -93,8 +93,8 @@ struct CallSnapshot {
         return CallSnapshot(callParticipants: callParticipants,
                             callState: callState,
                             callStarter: callStarter,
-                            isVideo: isVideo,
-                            isGroup: isGroup,
+                            mediaState: mediaState,
+                            callType: callType,
                             isConstantBitRate: isConstantBitRate,
                             videoState: videoState,
                             networkQuality: networkQuality,

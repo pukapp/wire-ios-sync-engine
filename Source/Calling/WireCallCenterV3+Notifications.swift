@@ -56,7 +56,7 @@ public protocol NetworkQualityObserver : class {
 
 struct WireCallCenterNetworkQualityNotification : SelfPostingNotification {
     static let notificationName = Notification.Name("WireCallCenterNetworkQualityNotification")
-    public let conversationId: UUID
+    public let remoteIdentifier: UUID
     public let userId: UUID
     public let networkQuality: NetworkQuality
 }
@@ -85,7 +85,7 @@ public protocol WireCallCenterCallStateObserver : class {
      - parameter caller: user which initiated the call
      - parameter timestamp: when the call state change occured
      */
-    func callCenterDidChange(callState: CallState, conversation: ZMConversation, caller: ZMUser, timestamp: Date?, previousCallState: CallState?)
+    func callCenterDidChange(callState: CallState, relyModel: CallRelyModel, caller: ZMUser, timestamp: Date?, previousCallState: CallState?)
 }
 
 public struct WireCallCenterCallStateNotification : SelfPostingNotification {
@@ -93,7 +93,8 @@ public struct WireCallCenterCallStateNotification : SelfPostingNotification {
     
     weak var context : NSManagedObjectContext?
     let callState : CallState
-    let conversationId : UUID
+    let remoteIdentifier : UUID
+    let callType: AVSConversationType
     let callerId : UUID
     let messageTime : Date?
     let previousCallState: CallState?
@@ -102,14 +103,15 @@ public struct WireCallCenterCallStateNotification : SelfPostingNotification {
 // MARK:- Missed call observer
 
 public protocol WireCallCenterMissedCallObserver : class {
-    func callCenterMissedCall(conversation: ZMConversation, caller: ZMUser, timestamp: Date, video: Bool)
+    func callCenterMissedCall(relyModel: CallRelyModel, caller: ZMUser, timestamp: Date, video: Bool)
 }
 
 public struct WireCallCenterMissedCallNotification : SelfPostingNotification {
     static let notificationName = Notification.Name("WireCallCenterMissedCallNotification")
     
     weak var context : NSManagedObjectContext?
-    let conversationId : UUID
+    let remoteIdentifier : UUID
+    let callType: AVSConversationType
     let callerId : UUID
     let timestamp: Date
     let video: Bool
@@ -138,18 +140,20 @@ public protocol WireCallCenterCallParticipantObserver : class {
      - parameter conversation: where the call is ongoing
      - parameter particpants: updated list of call participants
      */
-    func callParticipantsDidChange(conversation: ZMConversation, participants: [(UUID, CallParticipantState)])
+    func callParticipantsDidChange(relyModel: CallRelyModel, participants: [(UUID, CallParticipantState, VideoState)])
 }
 
 public struct WireCallCenterCallParticipantNotification : SelfPostingNotification {
     
     static let notificationName = Notification.Name("VoiceChannelParticipantNotification")
     
-    let conversationId : UUID
-    let participants: [(UUID, CallParticipantState)]
+    let remoteIdentifier : UUID
+    let callType: AVSConversationType
+    let participants: [(UUID, CallParticipantState, VideoState)]
     
-    init(conversationId: UUID, participants: [(UUID, CallParticipantState)]) {
-        self.conversationId = conversationId
+    init(remoteIdentifier: UUID, callType: AVSConversationType, participants: [(UUID, CallParticipantState, VideoState)]) {
+        self.remoteIdentifier = remoteIdentifier
+        self.callType = callType
         self.participants = participants
     }
     
@@ -170,18 +174,18 @@ public class VoiceGainNotification : NSObject  {
     
     public let volume : Float
     public let userId : UUID
-    public let conversationId : UUID
+    public let remoteIdentifier : UUID
     
-    public init(volume: Float, conversationId: UUID, userId: UUID) {
+    public init(volume: Float, remoteIdentifier: UUID, userId: UUID) {
         self.volume = volume
-        self.conversationId = conversationId
+        self.remoteIdentifier = remoteIdentifier
         self.userId = userId
         
         super.init()
     }
     
     public func post(in context: NotificationContext, queue: NotificationQueue) {
-        NotificationInContext(name: VoiceGainNotification.notificationName, context: context, object: conversationId as NSUUID, userInfo: [VoiceGainNotification.userInfoKey : self]).post(on: queue)
+        NotificationInContext(name: VoiceGainNotification.notificationName, context: context, object: remoteIdentifier as NSUUID, userInfo: [VoiceGainNotification.userInfoKey : self]).post(on: queue)
     }
 }
 
@@ -210,9 +214,9 @@ extension WireCallCenterV3 {
             if let note = note.userInfo[WireCallCenterCallStateNotification.userInfoKey] as? WireCallCenterCallStateNotification,
                let context = note.context,
                let caller = ZMUser(remoteID: note.callerId, createIfNeeded: false, in: context),
-               let conversation = ZMConversation(remoteID: note.conversationId, createIfNeeded: false, in: context) {
+               let relyModel = ZMConversation(remoteID: note.remoteIdentifier, createIfNeeded: false, in: context) {
                 
-                observer?.callCenterDidChange(callState: note.callState, conversation: conversation, caller: caller, timestamp: note.messageTime, previousCallState: note.previousCallState)
+                observer?.callCenterDidChange(callState: note.callState, relyModel: relyModel, caller: caller, timestamp: note.messageTime, previousCallState: note.previousCallState)
             }
         }
     }
@@ -223,28 +227,28 @@ extension WireCallCenterV3 {
         return NotificationInContext.addObserver(name: WireCallCenterCallStateNotification.notificationName, context: context.notificationContext, queue: .main) { [weak observer] note in
             if let note = note.userInfo[WireCallCenterCallStateNotification.userInfoKey] as? WireCallCenterCallStateNotification,
                let caller = ZMUser(remoteID: note.callerId, createIfNeeded: false, in: context),
-               let conversation = ZMConversation(remoteID: note.conversationId, createIfNeeded: false, in: context) {
+                let relyModel = getRelyModel(with: note.remoteIdentifier, callType: note.callType, in: context) {
                 
-                observer?.callCenterDidChange(callState: note.callState, conversation: conversation, caller: caller, timestamp: note.messageTime, previousCallState: note.previousCallState)
+                observer?.callCenterDidChange(callState: note.callState, relyModel: relyModel, caller: caller, timestamp: note.messageTime, previousCallState: note.previousCallState)
             }
         }
     }
     
     /// Register observer of the call center call state. This will inform you when there's an incoming call etc.
     /// Returns a token which needs to be retained as long as the observer should be active.
-    public class func addCallStateObserver(observer: WireCallCenterCallStateObserver, for conversation: ZMConversation, userSession: ZMUserSession) -> Any  {
-        return addCallStateObserver(observer: observer, for: conversation, context: userSession.managedObjectContext)
+    public class func addCallStateObserver(observer: WireCallCenterCallStateObserver, for relyModel: CallRelyModel, userSession: ZMUserSession) -> Any  {
+        return addCallStateObserver(observer: observer, for: relyModel, context: userSession.managedObjectContext)
     }
     
     /// Register observer of the call center call state. This will inform you when there's an incoming call etc.
     /// Returns a token which needs to be retained as long as the observer should be active.
-    internal class func addCallStateObserver(observer: WireCallCenterCallStateObserver, for conversation: ZMConversation, context: NSManagedObjectContext) -> Any  {
+    internal class func addCallStateObserver(observer: WireCallCenterCallStateObserver, for relyModel: CallRelyModel, context: NSManagedObjectContext) -> Any  {
         return NotificationInContext.addObserver(name: WireCallCenterCallStateNotification.notificationName, context: context.notificationContext, queue: .main) { [weak observer] note in
             if let note = note.userInfo[WireCallCenterCallStateNotification.userInfoKey] as? WireCallCenterCallStateNotification,
                let caller = ZMUser(remoteID: note.callerId, createIfNeeded: false, in: context),
-                   note.conversationId == conversation.remoteIdentifier {
+                   note.remoteIdentifier == relyModel.remoteIdentifier {
                 
-                observer?.callCenterDidChange(callState: note.callState, conversation: conversation, caller: caller, timestamp: note.messageTime, previousCallState: note.previousCallState)
+                observer?.callCenterDidChange(callState: note.callState, relyModel: relyModel, caller: caller, timestamp: note.messageTime, previousCallState: note.previousCallState)
             }
         }
     }
@@ -261,9 +265,9 @@ extension WireCallCenterV3 {
         return NotificationInContext.addObserver(name: WireCallCenterMissedCallNotification.notificationName, context: context.notificationContext, queue: .main) { [weak observer] note in
             if let note = note.userInfo[WireCallCenterMissedCallNotification.userInfoKey] as? WireCallCenterMissedCallNotification,
                let caller = ZMUser(remoteID: note.callerId, createIfNeeded: false, in: context),
-               let conversation = ZMConversation(remoteID: note.conversationId, createIfNeeded: false, in: context) {
+               let relyModel = getRelyModel(with: note.remoteIdentifier, callType: note.callType, in: context) {
                     
-                observer?.callCenterMissedCall(conversation: conversation, caller: caller, timestamp: note.timestamp, video: note.video)
+                observer?.callCenterMissedCall(relyModel: relyModel, caller: caller, timestamp: note.timestamp, video: note.video)
             }
         }
     }
@@ -275,9 +279,9 @@ extension WireCallCenterV3 {
             if let note = note.userInfo[WireCallCenterMissedCallNotification.userInfoKey] as? WireCallCenterMissedCallNotification,
                let context = note.context,
                let caller = ZMUser(remoteID: note.callerId, createIfNeeded: false, in: context),
-               let conversation = ZMConversation(remoteID: note.conversationId, createIfNeeded: false, in: context) {
+               let relyModel = getRelyModel(with: note.remoteIdentifier, callType: note.callType, in: context) {
                 
-                observer?.callCenterMissedCall(conversation: conversation, caller: caller, timestamp: note.timestamp, video: note.video)
+                observer?.callCenterMissedCall(relyModel: relyModel, caller: caller, timestamp: note.timestamp, video: note.video)
             }
         }
     }
@@ -300,37 +304,34 @@ extension WireCallCenterV3 {
     
     /// Add observer of particpants in a voice channel. Returns a token which needs to be retained as long as the observer should be active.
     /// Returns a token which needs to be retained as long as the observer should be active.
-    public class func addCallParticipantObserver(observer: WireCallCenterCallParticipantObserver, for conversation: ZMConversation, userSession: ZMUserSession) -> Any {
-        return addCallParticipantObserver(observer: observer, for: conversation, context: userSession.managedObjectContext)
+    public class func addCallParticipantObserver(observer: WireCallCenterCallParticipantObserver, for relyModel: CallRelyModel, userSession: ZMUserSession) -> Any {
+        return addCallParticipantObserver(observer: observer, for: relyModel, context: userSession.managedObjectContext)
     }
     
     /// Add observer of call particpants in a conversation. Returns a token which needs to be retained as long as the observer should be active.
     /// Returns a token which needs to be retained as long as the observer should be active.
-    internal class func addCallParticipantObserver(observer: WireCallCenterCallParticipantObserver, for conversation: ZMConversation, context: NSManagedObjectContext) -> Any {
-        let remoteID = conversation.remoteIdentifier!
-        
+    internal class func addCallParticipantObserver(observer: WireCallCenterCallParticipantObserver, for relyModel: CallRelyModel, context: NSManagedObjectContext) -> Any {
         return NotificationInContext.addObserver(name: WireCallCenterCallParticipantNotification.notificationName, context: context.notificationContext, queue: .main) { [weak observer] note in
             guard let note = note.userInfo[WireCallCenterCallParticipantNotification.userInfoKey] as? WireCallCenterCallParticipantNotification,
                   let observer = observer,
-                  note.conversationId == conversation.remoteIdentifier
+                  note.remoteIdentifier == relyModel.remoteIdentifier,
+                  let relyModel = getRelyModel(with: note.remoteIdentifier, callType: note.callType, in: context)
             else { return }
             
-            if note.conversationId == remoteID {
-                observer.callParticipantsDidChange(conversation: conversation, participants: note.participants)
-            }
+            observer.callParticipantsDidChange(relyModel: relyModel, participants: note.participants)
         }
     }
     
     /// Add observer of voice gain. Returns a token which needs to be retained as long as the observer should be active.
     /// Returns a token which needs to be retained as long as the observer should be active.
-    public class func addVoiceGainObserver(observer: VoiceGainObserver, for conversation: ZMConversation, userSession: ZMUserSession) -> Any {
-        return addVoiceGainObserver(observer: observer, for: conversation, context: userSession.managedObjectContext)
+    public class func addVoiceGainObserver(observer: VoiceGainObserver, for relyModel: CallRelyModel, userSession: ZMUserSession) -> Any {
+        return addVoiceGainObserver(observer: observer, for: relyModel, context: userSession.managedObjectContext)
     }
     
     /// Add observer of voice gain. Returns a token which needs to be retained as long as the observer should be active.
     /// Returns a token which needs to be retained as long as the observer should be active.
-    internal class func addVoiceGainObserver(observer: VoiceGainObserver, for conversation: ZMConversation, context: NSManagedObjectContext) -> Any {
-        return NotificationInContext.addObserver(name: VoiceGainNotification.notificationName, context: context.notificationContext, object: conversation.remoteIdentifier! as NSUUID, queue: .main) { [weak observer] note in
+    internal class func addVoiceGainObserver(observer: VoiceGainObserver, for relyModel: CallRelyModel, context: NSManagedObjectContext) -> Any {
+        return NotificationInContext.addObserver(name: VoiceGainNotification.notificationName, context: context.notificationContext, object: relyModel.remoteIdentifier! as NSUUID, queue: .main) { [weak observer] note in
             guard let note = note.userInfo[VoiceGainNotification.userInfoKey] as? VoiceGainNotification,
                 let observer = observer,
                 let user = ZMUser(remoteID: note.userId, createIfNeeded: false, in: context)
@@ -341,19 +342,27 @@ extension WireCallCenterV3 {
 
     /// Register observer when network quality changes
     /// Returns a token which needs to be retained as long as the observer should be active.
-    public class func addNetworkQualityObserver(observer: NetworkQualityObserver, for conversation: ZMConversation, userSession: ZMUserSession) -> Any {
-        return addNetworkQualityObserver(observer: observer, for: conversation, context: userSession.managedObjectContext)
+    public class func addNetworkQualityObserver(observer: NetworkQualityObserver, for relyModel: CallRelyModel, userSession: ZMUserSession) -> Any {
+        return addNetworkQualityObserver(observer: observer, for: relyModel, context: userSession.managedObjectContext)
     }
 
     /// Register observer when network quality changes
     /// Returns a token which needs to be retained as long as the observer should be active.
-    internal class func addNetworkQualityObserver(observer: NetworkQualityObserver, for conversation: ZMConversation, context: NSManagedObjectContext) -> Any {
+    internal class func addNetworkQualityObserver(observer: NetworkQualityObserver, for relyModel: CallRelyModel, context: NSManagedObjectContext) -> Any {
         return NotificationInContext.addObserver(name: WireCallCenterNetworkQualityNotification.notificationName, context: context.notificationContext, queue: .main) { [weak observer] note in
             if let note = note.userInfo[WireCallCenterNetworkQualityNotification.userInfoKey] as? WireCallCenterNetworkQualityNotification {
-                if note.conversationId == conversation.remoteIdentifier {
+                if note.remoteIdentifier == relyModel.remoteIdentifier {
                     observer?.callCenterDidChange(networkQuality: note.networkQuality)
                 }
             }
+        }
+    }
+    
+    public class func getRelyModel(with remoteIdentifier: UUID, callType: AVSConversationType, in context: NSManagedObjectContext) -> CallRelyModel? {
+        if callType == .conference {
+            return ZMMeeting.fetchExistingRandomMeeting(in: context)
+        } else {
+            return ZMConversation.init(remoteID: remoteIdentifier, createIfNeeded: false, in: context)
         }
     }
 }

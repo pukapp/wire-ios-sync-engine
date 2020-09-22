@@ -60,8 +60,8 @@ public final class CallStateObserver : NSObject {
 
 extension CallStateObserver : WireCallCenterCallStateObserver, WireCallCenterMissedCallObserver  {
     
-    public func callCenterDidChange(callState: CallState, conversation: ZMConversation, caller: ZMUser, timestamp: Date?, previousCallState: CallState?) {
-        
+    public func callCenterDidChange(callState: CallState, relyModel: CallRelyModel, caller: ZMUser, timestamp: Date?, previousCallState: CallState?) {
+        guard let conversation = relyModel as? ZMConversation else { return }
         let callerId = caller.remoteIdentifier
         let conversationId = conversation.remoteIdentifier
         
@@ -140,7 +140,9 @@ extension CallStateObserver : WireCallCenterCallStateObserver, WireCallCenterMis
         }
     }
     
-    public func callCenterMissedCall(conversation: ZMConversation, caller: ZMUser, timestamp: Date, video: Bool) {
+    public func callCenterMissedCall(relyModel: CallRelyModel, caller: ZMUser, timestamp: Date, video: Bool) {
+        guard let conversation = relyModel as? ZMConversation else { return }
+        
         let callerId = caller.remoteIdentifier
         let conversationId = conversation.remoteIdentifier
         

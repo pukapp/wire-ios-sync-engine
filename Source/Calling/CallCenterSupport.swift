@@ -25,7 +25,7 @@ public typealias WireCallMessageToken = UnsafeMutableRawPointer
  * The possible types of call.
  */
 
-public enum AVSCallType: Int32 {
+public enum AVSCallMediaState: Int32 {
     case normal = 0
     case video = 1
     case audioOnly = 2

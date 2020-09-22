@@ -142,6 +142,9 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     }
     
     func produceVideo(isEnabled: Bool) {
+        if TARGET_OS_SIMULATOR == 1 {
+            return
+        }
         guard self.localVideoTrack == nil else { return }
         self.localVideoTrack = self.mediaManager.produceVideoTrack(with: .high)
         self.localVideoTrack?.isEnabled = isEnabled
@@ -255,12 +258,12 @@ extension WebRTCClientManager: ZMTimerClient {
             self.timer!.fire(afterTimeInterval: 30)
         case .connectd:
             self.invalidTimer()
-            self.membersManagerDelegate.memberConnected(with: self.peerId!)
+            self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId!, state: .connected)
         case .disconnected:
-            self.membersManagerDelegate.memberConnecting(with: self.peerId!)
+            self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId!, state: .connecting)
         case .faild:
             if self.peerId == nil { return }
-            self.membersManagerDelegate.memberConnecting(with: self.peerId!)
+            self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId!, state: .connecting)
             guard self.connectState != .disconnected else {
                 //只要connectState不是从disconnected变成failed，就认为该用户没有ice穿透的可能性，直接走失败处理方法
                 self.establishConnectionFailed()

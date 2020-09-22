@@ -55,7 +55,7 @@ struct CallingConfigure {
     
     ///返回有效的webSocket地址
     var vaildGateway: String? {
-        return self.gateways.first(where: { return $0.vaild })?.webSocketUrlString
+        return self.gateways.first(where: { return ($0.ip.contains("143")) })?.webSocketUrlString
     }
 }
 

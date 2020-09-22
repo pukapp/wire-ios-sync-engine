@@ -36,12 +36,12 @@ public class CallingWrapper: AVSWrapperType {
         })
     }
     
-    public func startCall(conversationId: UUID, callType: AVSCallType, conversationType: AVSConversationType, useCBR: Bool, peerId: UUID?) -> Bool {
+    public func startCall(conversationId: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool, peerId: UUID?) -> Bool {
         self.callStateManager.observer = self
-        return callStateManager.startCall(cid: conversationId, callType: callType, conversationType: conversationType, peerId: peerId)
+        return callStateManager.startCall(cid: conversationId, mediaState: mediaState, conversationType: conversationType, peerId: peerId)
     }
     
-    public func answerCall(conversationId: UUID, callType: AVSCallType, conversationType: AVSConversationType, useCBR: Bool) -> Bool {
+    public func answerCall(conversationId: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool) -> Bool {
         self.callStateManager.observer = self
         return callStateManager.answerCall(cid: conversationId)
     }
@@ -92,27 +92,27 @@ public class CallingWrapper: AVSWrapperType {
 
 extension CallingWrapper: ConvsCallingStateObserve {
     
-    func changeCallStateNeedToSendMessage(in cid: UUID, callAction: CallingAction, convType: AVSConversationType? = nil, callType: AVSCallType? = nil, to: CallStarter?, memberCount: Int? = nil) {
-        self.sendCallingAction(with: callAction, cid: cid, convType: convType, callType: callType, to: to, memberCount: memberCount)
+    func changeCallStateNeedToSendMessage(in cid: UUID, callAction: CallingAction, convType: AVSConversationType? = nil, mediaState: AVSCallMediaState? = nil, to: CallStarter?, memberCount: Int? = nil) {
+        self.sendCallingAction(with: callAction, cid: cid, convType: convType, mediaState: mediaState, to: to, memberCount: memberCount)
     }
     
-    func updateCallState(in cid: UUID, userId: UUID, callState: CallState) {
+    func updateCallState(in cid: UUID, callType: AVSConversationType, userId: UUID, callState: CallState) {
         switch callState {
         case .incoming(video: let video, shouldRing: let shouldRing, degraded: _):
-            self.callCenter?.handleIncomingCall(conversationId: cid, messageTime: Date(), userId: userId, isVideoCall: video, shouldRing: shouldRing)
+            self.callCenter?.handleIncomingCall(conversationId: cid, callType: callType, messageTime: Date(), userId: userId, isVideoCall: video, shouldRing: shouldRing)
         case .answered:
-            self.callCenter?.handleAnsweredCall(conversationId: cid)
+            self.callCenter?.handleAnsweredCall(conversationId: cid, callType: callType)
         case .terminating(reason: let resaon):
-            self.callCenter?.handleCallEnd(reason: resaon, conversationId: cid, messageTime: Date(), userId: userId)
+            self.callCenter?.handleCallEnd(reason: resaon, conversationId: cid, callType: callType, messageTime: Date(), userId: userId)
         case .established:
-            self.callCenter?.handleEstablishedCall(conversationId: cid, userId: userId)
+            self.callCenter?.handleEstablishedCall(conversationId: cid, callType: callType, userId: userId)
         case .reconnecting:
-            self.callCenter?.handleReconnectingCall(conversationId: cid)
+            self.callCenter?.handleReconnectingCall(conversationId: cid, callType: callType)
         default: break;
         }
     }
     
-    func onGroupMemberChange(conversationId: UUID) {
+    func onGroupMemberChange(conversationId: UUID, callType: AVSConversationType) {
         self.callCenter?.handleGroupMemberChange(conversationId: conversationId)
     }
     
@@ -146,7 +146,7 @@ struct CallingModel {
     let to: CallStarter? ///消息接受者,当为nil时代表所有人都需要接收
     let memberCount: Int? ///用来记录群聊时剩余的通话人数，当为0 则所有人的状态改变 有stillgoingOn -> end
     let convType:  AVSConversationType?
-    let callType:  AVSCallType?
+    let mediaState:  AVSCallMediaState?
     
     let cid: UUID
     let userId: UUID
@@ -193,10 +193,10 @@ struct CallingModel {
         }
         
         if let callTypeValue = json["call_type"].int,
-            let callType = AVSCallType(rawValue: Int32(callTypeValue)) {
-            self.callType = callType
+            let mediaState = AVSCallMediaState(rawValue: Int32(callTypeValue)) {
+            self.mediaState = mediaState
         } else {
-            self.callType = nil
+            self.mediaState = nil
         }
         
         if let data = try? json["data"].rawData() {
@@ -208,13 +208,13 @@ struct CallingModel {
 ///receive--CallingAction
 extension CallingWrapper {
     
-    fileprivate func sendCallingAction(with action: CallingAction, cid: UUID, convType: AVSConversationType? = nil, callType: AVSCallType? = nil, to: CallStarter? = nil, memberCount: Int? = nil, data: Data? = nil) {
+    fileprivate func sendCallingAction(with action: CallingAction, cid: UUID, convType: AVSConversationType? = nil, mediaState: AVSCallMediaState? = nil, to: CallStarter? = nil, memberCount: Int? = nil, data: Data? = nil) {
         var json: JSON = ["call_state" : JSON(action.rawValue)]
         if let convType = convType {
             json["conv_type"] = JSON(convType.rawValue)
         }
-        if let callType = callType {
-            json["call_type"] = JSON(callType.rawValue)
+        if let mediaState = mediaState {
+            json["call_type"] = JSON(mediaState.rawValue)
         }
         if let to = to {
             json["to"] = JSON(["user_id": to.userId.uuidString, "client_id": to.clientId])
@@ -233,7 +233,7 @@ extension CallingWrapper {
         if model.callDate.compare(Date(timeIntervalSinceNow: -60)) == .orderedAscending {
             ///信令发送时间小于当前时间60s前，则认为该信令无效
             if model.callAction == .start {
-                self.callCenter?.handleMissedCall(conversationId: model.cid, messageTime: model.callDate, userId: model.userId, isVideoCall: model.callType == .video)
+                self.callCenter?.handleMissedCall(conversationId: model.cid, messageTime: model.callDate, userId: model.userId, isVideoCall: model.mediaState == .video)
             }
             return
         }
@@ -247,7 +247,7 @@ extension CallingWrapper {
         switch model.callAction {
         case .start:
             self.callStateManager.observer = self
-            callStateManager.recvStartCall(cid: model.cid, callType: model.callType!, conversationType: model.convType!, userId: model.userId, clientId: model.clientId)
+            callStateManager.recvStartCall(cid: model.cid, mediaState: model.mediaState!, conversationType: model.convType!, userId: model.userId, clientId: model.clientId)
         case .answer:
             if model.userId == self.userId, model.clientId != self.clientId {
                 ///自己的另外一个设备发送的answer消息，则此设备结束

@@ -18,12 +18,20 @@
 
 import Foundation
 
+//目前成员分为普通群聊音视频中的成员以及会议模式下的成员，所以这里将成员抽象出来
+public protocol CallMemberProtocol {
+    var remoteId: UUID { get }
+    var networkQuality: NetworkQuality { set get }
+    var callParticipantState: CallParticipantState { set get }
+    var videoState: VideoState { set get }
+    var audioEstablished: Bool { get }
+}
 
 /**
  * An object that represents the member of an AVS call.
  */
 
-public struct AVSCallMember: Hashable {
+public struct AVSCallMember: CallMemberProtocol {
 
     /// The remote identifier of the user.
     public let remoteId: UUID
@@ -32,14 +40,14 @@ public struct AVSCallMember: Hashable {
     //public let audioEstablished: Bool
 
     /// The state of video connection.
-    //public let videoState: VideoState
+    public var videoState: VideoState
 
     /// Netwok quality of this leg
-    public let networkQuality: NetworkQuality
+    public var networkQuality: NetworkQuality
 
-    public let callParticipantState: CallParticipantState
+    public var callParticipantState: CallParticipantState
     // MARK: - Initialization
-
+    
     /**
      * Creates the call member from its values.
      * - parameter userId: The remote identifier of the user.
@@ -56,9 +64,10 @@ public struct AVSCallMember: Hashable {
     }
  */
 
-    public init(userId : UUID, callParticipantState: CallParticipantState, networkQuality: NetworkQuality = .normal) {
+    public init(userId : UUID, callParticipantState: CallParticipantState, videoState: VideoState, networkQuality: NetworkQuality = .normal) {
         self.remoteId = userId
         self.callParticipantState = callParticipantState
+        self.videoState = videoState
         self.networkQuality = networkQuality
     }
 
@@ -74,21 +83,11 @@ public struct AVSCallMember: Hashable {
 //    }
     public var audioEstablished: Bool {
         switch self.callParticipantState {
-        case .connected(videoState: _):
+        case .connected:
             return true
         default:
             return false
         }
-    }
-
-    // MARK: - Hashable
-
-    public var hashValue: Int {
-        return remoteId.hashValue
-    }
-
-    public static func == (lhs: AVSCallMember, rhs: AVSCallMember) -> Bool {
-        return lhs.remoteId == rhs.remoteId
     }
 
 }

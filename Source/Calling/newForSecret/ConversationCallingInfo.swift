@@ -18,7 +18,7 @@ typealias CallStarter = (userId: UUID, clientId:  String)
 class ConversationCallingInfo: ZMTimerClient {
     let cid: UUID
     let convType: AVSConversationType
-    let callType: AVSCallType
+    let mediaState: AVSCallMediaState
     let starter: CallStarter
     
     var memberCount: Int = 0
@@ -51,10 +51,10 @@ class ConversationCallingInfo: ZMTimerClient {
         }
     }
     
-    init(cid: UUID, convType: AVSConversationType, callType: AVSCallType, starter: CallStarter, state: CallState, delegate: CallingTimeoutDelegate) {
+    init(cid: UUID, convType: AVSConversationType, mediaState: AVSCallMediaState, starter: CallStarter, state: CallState, delegate: CallingTimeoutDelegate) {
         self.cid = cid
         self.convType = convType
-        self.callType = callType
+        self.mediaState = mediaState
         self.starter = starter
         self.state = state
         self.delegate = delegate

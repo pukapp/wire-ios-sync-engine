@@ -17,12 +17,10 @@ protocol CallingMembersManagerProtocol {
     
     init(observer: CallingMembersObserver)
 
-    func addNewMember(with id: UUID, hasVideo: Bool)
+    func addNewMember(with id: UUID, isSelf: Bool, hasVideo: Bool)
     func removeMember(with id: UUID)
     ///连接状态
-    func memberConnected(with id: UUID)
-    func memberConnecting(with id: UUID)
-    func memberDisConnect(with id: UUID)
+    func memberConnectStateChanged(with id: UUID, state: CallParticipantState)
     ///媒体状态
     func setMemberVideo(_ state: VideoState, mid: UUID)
     
@@ -44,12 +42,12 @@ class CallingMembersManager: CallingMembersManagerProtocol {
         self.observer = observer
     }
     
-    func addNewMember(with id: UUID, hasVideo: Bool) {
+    func addNewMember(with id: UUID, isSelf: Bool, hasVideo: Bool) {
         membersManagerQueue.async {
             if let member = self.members.first(where: { return $0.memberId == id }) {
                 member.setMemberConnectState(with: .connecting)
             } else {
-                let member = CallingMember(memberId: id, stateObserver: self, hasAudio: true, videoState: hasVideo ? .started : .stopped)
+                let member = CallingMember(memberId: id, isSelf: isSelf, stateObserver: self, hasAudio: true, videoState: hasVideo ? .started : .stopped)
                 self.members.append(member)
             }
         }
@@ -70,29 +68,11 @@ class CallingMembersManager: CallingMembersManagerProtocol {
         }
     }
     
-    func memberConnected(with id: UUID) {
+    func memberConnectStateChanged(with id: UUID, state: CallParticipantState) {
         membersManagerQueue.async {
             if let member = self.members.first(where: { return $0.memberId == id }) {
-                member.setMemberConnectState(with: .connected(videoState: member.videoState))
+                member.setMemberConnectState(with: state)
             }
-        }
-    }
-    
-    func memberConnecting(with id: UUID) {
-        membersManagerQueue.async {
-            if let member = self.members.first(where: { return $0.memberId == id }) {
-                member.setMemberConnectState(with: .connecting)
-            }
-        }
-    }
-    
-    func memberDisConnect(with id: UUID) {
-        membersManagerQueue.async {
-            guard let member = self.members.first(where: { return $0.memberId == id }) else {
-                zmLog.info("CallingMembersManager--no peer to disConnect")
-                return
-            }
-            member.setMemberConnectState(with: .unconnected)
         }
     }
     
@@ -176,6 +156,13 @@ extension CallingMembersManager {
             return $0.toAvsMember()
         })
     }
+    
+    func isSelf(with userId: UUID) -> Bool {
+        guard let member = self.members.first(where: { return $0.memberId == userId }) else {
+            return false
+        }
+        return member.isSelf
+    }
 }
 
 extension CallingMembersManager: CallingMemberStateObserver {
@@ -201,13 +188,8 @@ class CallingMember: ZMTimerClient {
     
     private let connectTimeInterval: TimeInterval = 80
     
-    enum ConnectState {
-        case connecting
-        case connected
-        case unConnected
-    }
-    
     let memberId: UUID
+    let isSelf: Bool
     let stateObserver: CallingMemberStateObserver
     
     private var connectState: CallParticipantState = .connecting
@@ -218,8 +200,13 @@ class CallingMember: ZMTimerClient {
     
     private var callTimer: ZMTimer?
 
-    fileprivate init(memberId: UUID, stateObserver: CallingMemberStateObserver, hasAudio: Bool, videoState: VideoState) {
+    fileprivate init(memberId: UUID, isSelf: Bool, stateObserver: CallingMemberStateObserver, hasAudio: Bool, videoState: VideoState) {
+        zmLog.info("CallingMember- peer init--\(memberId)\n")
         self.memberId = memberId
+        self.isSelf = isSelf
+        if isSelf {
+            connectState = .connected
+        }
         self.stateObserver = stateObserver
         self.hasAudio = hasAudio
         self.videoState = videoState
@@ -256,7 +243,7 @@ class CallingMember: ZMTimerClient {
     }
     
     func toAvsMember() -> AVSCallMember {
-        return AVSCallMember(userId: self.memberId, callParticipantState: self.connectState, networkQuality: .normal)
+        return AVSCallMember(userId: self.memberId, callParticipantState: self.connectState, videoState: self.videoState, networkQuality: .normal)
     }
     
     func clear() {
