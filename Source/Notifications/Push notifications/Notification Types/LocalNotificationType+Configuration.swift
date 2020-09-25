@@ -60,7 +60,7 @@ extension LocalNotificationType {
         case .message(let contentType):
             switch contentType {
             case .audio, .video, .fileUpload, .image, .text, .location:
-                category = PushNotificationCategory.conversationWithLike.addMuteIfNeeded(hasTeam: hasTeam)
+                category = PushNotificationCategory.conversation.addMuteIfNeeded(hasTeam: hasTeam)
             case .hidden:
                 category = .alert
             default:
