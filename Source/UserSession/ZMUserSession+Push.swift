@@ -429,7 +429,7 @@ extension ZMUserSession: UNUserNotificationCenterDelegate {
         }
     }
     
-    func handleNotificationResponse(actionIdentifier: String,
+    @objc public func handleNotificationResponse(actionIdentifier: String,
                                     categoryIdentifier: String,
                                     userInfo: NotificationUserInfo,
                                     userText: String? = nil,

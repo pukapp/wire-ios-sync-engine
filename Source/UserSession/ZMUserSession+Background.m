@@ -43,6 +43,10 @@ static NSString *ZMLogTag = @"Push";
 
 - (void)application:(id<ZMApplication>)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult result))completionHandler;
 {
+    NotificationUserInfo *uinfo = [[NotificationUserInfo alloc] initWithStorage:userInfo];
+    [self handleNotificationResponseWithActionIdentifier: @"" categoryIdentifier:@"" userInfo:uinfo userText:@"" completionHandler:^{
+        
+    }];
     NOT_USED(application);
     NOT_USED(userInfo);
     NOT_USED(completionHandler);

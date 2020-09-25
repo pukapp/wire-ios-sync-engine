@@ -50,7 +50,7 @@ public class NotificationUserInfo: NSObject, NSCoding {
     public private(set) var storage: [AnyHashable: Any]
 
     /// Creates the user info from its raw value.
-    public init(storage: [AnyHashable: Any]) {
+    @objc public init(storage: [AnyHashable: Any]) {
         self.storage = storage
         super.init()
     }
