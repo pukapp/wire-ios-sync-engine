@@ -162,7 +162,7 @@ public class CallKitManager: NSObject {
     
     internal static var providerConfiguration : CXProviderConfiguration {
         
-        let localizedName = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "Wire"
+        let localizedName = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "Secret"
         let configuration = CXProviderConfiguration(localizedName: localizedName)
 
         configuration.supportsVideo = true
@@ -171,7 +171,7 @@ public class CallKitManager: NSObject {
         configuration.supportedHandleTypes = [.generic]
         configuration.ringtoneSound = NotificationSound.call.name
         
-        if let image = UIImage(named: "wire-logo-letter") {
+        if let image = UIImage(named: "callKitLogo") {
             configuration.iconTemplateImageData = image.pngData()
         }
         
@@ -530,21 +530,39 @@ extension CallKitManager : CXProviderDelegate {
     public func provider(_ provider: CXProvider, perform action: CXAnswerCallAction) {
         log("perform CXAnswerCallAction: \(action)")
         
-        guard let call = calls[action.callUUID] else {
-            log("fail CXAnswerCallAction because call did not exist")
-            action.fail()
-            return
+        func canAnswerwhenCallReady(call: CallKitCall, action: CXAnswerCallAction) {
+            call.observer.onEstablished = {
+                action.fulfill()
+            }
+            call.observer.onFailedToJoin = {
+                action.fail()
+            }
+            if call.conversation.voiceChannel?.join(video: false) != true {
+                action.fail()
+            }
         }
         
-        call.observer.onEstablished = {
-            action.fulfill()
-        }
-        
-        call.observer.onFailedToJoin = {
-            action.fail()
-        }
-        
-        if call.conversation.voiceChannel?.join(video: false) != true {
+        if let call = self.calls[action.callUUID] {
+            canAnswerwhenCallReady(call: call, action: action)
+        } else if let stillWaitingCall = self.stashIncommingCallConvs[action.callUUID] {
+            stillWaitingCall.updateState(.answering)
+            stillWaitingCall.onWaitingTimeout = {[weak self] in
+                guard let self = self else {
+                    action.fail()
+                    return
+                }
+                self.stashIncommingCallConvs.removeValue(forKey: action.callUUID)
+                action.fail()
+            }
+            stillWaitingCall.onWaitingSuccess = {[weak self] in
+                guard let self = self,
+                    let call = self.calls[action.callUUID] else {
+                    action.fail()
+                    return
+                }
+                canAnswerwhenCallReady(call: call, action: action)
+            }
+        } else {
             action.fail()
         }
     }
@@ -603,9 +621,15 @@ extension CallKitManager : WireCallCenterCallStateObserver, WireCallCenterMissed
     public func callCenterDidChange(callState: CallState, conversation: ZMConversation, caller: UserType, timestamp: Date?, previousCallState: CallState?) {
         switch callState {
         case .incoming(video: let video, shouldRing: let shouldRing, degraded: _):
-            if shouldRing, let caller = caller as? ZMUser {
-                if conversation.mutedMessageTypesIncludingAvailability == .none {
-                    reportIncomingCall(from: caller, in: conversation, video: video)
+            if shouldRing {
+                if let waitingCallInfo = self.stashIncommingCallConvs.first(where: { return $0.value.cid == conversation.remoteIdentifier! }) {
+                    calls[waitingCallInfo.key] = CallKitCall(conversation: conversation)
+                    waitingCallInfo.value.updateState(.finallyWaited)
+                    self.stashIncommingCallConvs.removeValue(forKey: waitingCallInfo.key)
+                } else {
+                    if conversation.mutedMessageTypesIncludingAvailability == .none {
+                        reportIncomingCall(from: caller as! ZMUser, in: conversation, video: video)
+                    }
                 }
             } else {
                 reportCall(in: conversation, endedAt: timestamp, reason: .unanswered)
