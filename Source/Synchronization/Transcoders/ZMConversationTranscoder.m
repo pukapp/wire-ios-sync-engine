@@ -463,7 +463,7 @@ NSNotificationName const ZMUpdateTaskListNotificationName = @"ZMUpdateTaskListNo
             event.type == ZMUpdateEventTypeITaskDynamicMessageAdd){
             NSDictionary *dictionaryInfo = [event.payload dictionaryForKey:@"data"];
             NSString *msgType = [dictionaryInfo valueForKey:@"msgType"];
-            if ([msgType  isEqual: @"30001"] || [msgType  isEqual: @"30006"] || [msgType  isEqual: @"30007"] || [msgType  isEqual: @"40007"]) {
+            if ([msgType isEqual: @"30001"] || [msgType isEqual: @"30005"] || [msgType isEqual: @"30006"] || [msgType isEqual: @"30007"] || [msgType  isEqual: @"40007"] || [msgType isEqual: @"40010"]) {
                 NSLog(@"msgType : %@",msgType);
                 //30001 : 加入项目   30006 : 加入任务关注者  30007 : 加入任务执行者 40007 : 加入任务执行者
                 [[NSNotificationCenter defaultCenter] postNotificationName:ZMUpdateTaskListNotificationName object:nil userInfo:nil];
