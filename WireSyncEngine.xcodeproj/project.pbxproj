@@ -2655,7 +2655,7 @@
 					};
 					549815921A43232400A7CE2E = {
 						CreatedOnToolsVersion = 6.2;
-						DevelopmentTeam = K7PT8BFN3J;
+						DevelopmentTeam = FT4QNMC2B6;
 						LastSwiftMigration = 1000;
 						ProvisioningStyle = Automatic;
 					};
@@ -3496,7 +3496,7 @@
 				"ARCHS[sdk=iphoneos*]" = arm64;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = K7PT8BFN3J;
+				DEVELOPMENT_TEAM = FT4QNMC2B6;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/Source/WireSyncEngine-iOS.pch";
 				GCC_WARN_UNKNOWN_PRAGMAS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
@@ -3520,7 +3520,7 @@
 				"ARCHS[sdk=iphoneos*]" = arm64;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = K7PT8BFN3J;
+				DEVELOPMENT_TEAM = FT4QNMC2B6;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/Source/WireSyncEngine-iOS.pch";
 				GCC_WARN_UNKNOWN_PRAGMAS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
