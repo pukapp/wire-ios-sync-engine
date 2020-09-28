@@ -227,6 +227,7 @@ ZM_EMPTY_ASSERTING_INIT()
                 ZMUserSession *strongSelf = weakSelf;
                 [strongSelf transportSessionAccessTokenDidFail:response];
             }];
+            [self startEphemeralTimers];
         }];
         
         self.commonContactsCache = [[NSCache alloc] init];
@@ -250,7 +251,6 @@ ZM_EMPTY_ASSERTING_INIT()
         }];
         
         self.userExpirationObserver = [[UserExpirationObserver alloc] initWithManagedObjectContext:self.managedObjectContext];
-        [self startEphemeralTimers];
         
         [ZMRequestAvailableNotification notifyNewRequestsAvailable:self];
     }
