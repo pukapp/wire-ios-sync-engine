@@ -609,7 +609,7 @@ public protocol ForegroundNotificationResponder: class {
          - account: account for which to load the session
          - completion: called when session is loaded or when session fails to load
      */
-    internal func loadSession(for account: Account?, completion: @escaping (ZMUserSession?) -> Void) {
+    public func loadSession(for account: Account?, completion: @escaping (ZMUserSession?) -> Void) {
         guard let authenticatedAccount = account, environment.isAuthenticated(authenticatedAccount) else {
             completion(nil)
             
