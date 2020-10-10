@@ -47,14 +47,18 @@ public protocol CallRelyModel: NSObjectProtocol {
     
     var peerId: UUID? { get }
     
-    var initialMember: [AVSCallMember] { get }
+    var initialMember: [CallMemberProtocol] { get }
     
     var callTitle: String? { get }
+    
+    //用来连接mediaServer
+    var token: String? { get }
 }
 
 extension ZMMeeting: CallRelyModel {
     public var remoteIdentifier: UUID? {
-        return UUID.init(uuidString: "C24461AA-E4D4-4D45-B9EE-58ABD3B07D7B")
+        //"C24461AA-E4D4-4D45-B9EE-58ABD3B07D7B"
+        return UUID(uuidString: self.meetingId)
     }
     
     public var needCallKit: Bool {
@@ -73,12 +77,16 @@ extension ZMMeeting: CallRelyModel {
         return nil
     }
     
-    public var initialMember: [AVSCallMember] {
-        return []
+    public var initialMember: [CallMemberProtocol] {
+        return self.memberList.array as! [CallMemberProtocol]
     }
     
     public var callTitle: String? {
         return self.title
+    }
+    
+    public var token: String? {
+        return self.mediaServerToken
     }
 }
 
@@ -100,13 +108,17 @@ extension ZMConversation: CallRelyModel {
         }
     }
     
-    public var initialMember: [AVSCallMember]  {
+    public var initialMember: [CallMemberProtocol]  {
         guard let user = self.connectedUser, self.conversationType == .oneOnOne else { return [] }
-        return [AVSCallMember(userId: user.remoteIdentifier, callParticipantState: .connecting, videoState: .stopped)]
+        return [AVSCallMember(userId: user.remoteIdentifier, callParticipantState: .connecting, isMute: false, videoState: .stopped)]
     }
     
     public var callTitle: String? {
         return self.displayName
+    }
+    
+    public var token: String? {
+        return nil
     }
 }
 
@@ -150,6 +162,9 @@ public protocol CallActions : NSObjectProtocol {
     func leave(userSession: ZMUserSession, completion: (() -> ())?)
     func continueByDecreasingConversationSecurity(userSession: ZMUserSession)
     func leaveAndDecreaseConversationSecurity(userSession: ZMUserSession)
+    
+    func muteOther(_ userId: String, isMute: Bool)
+    func topUser(_ userId: String)
 }
 
 @objc
@@ -179,4 +194,6 @@ public protocol CallObservers : NSObjectProtocol {
     
     /// Add observer of the state of all voice channels. Returns a token which needs to be retained as long as the observer should be active.
     static func addCallStateObserver(_ observer: WireCallCenterCallStateObserver, userSession: ZMUserSession) -> Any
+    
+    func addMeetingPropertyChangedObserver(_ observer: WireCallCenterrMeetingPropertyChangedObserver) -> Any
 }

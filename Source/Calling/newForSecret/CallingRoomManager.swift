@@ -34,11 +34,14 @@ extension CallingRoomManager: CallingSocketStateDelegate {
 }
 
 protocol CallingRoomManagerDelegate {
-    func onEstablishedCall(conversationId: UUID, peerId: UUID)
+    func onEstablishedCall(conversationId: UUID)
     func onReconnectingCall(conversationId: UUID)
     func leaveRoom(conversationId: UUID, reason: CallClosedReason)
     func onVideoStateChange(conversationId: UUID, memberId: UUID, videoState: VideoState)
     func onGroupMemberChange(conversationId: UUID, memberCount: Int)
+    
+    //仅为会议支持
+    func onReceiveMeetingPropertyChange(in mid: UUID, with property: MeetingProperty)
 }
 
 ///client连接管理，具体实现分别由继承类独自实现
@@ -49,10 +52,14 @@ protocol CallingClientConnectProtocol: CallingSignalManagerDelegate {
     func dispose()
     func setLocalAudio(mute: Bool)
     func setLocalVideo(state: VideoState)
+    
+    func muteOther(_ userId: String, isMute: Bool)
 }
 //client连接回调状态变化
 protocol CallingClientConnectStateObserve {
     func establishConnectionFailed()
+    //仅为会议支持
+    func onReceivePropertyChange(with property: MeetingProperty)
 }
 
 /*
@@ -66,21 +73,6 @@ protocol CallingClientConnectStateObserve {
 let roomWorkQueue: DispatchQueue = DispatchQueue.init(label: "MediasoupSignalWorkQueue")
 
 class CallingRoomManager: NSObject {
-    
-    enum RoomMode: Equatable {
-        case p2p(peerId: UUID)
-        case mp
-        
-        static func == (lhs: Self, rhs: Self) -> Bool {
-            switch (lhs, rhs) {
-            case (.mp, .mp):
-                return true
-            case (.p2p, .p2p):
-                return true
-            default: return false
-            }
-        }
-    }
     
     enum RoomState {
         case none
@@ -99,7 +91,7 @@ class CallingRoomManager: NSObject {
     private var userId: UUID?
     private var videoState: VideoState = .stopped
     private var isStarter: Bool = false
-    private var roomMode: RoomMode = .mp
+    private var roomMode: AVSConversationType = .group
     private var roomState: RoomState = .none
     
     //房间信令的管理
@@ -125,7 +117,7 @@ class CallingRoomManager: NSObject {
         self.callingConfigure = callingConfigure
     }
     
-    func connectToRoom(with roomId: UUID, userId: UUID, roomMode: RoomMode, videoState: VideoState, isStarter: Bool) {
+    func connectToRoom(with roomId: UUID, userId: UUID, roomMode: AVSConversationType, videoState: VideoState, isStarter: Bool, members: [CallMemberProtocol], token: String?) {
         zmLog.info("CallingRoomManager-connectToRoom roomId:\(roomId) userId:\(userId)")
         guard let callingConfigure = self.callingConfigure,
             let wsUrl = callingConfigure.vaildGateway,
@@ -143,18 +135,17 @@ class CallingRoomManager: NSObject {
         
         self.mediaOutputManager = MediaOutputManager()
         self.roomMembersManager = CallingMembersManager(observer: self)
-        ///192.168.0.114:4443----143.92.53.170 :4443
-        self.signalManager.connectRoom(with: wsUrl, roomId: roomId.transportString(), userId: self.userId!.transportString())
-        
+        self.signalManager.connectRoom(with: wsUrl, roomId: roomId.transportString(), userId: self.userId!.transportString(), token: token)
+        //成员管理
+        members.forEach({
+            self.roomMembersManager?.addNewMember($0)
+        })
         switch roomMode {
-        case .p2p(let peerId):
+        case .oneToOne:
             self.clientConnectManager = WebRTCClientManager(signalManager: self.signalManager, mediaManager: self.mediaOutputManager!, membersManagerDelegate: self.roomMembersManager!, mediaStateManagerDelegate: self.roomMembersManager!, observe: self, isStarter: self.isStarter, videoState: self.videoState)
-            //单聊通话需要知道好友信息，并且将其添加至房间成员管理类中
-            (clientConnectManager as! WebRTCClientManager).setPeerInfo(peerId: peerId)
-            self.roomMembersManager?.addNewMember(with: peerId, isSelf: false, hasVideo: false)
             //获取穿透服务器地址
             (clientConnectManager as! WebRTCClientManager).callingConfigure = callingConfigure
-        case .mp:
+        case .group, .conference:
             self.clientConnectManager = MediasoupClientManager(signalManager: self.signalManager, mediaManager: self.mediaOutputManager!, membersManagerDelegate: self.roomMembersManager!, mediaStateManagerDelegate: self.roomMembersManager!, observe: self, isStarter: self.isStarter, videoState: self.videoState)
         }
         self.signalManager.setSignalDelegate(self.clientConnectManager!)
@@ -206,6 +197,17 @@ class CallingRoomManager: NSObject {
     }
 }
 
+extension CallingRoomManager {
+    
+    func muteOther(_ userId: String, isMute: Bool) {
+        self.clientConnectManager?.muteOther(userId, isMute: isMute)
+    }
+    
+    func topUser(_ userId: String) {
+        self.roomMembersManager?.topUser(userId)
+    }
+}
+
 /// media + deal
 extension CallingRoomManager {
     
@@ -213,6 +215,7 @@ extension CallingRoomManager {
         roomWorkQueue.async {
             zmLog.info("CallingRoomManager-setLocalAudio--\(mute)")
             self.clientConnectManager?.setLocalAudio(mute: mute)
+            self.roomMembersManager?.setMemberAudio(mute, mid: self.userId!)
         }
     }
     
@@ -221,28 +224,36 @@ extension CallingRoomManager {
             zmLog.info("CallingRoomManager-setLocalVideo--\(state)")
             self.videoState = state
             self.clientConnectManager?.setLocalVideo(state: state)
+            self.roomMembersManager?.setMemberVideo(state, mid: self.userId!)
         }
     }
 }
 
 extension CallingRoomManager: CallingClientConnectStateObserve {
     
+    func onReceivePropertyChange(with property: MeetingProperty) {
+        if case .terminateMeet = property {
+            self.delegate?.leaveRoom(conversationId: self.roomId!, reason: .terminate)
+        }
+        self.delegate?.onReceiveMeetingPropertyChange(in: self.roomId!, with: property)
+    }
+    
     func establishConnectionFailed() {
-        if case .p2p = self.roomMode {
+        if case .oneToOne = self.roomMode {
             //p2p模式下打洞失败的话，就走mediasoup模式
-            self.switchMode(mode: .mp)
+            self.switchMode(mode: .group)
         } else {
             self.delegate?.leaveRoom(conversationId: self.roomId!, reason: .internalError)
         }
     }
     
-    private func switchMode(mode: RoomMode) {
+    private func switchMode(mode: AVSConversationType) {
         guard self.roomMode != mode else { return }
         zmLog.info("CallingRoomManager-switchMode:\(mode)")
         roomWorkQueue.async {
             if self.roomState == .none { return }
             self.roomMode = mode
-            if mode == .mp {
+            if mode == .group {
                 self.clientConnectManager?.dispose()
                 self.clientConnectManager = MediasoupClientManager(signalManager: self.signalManager, mediaManager: self.mediaOutputManager!, membersManagerDelegate: self.roomMembersManager!, mediaStateManagerDelegate: self.roomMembersManager!, observe: self, isStarter: self.isStarter, videoState: self.videoState)
                 self.signalManager.setSignalDelegate(self.clientConnectManager!)
@@ -263,21 +274,32 @@ extension CallingRoomManager: CallingMembersObserver {
         self.delegate?.leaveRoom(conversationId: roomId, reason: .normal)
     }
     
-    func roomMembersConnectStateChange(with mid: UUID, isConnected: Bool) {
+    func roomEstablished() {
         guard let roomId = self.roomId else {
             return
         }
-        zmLog.info("CallingRoomManager-roomMembersConnectStateChange-mid:\(mid),isConnected:\(isConnected), membersCount:\(self.roomMembersManager!.membersCount)")
-        if isConnected {
-            ///只要有一个用户连接，就认为此次会话已经连接
-            self.roomState = .connected
-            self.delegate?.onEstablishedCall(conversationId: roomId, peerId: mid)
+        self.roomState = .connected
+        self.delegate?.onEstablishedCall(conversationId: roomId)
+    }
+    
+    func roomMembersConnectStateChange() {
+        guard let roomId = self.roomId else {
+            return
         }
+        zmLog.info("CallingRoomManager-roomMembersConnectStateChange- membersCount:\(self.roomMembersManager!.membersCount)")
+        self.delegate?.onGroupMemberChange(conversationId: roomId, memberCount: self.roomMembersManager!.membersCount)
+    }
+    
+    func roomMembersAudioStateChange(with memberId: UUID) {
+        guard let roomId = self.roomId else {
+            return
+        }
+        zmLog.info("CallingRoomManager--roomMembersAudioStateChange--memberId:\(memberId)")
         self.delegate?.onGroupMemberChange(conversationId: roomId, memberCount: self.roomMembersManager!.membersCount)
     }
     
     func roomMembersVideoStateChange(with memberId: UUID, videoState: VideoState) {
-        zmLog.info("CallingRoomManager--roomMembersVideoStateChange--videoState:\(videoState)")
+        zmLog.info("CallingRoomManager--roomMembersVideoStateChange--videoState:\(videoState) memberId:\(memberId)")
 //        if self.roomPeersManager!.selfProduceVideo {
 //            ///实时监测显示的视频人数，并且更改自己所发出去的视频参数
 //            ///这里由于受到视频关闭的时候，是先通知到界面，而不是先更改数据源的，所以这里需要判断

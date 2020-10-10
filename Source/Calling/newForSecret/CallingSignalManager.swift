@@ -109,8 +109,11 @@ class CallingSignalManager: NSObject {
         self.socket?.disConnect()
     }
     
-    func connectRoom(with url: String, roomId: String, userId: String) {
-        let urlString = url + "/?roomId=\(roomId)&peerId=\(userId)"
+    func connectRoom(with url: String, roomId: String, userId: String, token: String?) {
+        var urlString = url + "/?roomId=\(roomId)&peerId=\(userId)"
+        if let token = token {
+            urlString = urlString + "&\(token)"
+        }
         guard let roomUrl = URL.init(string: urlString) else {
             return
         }

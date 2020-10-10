@@ -27,9 +27,19 @@ extension CallingConfigure {
     
 }
 
+private extension CallingMembersManager {
+    //由于成员已经提前被加入到CallingMembersManager中，所以可以直接强制取
+    var p2pMemberId: UUID {
+        return self.callMembers.first!.remoteId
+    }
+}
+
 class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     
-    private var peerId: UUID!
+    private var peerId: UUID {
+        return (self.membersManagerDelegate as! CallingMembersManager).p2pMemberId
+    }
+    
     var callingConfigure: CallingConfigure!
     
     private let signalManager: CallingSignalManager
@@ -88,11 +98,6 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
         
         self.videoState = videoState
         super.init()
-    }
-    
-    //获取群id，以及peerID
-    func setPeerInfo(peerId: UUID) {
-        self.peerId = peerId
     }
     
     deinit {
@@ -167,6 +172,10 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
             break
         }
         self.forwardP2PMessage(.videoState(state))
+    }
+    
+    func muteOther(_ userId: String, isMute: Bool) {
+        // no-op
     }
     
     func dispose() {
@@ -258,12 +267,11 @@ extension WebRTCClientManager: ZMTimerClient {
             self.timer!.fire(afterTimeInterval: 30)
         case .connectd:
             self.invalidTimer()
-            self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId!, state: .connected)
+            self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId, state: .connected)
         case .disconnected:
-            self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId!, state: .connecting)
+            self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId, state: .connecting)
         case .faild:
-            if self.peerId == nil { return }
-            self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId!, state: .connecting)
+            self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId, state: .connecting)
             guard self.connectState != .disconnected else {
                 //只要connectState不是从disconnected变成failed，就认为该用户没有ice穿透的可能性，直接走失败处理方法
                 self.establishConnectionFailed()
@@ -292,7 +300,7 @@ extension WebRTCClientManager: ZMTimerClient {
         })
         self.forwardP2PMessage(.switchMode(.chat))
         //断开连接之后需要将视频重置
-        self.membersManagerDelegate.setMemberVideo(.stopped, mid: self.peerId!)
+        self.membersManagerDelegate.setMemberVideo(.stopped, mid: self.peerId)
         self.connectStateObserver.establishConnectionFailed()
     }
      
@@ -320,7 +328,7 @@ extension WebRTCClientManager: RTCPeerConnectionDelegate {
         zmLog.info("RTCPeerConnectionDelegate did add stream--\(stream)")
         if let remoteTrack = stream.videoTracks.first {
             zmLog.info("RTCPeerConnectionDelegate didReceiveVideoTrack--\(remoteTrack.isEnabled)")
-            self.mediaStateManagerDelegate.addVideoTrack(with: self.peerId!, videoTrack: remoteTrack)
+            self.mediaStateManagerDelegate.addVideoTrack(with: self.peerId, videoTrack: remoteTrack)
         }
     }
     
@@ -393,7 +401,7 @@ extension WebRTCClientManager: CallingSignalManagerDelegate {
         case .candidate(let candidate):
             self.set(remoteCandidate: candidate.rtcIceCandidate)
         case .videoState(let state):
-            self.membersManagerDelegate.setMemberVideo(state, mid: self.peerId!)
+            self.membersManagerDelegate.setMemberVideo(state, mid: self.peerId)
         case .switchMode:
             self.establishConnectionFailed()
         case .restart:

@@ -16,6 +16,8 @@ protocol ConvsCallingStateObserve {
     func updateCallState(in cid: UUID, callType: AVSConversationType, userId: UUID, callState: CallState)
     func onGroupMemberChange(conversationId: UUID, callType: AVSConversationType)
     func onVideoStateChange(peerId: UUID, videoState: VideoState)
+    
+    func onReceiveMeetingPropertyChange(in mid: UUID, with property: MeetingProperty)
 }
 
 protocol CallingTimeoutDelegate {
@@ -42,7 +44,7 @@ class ConvsCallingStateManager {
         self.roomManager.setCallingConfigure(callingConfigure)
     }
     
-    func startCall(cid: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, peerId: UUID?) -> Bool {
+    func startCall(cid: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, members: [CallMemberProtocol], token: String?) -> Bool {
         if roomManager.isCalling {
             return false
         }
@@ -55,16 +57,16 @@ class ConvsCallingStateManager {
             zmLog.info("ConvsCallingStateManager-error-startCall-already calling")
             return false
         }
-        let info = ConversationCallingInfo(cid: cid, convType: conversationType, mediaState: mediaState, starter: (selfUserID, selfClientID), state: .none, delegate: self)
+        let info = ConversationCallingInfo(cid: cid, convType: conversationType, mediaState: mediaState, starter: (selfUserID, selfClientID), members: members, state: .none, token: token, delegate: self)
         info.state = .outgoing(degraded: false)
         info.videoState = (mediaState == .video) ? .started : .stopped
         self.convsCallingState.append(info)
-        self.handleCallStateChange(in: info, userId: peerId ?? self.selfUserID, oldState: .none, newState: info.state)
-        self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .start, convType: conversationType, mediaState: mediaState, to: nil, memberCount: nil)
+        self.handleCallStateChange(in: info, userId: self.selfUserID, oldState: .none, newState: info.state)
+        self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .start, convType: conversationType, mediaState: mediaState, to: nil, memberCount: members.count)
         return true
     }
     
-    public func answerCall(cid: UUID) -> Bool {
+    public func answerCall(cid: UUID, members: [CallMemberProtocol], token: String?) -> Bool {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == cid }) else {
             zmLog.info("ConvsCallingStateManager-error-answerCall-no exist convInfo")
             return false
@@ -78,6 +80,8 @@ class ConvsCallingStateManager {
         }
         let previousState = convInfo.state
         convInfo.state = .answeredIncomingCall
+        convInfo.members = members
+        convInfo.token = token
         self.handleCallStateChange(in: convInfo, userId: selfUserID, oldState: previousState, newState: convInfo.state)
         self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .answer, convType: nil, mediaState: nil, to: convInfo.starter, memberCount: nil)
         return true
@@ -103,7 +107,7 @@ class ConvsCallingStateManager {
             zmLog.info("ConvsCallingStateManager-error-answerCall-no exist convInfo")
             return
         }
-        zmLog.info("ConvsCallingStateManager-endCall--memberCount:\(convInfo.memberCount)--reason:\(reason)")
+        zmLog.info("ConvsCallingStateManager-endCall--memberCount:\(convInfo.members.count)--reason:\(reason)")
         
         let previousState = convInfo.state
         if convInfo.convType == .oneToOne {
@@ -118,7 +122,7 @@ class ConvsCallingStateManager {
             if reason == .timeout {///群聊，当因为未响应或者webSocket连接超时，导致超时时，改变该群的状态为still
                 convInfo.state = .terminating(reason: .stillOngoing)
             } else {
-                if convInfo.memberCount > 1 {
+                if convInfo.members.count > 1 {
                     convInfo.state = .terminating(reason: .stillOngoing)
                 } else {
                     convInfo.state = .terminating(reason: reason)
@@ -129,7 +133,7 @@ class ConvsCallingStateManager {
         if reason == .rejectedElsewhere {
             return
         }
-        self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .end, convType: nil, mediaState: nil, to: nil, memberCount: convInfo.memberCount)
+        self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .end, convType: nil, mediaState: nil, to: nil, memberCount: convInfo.members.count)
     }
     
     public func rejectCall(cid: UUID) {
@@ -152,7 +156,7 @@ class ConvsCallingStateManager {
         self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .reject, convType: nil, mediaState: nil, to: convInfo.starter, memberCount: nil)
     }
     
-    public func members(in conversationId: UUID) -> [AVSCallMember] {
+    public func members(in conversationId: UUID) -> [CallMemberProtocol] {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == conversationId }) else {
             zmLog.info("ConvsCallingStateManager-members-no exist convInfo")
             return []
@@ -161,7 +165,7 @@ class ConvsCallingStateManager {
             zmLog.info("ConvsCallingStateManager-members-convInfo state is wrong :\(convInfo.state)")
             return []
         }
-        return roomManager.roomMembersManager?.avsMembers ?? []
+        return roomManager.roomMembersManager?.callMembers ?? []
     }
     
     func setVideoState(conversationId: UUID, videoState: VideoState) {
@@ -170,6 +174,14 @@ class ConvsCallingStateManager {
     
     func mute(_ muted: Bool){
         roomManager.setLocalAudio(mute: muted)
+    }
+    
+    public func muteOther(_ userId: String, isMute: Bool) {
+        roomManager.muteOther(userId, isMute: isMute)
+    }
+    
+    func topUser(_ userId: String) {
+        roomManager.topUser(userId)
     }
     
     private func handleCallStateChange(in conv: ConversationCallingInfo, userId: UUID, oldState: CallState, newState: CallState) {
@@ -181,8 +193,7 @@ class ConvsCallingStateManager {
         switch newState {
         case .outgoing:
             AVSMediaManager.sharedInstance.startCall()
-            let roomMode: CallingRoomManager.RoomMode = (conv.convType == .oneToOne) ? .p2p(peerId: userId) : .mp
-            roomManager.connectToRoom(with: conv.cid, userId: self.selfUserID, roomMode: roomMode, videoState: conv.videoState, isStarter: true)
+            roomManager.connectToRoom(with: conv.cid, userId: self.selfUserID, roomMode: conv.convType, videoState: conv.videoState, isStarter: true, members: conv.members, token: conv.token)
         case .answered:
             AVSMediaManager.sharedInstance.callConnecting()
         case .incoming(video: let video, shouldRing: let shouldRing, degraded: _):
@@ -197,9 +208,8 @@ class ConvsCallingStateManager {
             }
         case .answeredIncomingCall:
             AVSMediaManager.sharedInstance.callConnecting()
-            let roomMode: CallingRoomManager.RoomMode = (conv.convType == .oneToOne) ? .p2p(peerId: conv.starter.userId) : .mp
             //todo: answer端初始是不开启视频的
-            roomManager.connectToRoom(with: conv.cid, userId: self.selfUserID, roomMode: roomMode, videoState: conv.videoState, isStarter: false)
+            roomManager.connectToRoom(with: conv.cid, userId: self.selfUserID, roomMode: conv.convType, videoState: conv.videoState, isStarter: false, members: conv.members, token: conv.token)
         case .terminating(reason: let reason):
             AVSMediaManager.sharedInstance.exitCall()
             if reason != .stillOngoing {
@@ -216,7 +226,7 @@ class ConvsCallingStateManager {
 extension ConvsCallingStateManager {
     
     ///return : 当前正在通话中 则返回false, 错误则返回nil，正常就返回true
-    func recvStartCall(cid: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, userId: UUID, clientId: String) {
+    func recvStartCall(cid: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, userId: UUID, clientId: String, members: [CallMemberProtocol]) {
         if self.convsCallingState.contains(where: { return $0.isInCalling }) {
             ///说明当前正在通话中
             zmLog.info("ConvsCallingStateManager-error-recvStartCall-already calling")
@@ -227,7 +237,7 @@ extension ConvsCallingStateManager {
             zmLog.info("ConvsCallingStateManager-error-recvStartCall-already exist convInfo")
             return
         }
-        let info = ConversationCallingInfo(cid: cid, convType: conversationType, mediaState: mediaState, starter: (userId, clientId), state: .none, delegate: self)
+        let info = ConversationCallingInfo(cid: cid, convType: conversationType, mediaState: mediaState, starter: (userId, clientId), members: members, state: .none, token: nil, delegate: self)
         info.state = .incoming(video: mediaState == .video, shouldRing: true, degraded: false)
         //接收来电的话，则默认不会开启视频
         info.videoState = .stopped
@@ -279,7 +289,7 @@ extension ConvsCallingStateManager {
             if let leftMemberCount = leftMemberCount, leftMemberCount <= 1, convInfo.state == .terminating(reason: .stillOngoing)  {
                 convInfo.state = .terminating(reason: reason)
             } else {
-                if convInfo.memberCount == 0 {
+                if convInfo.members.count == 0 {
                     convInfo.state = .terminating(reason: reason)
                     self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .end, convType: nil, mediaState: nil, to: nil, memberCount: 0)
                 }
@@ -322,7 +332,11 @@ extension ConvsCallingStateManager {
 ///房间状态用代理返回
 extension ConvsCallingStateManager: CallingRoomManagerDelegate {
     
-    func onEstablishedCall(conversationId: UUID, peerId: UUID) {
+    func onReceiveMeetingPropertyChange(in mid: UUID, with property: MeetingProperty) {
+        self.observer?.onReceiveMeetingPropertyChange(in: mid, with: property)
+    }
+    
+    func onEstablishedCall(conversationId: UUID) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == conversationId }) else {
             zmLog.info("ConvsCallingStateManager-error-onEstablishedCall-no exist convInfo")
             return
@@ -366,11 +380,17 @@ extension ConvsCallingStateManager: CallingRoomManagerDelegate {
             if reason == .timeout {///群聊，当因为未响应或者webSocket连接超时，导致超时时，改变该群的状态为still
                 convInfo.state = .terminating(reason: .stillOngoing)
             } else {
-                if convInfo.memberCount > 1 {
+                if convInfo.members.count > 1 {
                     convInfo.state = .terminating(reason: .stillOngoing)
                 } else {
                     convInfo.state = .terminating(reason: reason)
                 }
+            }
+        } else if convInfo.convType == .conference {
+            if reason != .terminate {
+                convInfo.state = .terminating(reason: .stillOngoing)
+            } else {
+                convInfo.state = .terminating(reason: reason)
             }
         }
         self.handleCallStateChange(in: convInfo, userId: selfUserID, oldState: previousState, newState: convInfo.state)
@@ -385,7 +405,7 @@ extension ConvsCallingStateManager: CallingRoomManagerDelegate {
             zmLog.info("ConvsCallingStateManager-error-onGroupMemberChange-no exist convInfo")
             return
         }
-        convInfo.memberCount = memberCount
+        //convInfo.members.count = memberCount
         observer?.onGroupMemberChange(conversationId: conversationId, callType: convInfo.convType)
     }
     

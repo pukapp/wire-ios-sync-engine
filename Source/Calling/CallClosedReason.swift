@@ -50,6 +50,8 @@ public enum CallClosedReason : Int32 {
     /// Call was reject for others are in calling
     case busy
 
+    /// 结束当前通话
+    case terminate
     // MARK: - Briding
 
     /**

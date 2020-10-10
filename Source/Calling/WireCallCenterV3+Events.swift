@@ -181,6 +181,7 @@ extension WireCallCenterV3 {
     func handleGroupMemberChange(conversationId: UUID) {
         handleEvent("group-member-change") {
             let members = self.avsWrapper.members(in: conversationId)
+            zmLog.info("handleGroupMemberChange---\(members.count)--\(members)")
             self.callParticipantsChanged(conversationId: conversationId, participants: members)
         }
     }
@@ -220,4 +221,11 @@ extension WireCallCenterV3 {
             }
         }
     }
+    
+    func handleMeetingPropertyChange(in mid: UUID, with property: MeetingProperty) {
+        handleEvent("meeting-propertyChange") {
+            self.meetingPropertyChange(in: mid, with: property)
+        }
+    }
+
 }

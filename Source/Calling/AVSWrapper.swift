@@ -28,16 +28,19 @@ private let zmLog = ZMSLog(tag: "calling")
 public protocol AVSWrapperType {
     init(userId: UUID, clientId: String, observer: UnsafeMutableRawPointer?)
     //TODO: 由于p2p模式下无法从websocket获取peerId,所以这里新增了一个参数
-    func startCall(conversationId: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool, peerId: UUID?) -> Bool
-    func answerCall(conversationId: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool) -> Bool
+    func startCall(conversationId: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool, members: [CallMemberProtocol], token: String?) -> Bool
+    func answerCall(conversationId: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool, members: [CallMemberProtocol], token: String?) -> Bool
     func endCall(conversationId: UUID)
     func rejectCall(conversationId: UUID)
     func close()
     func received(callEvent: CallEvent) -> CallError?
     func setVideoState(conversationId: UUID, videoState: VideoState)
     func handleResponse(httpStatus: Int, reason: String, context: WireCallMessageToken)
-    func members(in conversationId: UUID) -> [AVSCallMember]
+    func members(in conversationId: UUID) -> [CallMemberProtocol]
     func update(callConfig: String?, httpStatusCode: Int)
+    
+    func muteOther(_ userId: String, isMute: Bool)
+    func topUser(_ userId: String)
 }
 
 

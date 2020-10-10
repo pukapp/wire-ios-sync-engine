@@ -26,6 +26,8 @@ extension MediasoupClientManager: CallingSignalManagerDelegate {
     }
     
     func onNewNotification(with noti: String, info: JSON) {
+        guard noti != "producerScore", noti != "consumerScore" else { return }
+        zmLog.info("MediasoupClientManager-onNewNotification:action:\(noti)，info:\(info)")
         if let action = MeetingSignalAction.Notification(rawValue: noti) {
             self.onReceiveMeetingNotification(with: action, info: info)
         } else if let action = MediasoupSignalAction.Notification(rawValue: noti) {
@@ -78,9 +80,9 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     
     private let signalManager: CallingSignalManager
     private let mediaManager: MediaOutputManager
-    private let membersManagerDelegate: CallingMembersManagerProtocol
+    let membersManagerDelegate: CallingMembersManagerProtocol
     private let mediaStateManagerDelegate: CallingMediaStateManagerProtocol
-    private let connectStateObserver: CallingClientConnectStateObserve
+    let connectStateObserver: CallingClientConnectStateObserve
     
     var videoState: VideoState = .stopped
     
@@ -373,7 +375,8 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             uid = UUID()
             temp[peerId] = uid
         }
-        self.membersManagerDelegate.addNewMember(with: uid, isSelf: false, hasVideo: false)
+        let member = AVSCallMember.init(userId: uid, callParticipantState: .connecting, isMute: false, videoState: .stopped)
+        self.membersManagerDelegate.addNewMember(member)
     }
     
     func removePeer(with id: UUID) {
@@ -434,8 +437,10 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         switch action {
         case .consumerResumed:
             consumer.resume()
+            self.membersManagerDelegate.setMemberAudio(false, mid: peer.peerId)
         case .consumerPaused:
             consumer.pause()
+            self.membersManagerDelegate.setMemberAudio(true, mid: peer.peerId)
         case .consumerClosed:
             peer.removeConsumer(consumerId)
             if consumer.getKind() == "video" {

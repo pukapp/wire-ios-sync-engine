@@ -33,6 +33,7 @@ extension WireCallCenterV3 {
     
     /// Returns the meetingParticipants currently in the meeting
     func meetingParticipants(meetingId: UUID) -> [MeetingParticipant] {
+        print("[calling] meetingParticipants : meetingId:\(meetingId), snapshot:\(callSnapshots[meetingId])")
         if let participants = callSnapshots[meetingId]?.callParticipants.members as? [MeetingParticipant] {
             return participants
         } else {
@@ -48,6 +49,39 @@ public enum MeetingParticipantInviteState: String {
     case reject        = "reject"
     case calling       = "calling"
     case callLimit     = "call_limit"
+    
+    public var description: String {
+        switch self {
+        case .noResponse:
+            return "无响应"
+        case .accepted:
+            return ""
+        case .reject:
+            return "已拒绝"
+        case .calling:
+            return "呼叫中"
+        case .callLimit:
+            return "呼叫受限"
+        }
+    }
+}
+
+//获取排序状态
+extension MeetingParticipantInviteState {
+    var sortValue: Int {
+        switch self {
+        case .accepted:
+            return 5
+        case .calling:
+            return 4
+        case .noResponse:
+            return 3
+        case .callLimit:
+            return 2
+        case .reject:
+            return 1
+        }
+    }
 }
 
 public struct MeetingParticipant: CallMemberProtocol {
@@ -67,24 +101,39 @@ public struct MeetingParticipant: CallMemberProtocol {
             return false
         }
     }
+    public var isSelf: Bool
+    public var isTop: Bool = false
+    //排序状态，排序由多种属性决定
+    public var sortLevel: Int {
+        let selfSortValue: Int = isSelf ? 1000 : 0
+        let topSortValue: Int = isTop ? 100 : 0
+        let hasVideoSortValue: Int = (videoState == .started) ? 10 : 0
+        return selfSortValue + topSortValue + hasVideoSortValue + state.sortValue
+    }
     
     //服务器返回状态
-    let userId: String
-    let inviteLink: String
-    let inviteState: MeetingParticipantInviteState
-    let isMute: Bool
-    let nickName: String
-    let avatar: String
+    public let userId: String
+    public let inviteLink: String
+    public let state: MeetingParticipantInviteState
+    public var isMute: Bool
+    public let nickName: String
+    public let avatar: String
     
-    public init(json: JSON) {
+    public init(json: JSON, isSelf: Bool) {
+        self.isSelf = isSelf
         userId = json["user_id"].stringValue
         inviteLink = json["invite_link"].stringValue
-        inviteState = MeetingParticipantInviteState(rawValue: json["invite_state"].stringValue)!
+        state = MeetingParticipantInviteState(rawValue: json["state"].stringValue)!
         isMute = json["is_mute"].intValue == 1
         nickName = json["nickname"].stringValue
         avatar = json["avatar"].stringValue
         
-        callParticipantState = (inviteState == .accepted) ? .connecting : .unconnected
+        if isSelf {
+            callParticipantState = .connected
+        } else {
+            callParticipantState = (state == .accepted) ? .connecting : .unconnected
+        }
         networkQuality = .normal
     }
+    
 }

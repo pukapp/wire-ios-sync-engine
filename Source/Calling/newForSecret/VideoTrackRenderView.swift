@@ -15,7 +15,7 @@ open class SelfVideoRenderView : RTCEAGLVideoView {
     
     private var attached: Bool = false
     
-    private var outputManager: MediaOutputManager?
+    private var outputManager: MediaOutputManager = MediaOutputManager()
     
     override open func didMoveToWindow() {
         if TARGET_OS_SIMULATOR == 1 {
@@ -26,10 +26,7 @@ open class SelfVideoRenderView : RTCEAGLVideoView {
             self.transform = CGAffineTransform(scaleX: -1.0, y: 1.0)
         }
         
-        if outputManager == nil {
-            outputManager = MediaOutputManager()
-        }
-        let videoTrack = outputManager!.produceVideoTrack(with: .high)
+        let videoTrack = outputManager.produceVideoTrack(with: .high)
         
         if self.window != nil && !attached {
             zmLog.info("SelfVideoRenderView-addTrack-- \(videoTrack)")
@@ -42,18 +39,19 @@ open class SelfVideoRenderView : RTCEAGLVideoView {
     }
     
     open func startVideoCapture() {
-        self.outputManager?.startVideoCapture()
+        self.outputManager.startVideoCapture()
     }
     
     open func stopVideoCapture() {
-        self.outputManager?.stopVideoCapture()
+        self.outputManager.stopVideoCapture()
     }
     
     open func switchCamera(isFront: Bool) {
-        self.outputManager?.flipCamera(isFront: isFront)
+        self.outputManager.flipCamera(isFront: isFront)
     }
     
     deinit {
+        print("SelfVideoRenderView --- deinit")
         zmLog.info("SelfVideoRenderView-deinit")
     }
     
@@ -72,6 +70,7 @@ open class VideoRenderView : RTCEAGLVideoView {
     open var isSelf: Bool = false {
         didSet {
             if isSelf {
+                zmLog.info("aaaa---VideoRenderView--isSelf--newValue:\(isSelf),oldValue\(oldValue))，userid:\(String(describing: userid))")
                 if TARGET_OS_SIMULATOR == 1 {
                     return
                 }
@@ -85,7 +84,7 @@ open class VideoRenderView : RTCEAGLVideoView {
     
     open var userid: String? {
         didSet {
-            zmLog.info("VideoRenderView--userid--newValue:\(String(describing: userid)),oldValue\(String(describing: oldValue))")
+            zmLog.info("aaaa---VideoRenderView--userid--newValue:\(String(describing: userid)),oldValue\(String(describing: oldValue))")
             guard let id = userid,
                 let uid = UUID(uuidString: id),
                 let roomMembersManager = CallingRoomManager.shareInstance.roomMembersManager else {
@@ -97,13 +96,12 @@ open class VideoRenderView : RTCEAGLVideoView {
     
     private var videoTrack: RTCVideoTrack? {
         didSet {
-            zmLog.info("VideoRenderView--videoTrack--newValue:\(String(describing: videoTrack)),oldValue\(String(describing: oldValue))")
+            zmLog.info("aaaa---VideoRenderView--videoTrack--newValue:\(String(describing: videoTrack)),oldValue\(String(describing: oldValue))")
             oldValue?.remove(self)
             videoTrack?.add(self)
         }
     }
-    
-    
+
     @objc open func removeAddedTrack() {
         self.videoTrack = nil
     }

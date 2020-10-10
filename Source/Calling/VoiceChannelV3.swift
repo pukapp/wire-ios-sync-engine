@@ -161,10 +161,18 @@ extension VoiceChannelV3 : CallActions {
         /** 这里由于callKit无法同步的改变isMicrophoneMuted的状态，
          *  但是按钮点击静音之后，会同步的刷新页面，就会导致状态刷新的有问题
          *  所以这里不采用callKit
-         **/
+         */
         if let manager = userSession.mediaManager as? AVSMediaManager {
             manager.isMicrophoneMuted = muted
         }
+    }
+    
+    public func muteOther(_ userId: String, isMute: Bool) {
+        callCenter?.muteOther(userId, isMute: isMute)
+    }
+    
+    public func topUser(_ userId: String) {
+        callCenter?.topUser(userId)
     }
     
     public func continueByDecreasingConversationSecurity(userSession: ZMUserSession) {
@@ -271,6 +279,9 @@ extension VoiceChannelV3 : CallObservers {
         return WireCallCenterV3.addCallStateObserver(observer: observer, context: userSession.managedObjectContext!)
     }
     
+    public func addMeetingPropertyChangedObserver(_ observer: WireCallCenterrMeetingPropertyChangedObserver) -> Any {
+        return WireCallCenterV3.addMeetingPropertyChangedObserver(observer: observer, for: relyModel as! ZMMeeting, context: relyModel!.managedObjectContext!)
+    }
 }
 
 public extension CallState {

@@ -36,14 +36,14 @@ public class CallingWrapper: AVSWrapperType {
         })
     }
     
-    public func startCall(conversationId: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool, peerId: UUID?) -> Bool {
+    public func startCall(conversationId: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool, members: [CallMemberProtocol], token: String?) -> Bool {
         self.callStateManager.observer = self
-        return callStateManager.startCall(cid: conversationId, mediaState: mediaState, conversationType: conversationType, peerId: peerId)
+        return callStateManager.startCall(cid: conversationId, mediaState: mediaState, conversationType: conversationType, members: members, token: token)
     }
     
-    public func answerCall(conversationId: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool) -> Bool {
+    public func answerCall(conversationId: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool, members: [CallMemberProtocol], token: String?) -> Bool {
         self.callStateManager.observer = self
-        return callStateManager.answerCall(cid: conversationId)
+        return callStateManager.answerCall(cid: conversationId, members: members, token: token)
     }
     
     public func endCall(conversationId: UUID) {
@@ -76,7 +76,7 @@ public class CallingWrapper: AVSWrapperType {
         
     }
     
-    public func members(in conversationId: UUID) -> [AVSCallMember] {
+    public func members(in conversationId: UUID) -> [CallMemberProtocol] {
         return callStateManager.members(in :conversationId)
     }
     
@@ -84,13 +84,21 @@ public class CallingWrapper: AVSWrapperType {
         
     }
     
-    public func mute(_ muted: Bool){
-        callStateManager.mute(muted)
+    public func muteOther(_ userId: String, isMute: Bool) {
+        callStateManager.muteOther(userId, isMute: isMute)
+    }
+    
+    public func topUser(_ userId: String) {
+        callStateManager.topUser(userId)
     }
 
 }
 
 extension CallingWrapper: ConvsCallingStateObserve {
+    
+    func onReceiveMeetingPropertyChange(in mid: UUID, with property: MeetingProperty) {
+        self.callCenter?.handleMeetingPropertyChange(in: mid, with: property)
+    }
     
     func changeCallStateNeedToSendMessage(in cid: UUID, callAction: CallingAction, convType: AVSConversationType? = nil, mediaState: AVSCallMediaState? = nil, to: CallStarter?, memberCount: Int? = nil) {
         self.sendCallingAction(with: callAction, cid: cid, convType: convType, mediaState: mediaState, to: to, memberCount: memberCount)
@@ -247,7 +255,8 @@ extension CallingWrapper {
         switch model.callAction {
         case .start:
             self.callStateManager.observer = self
-            callStateManager.recvStartCall(cid: model.cid, mediaState: model.mediaState!, conversationType: model.convType!, userId: model.userId, clientId: model.clientId)
+            let peer = AVSCallMember.init(userId: model.userId, callParticipantState: .connecting, isMute: false, videoState: .stopped)
+            callStateManager.recvStartCall(cid: model.cid, mediaState: model.mediaState!, conversationType: model.convType!, userId: model.userId, clientId: model.clientId, members: [peer])
         case .answer:
             if model.userId == self.userId, model.clientId != self.clientId {
                 ///自己的另外一个设备发送的answer消息，则此设备结束
