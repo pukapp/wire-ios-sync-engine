@@ -63,9 +63,11 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
               applicationStatusDirectory:(ApplicationStatusDirectory *)applicationStatusDirectory
                                    uiMOC:(NSManagedObjectContext *)uiMOC
                                  syncMOC:(NSManagedObjectContext *)syncMOC
+                                  msgMOC:(NSManagedObjectContext *)msgMOC
 {
     Check(uiMOC != nil);
     Check(syncMOC != nil);
+    Check(msgMOC != nil);
     
     self = [super init];
     if (self) {
@@ -73,6 +75,7 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
         self.transportSession = transportSession;
         self.syncStrategy = syncStrategy;
         self.syncMOC = syncMOC;
+        self.msgMOC = msgMOC;
         self.shouldStopEnqueueing = NO;
         applicationStatusDirectory.operationStatus.delegate = self;
 
@@ -90,6 +93,8 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
         }
         
         [ZMRequestAvailableNotification addObserver:self];
+        
+        [ZMRequestAvailableNotification addUIObserver:self];
         
         NSManagedObjectContext *moc = self.syncMOC;
         // this is needed to avoid loading from syncMOC on the main queue
@@ -117,6 +122,15 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
                   "Must call be called on the main queue.");
     __block BOOL didStop = NO;
     [self.syncMOC.dispatchGroup notifyOnQueue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0) block:^{
+        didStop = YES;
+    }];
+    while (!didStop) {
+        if (! [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.002]]) {
+            [NSThread sleepForTimeInterval:0.002];
+        }
+    }
+    
+    [self.msgMOC.dispatchGroup notifyOnQueue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0) block:^{
         didStop = YES;
     }];
     while (!didStop) {
@@ -174,13 +188,13 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
     // We need to proceed even if those to sets are empty because the metadata might have been updated.
     
     ZM_WEAK(self);
-    [self.syncMOC performGroupedBlock:^{
+    [self.msgMOC performGroupedBlock:^{
         ZM_STRONG(self);
-        NSSet *syncInsertedObjects = [ZMOperationLoop objectSetFromObjectIDs:insertedObjectsIDs inContext:self.syncStrategy.syncMOC];
-        NSSet *syncUpdatedObjects = [ZMOperationLoop objectSetFromObjectIDs:updatedObjectsIDs inContext:self.syncStrategy.syncMOC];
+        NSSet *syncInsertedObjects = [ZMOperationLoop objectSetFromObjectIDs:insertedObjectsIDs inContext:self.syncStrategy.msgMOC];
+        NSSet *syncUpdatedObjects = [ZMOperationLoop objectSetFromObjectIDs:updatedObjectsIDs inContext:self.syncStrategy.msgMOC];
         
         [self.syncStrategy processSaveWithInsertedObjects:syncInsertedObjects updateObjects:syncUpdatedObjects];
-        [ZMRequestAvailableNotification notifyNewRequestsAvailable:self];
+        [ZMRequestAvailableNotification uiNotifyNewRequestsAvailable:self];
     }];
 }
 
@@ -224,6 +238,26 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
     
 }
 
+- (ZMTransportRequestGenerator)UIRequestGenerator {
+    ZM_WEAK(self);
+    return ^ZMTransportRequest *(void) {
+        ZM_STRONG(self);
+        if (self == nil) {
+            return nil;
+        }
+        ZMTransportRequest *request = [self.syncStrategy nextRequest];
+        [request addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:self.msgMOC block:^(ZMTransportResponse *response) {
+            ZM_STRONG(self);
+            [self.syncStrategy.msgMOC enqueueDelayedSaveWithGroup:response.dispatchGroup];
+            // Check if there is something to do now and when the save completes
+            [ZMRequestAvailableNotification uiNotifyNewRequestsAvailable:self];
+        }]];
+        
+        return request;
+    };
+    
+}
+
 - (void)executeNextOperation
 {    
     if (self.shouldStopEnqueueing) {
@@ -251,6 +285,33 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
     }];
 }
 
+- (void)executeUINextOperation
+{
+    if (self.shouldStopEnqueueing) {
+        return;
+    }
+    
+    // this generates the request
+    ZMTransportRequestGenerator generator = [self UIRequestGenerator];
+    
+    BackgroundActivity *enqueueActivity = [BackgroundActivityFactory.sharedFactory startBackgroundActivityWithName:@"executeNextOperation"];
+
+    if (!enqueueActivity) {
+        return;
+    }
+
+    ZM_WEAK(self);
+    [self.msgMOC performGroupedBlock:^{
+        ZM_STRONG(self);
+        BOOL enqueueMore = YES;
+        while (self && enqueueMore && !self.shouldStopEnqueueing) {
+            ZMTransportEnqueueResult *result = [self.transportSession attemptToEnqueueSyncRequestWithGenerator:generator];
+            enqueueMore = result.didGenerateNonNullRequest && result.didHaveLessRequestThanMax;
+        }
+        [BackgroundActivityFactory.sharedFactory endBackgroundActivity:enqueueActivity];
+    }];
+}
+
 - (PushNotificationStatus *)pushNotificationStatus
 {
     return self.applicationStatusDirectory.pushNotificationStatus;
@@ -268,6 +329,10 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
 - (void)newRequestsAvailable
 {
     [self executeNextOperation];
+}
+
+- (void)newUIRequestsAvailable {
+    [self executeUINextOperation];
 }
 
 @end

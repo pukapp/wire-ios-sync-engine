@@ -68,6 +68,7 @@
 - (void) startTrack;
 
 @property (nonatomic, readonly, nonnull) NSManagedObjectContext *syncMOC;
+@property (nonatomic, readonly, nonnull) NSManagedObjectContext *msgMOC;
 @property (nonatomic, weak, readonly, nullable) ApplicationStatusDirectory *applicationStatusDirectory;
 @property (nonatomic, readonly, nonnull) CallingRequestStrategy *callingRequestStrategy;
 @property (nonatomic, readonly, nonnull) EventDecoder *eventDecoder;

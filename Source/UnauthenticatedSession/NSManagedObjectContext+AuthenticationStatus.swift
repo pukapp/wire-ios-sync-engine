@@ -49,7 +49,7 @@ private let registeredOnThisDeviceBeforeConversationInitializationKey = "ZMRegis
     }
     
     private func setBooleanMetadataOnBothContexts(_ newValue: Bool, key: String) {
-        precondition(self.zm_isSyncContext)
+        precondition(!self.zm_isUserInterfaceContext)
         let value = NSNumber(booleanLiteral: newValue)
         self.setPersistentStoreMetadata(value, key: key)
         guard let uiContext = self.zm_userInterface else { return }

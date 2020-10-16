@@ -220,7 +220,8 @@ ZM_EMPTY_ASSERTING_INIT()
                                                                                        syncStrategy:self.syncStrategy
                                                                          applicationStatusDirectory:self.applicationStatusDirectory
                                                                                               uiMOC:self.managedObjectContext
-                                                                                            syncMOC:self.syncManagedObjectContext];
+                                                                                            syncMOC:self.syncManagedObjectContext
+                                                                                             msgMOC:self.msgManagedObjectContext];
             
             __weak id weakSelf = self;
             [transportSession setAccessTokenRenewalFailureHandler:^(ZMTransportResponse * _Nonnull response) {
@@ -345,6 +346,11 @@ ZM_EMPTY_ASSERTING_INIT()
     return self.storeProvider.contextDirectory.syncContext;
 }
 
+- (NSManagedObjectContext *)msgManagedObjectContext
+{
+    return self.storeProvider.contextDirectory.msgContext;
+}
+
 - (NSManagedObjectContext *)searchManagedObjectContext
 {
     return self.storeProvider.contextDirectory.searchContext;
@@ -456,6 +462,7 @@ ZM_EMPTY_ASSERTING_INIT()
         [self.thirdPartyServicesDelegate userSessionIsReadyToUploadServicesData:self];
     }
 }
+
 //群昵称数据迁移
 - (void)migrateOldAliasname {
     [UserAliasname migrateOldAliasnameWith:self.syncManagedObjectContext];
@@ -547,7 +554,7 @@ ZM_EMPTY_ASSERTING_INIT()
     [self.managedObjectContext performGroupedBlock:^{
         ZM_STRONG(self);
         self.isPerformingSync = YES;
-        self.notificationDispatcher.isDisabled = YES;
+//        self.notificationDispatcher.isDisabled = YES;
         [self changeNetworkStateAndNotify];
         [self migrateOldAliasname];
     }];
@@ -559,7 +566,7 @@ ZM_EMPTY_ASSERTING_INIT()
     [self.managedObjectContext performGroupedBlock:^{
         ZM_STRONG(self);
         self.hasCompletedInitialSync = YES;
-        self.notificationDispatcher.isDisabled = NO;
+//        self.notificationDispatcher.isDisabled = NO;
         [ZMUserSession notifyInitialSyncCompletedWithContext:self.managedObjectContext];
     }];
 }

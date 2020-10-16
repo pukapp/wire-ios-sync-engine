@@ -87,8 +87,20 @@
             [self.syncMOC processPendingChanges]; // We need this because merging sometimes leaves the MOC in a 'dirty' state
             [self.eventProcessingTracker registerSavePerformed];
         }];
-    } else if (mocThatSaved.zm_isSyncContext) {
-        RequireString(mocThatSaved == self.syncMOC, "Not the right MOC!");
+        
+        [self.msgMOC performGroupedBlock:^{
+            ZM_STRONG(self);
+            if(self == nil || self.tornDown) {
+                return;
+            }
+            [self.msgMOC mergeUserInfoFromUserInfo:userInfo];
+            [self.msgMOC mergeChangesFromContextDidSaveNotification:note];
+            [self.msgMOC processPendingChanges]; // We need this because merging sometimes leaves the MOC in a 'dirty' state
+        }];
+        
+    } else if (mocThatSaved.zm_isSyncContext || mocThatSaved.zm_isMsgContext) {
+        
+//        RequireString(mocThatSaved != self.syncMOC, "Not the right MOC!");
         
         NSSet<NSManagedObjectID*>* changedObjectsIDs = [self extractManagedObjectIDsFrom:note];
         

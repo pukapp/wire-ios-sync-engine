@@ -71,6 +71,7 @@
 
 @property (nonatomic, readonly) BOOL isLoggedIn;
 @property (nonatomic, readonly) NSManagedObjectContext *managedObjectContext;
+@property (nonatomic, readonly) NSManagedObjectContext *msgManagedObjectContext;
 @property (nonatomic, readonly) NSManagedObjectContext *syncManagedObjectContext;
 @property (nonatomic, readonly) LocalNotificationDispatcher *localNotificationDispatcher;
 

@@ -38,7 +38,7 @@ static NSString *ZMLogTag ZM_UNUSED = @"Authentication";
 - (void)checkIfLoggedInWithCallback:(void (^)(BOOL))callback
 {
     if (callback) {
-        [self.syncManagedObjectContext performGroupedBlock:^{
+        [self.msgManagedObjectContext performGroupedBlock:^{
             BOOL result = [self isLoggedIn];
             [self.managedObjectContext performGroupedBlock:^{
                 callback(result);

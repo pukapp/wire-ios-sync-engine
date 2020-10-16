@@ -32,6 +32,7 @@
 @property (nonatomic) APSSignalingKeysStore *apsSignalKeyStore;
 @property (nonatomic) ZMSyncStrategy *syncStrategy;
 @property (nonatomic, weak) NSManagedObjectContext *syncMOC;
+@property (nonatomic, weak) NSManagedObjectContext *msgMOC;
 @property (nonatomic, readonly) PushNotificationStatus *pushNotificationStatus;
 @property (nonatomic, readonly) CallEventStatus *callEventStatus;
 @end

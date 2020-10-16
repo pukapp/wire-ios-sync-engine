@@ -43,6 +43,7 @@
 
 @property (nonatomic) BOOL didFetchObjects;
 @property (nonatomic) NSManagedObjectContext *syncMOC;
+@property (nonatomic) NSManagedObjectContext *msgMOC;
 @property (nonatomic, weak) NSManagedObjectContext *uiMOC;
 
 @property (nonatomic) id<ZMApplication> application;
@@ -123,6 +124,8 @@ ZM_EMPTY_ASSERTING_INIT()
         self.localNotificationDispatcher = localNotificationsDispatcher;
         self.syncMOC = storeProvider.contextDirectory.syncContext;
         self.uiMOC = storeProvider.contextDirectory.uiContext;
+        self.msgMOC = storeProvider.contextDirectory.msgContext;
+        
         self.hotFix = [[ZMHotFix alloc] initWithSyncMOC:self.syncMOC];
         self.eventProcessingTracker = [[EventProcessingTracker alloc] init];
         
@@ -147,7 +150,6 @@ ZM_EMPTY_ASSERTING_INIT()
                                    self.missingClientsRequestStrategy,
                                    self.fetchingClientRequestStrategy,
                                    self.userDisableSendMsgStrategy,
-                                   [[VerifyLegalHoldRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
                                    [[ProxiedRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory requestsStatus:applicationStatusDirectory.proxiedRequestStatus],
                                    [[DeleteAccountRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory cookieStorage: cookieStorage],
                                    [[AssetV3UploadRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory],
@@ -198,7 +200,7 @@ ZM_EMPTY_ASSERTING_INIT()
 
         ZM_ALLOW_MISSING_SELECTOR([[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(managedObjectContextDidSave:) name:NSManagedObjectContextDidSaveNotification object:self.syncMOC]);
         ZM_ALLOW_MISSING_SELECTOR([[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(managedObjectContextDidSave:) name:NSManagedObjectContextDidSaveNotification object:storeProvider.contextDirectory.uiContext]);
-
+        ZM_ALLOW_MISSING_SELECTOR([[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(managedObjectContextDidSave:) name:NSManagedObjectContextDidSaveNotification object:storeProvider.contextDirectory.msgContext]);
         [application registerObserverForDidEnterBackground:self selector:@selector(appDidEnterBackground:)];
         [application registerObserverForWillEnterForeground:self selector:@selector(appWillEnterForeground:)];
         [application registerObserverForApplicationWillTerminate:self selector:@selector(appTerminated:)];
@@ -215,7 +217,7 @@ ZM_EMPTY_ASSERTING_INIT()
     self.userTranscoder = [[ZMUserTranscoder alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory syncStatus:applicationStatusDirectory.syncStatus];
     self.selfStrategy = [[ZMSelfStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory clientRegistrationStatus:applicationStatusDirectory.clientRegistrationStatus syncStatus:applicationStatusDirectory.syncStatus];
     self.conversationTranscoder = [[ZMConversationTranscoder alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory localNotificationDispatcher:localNotificationsDispatcher syncStatus:applicationStatusDirectory.syncStatus];
-    self.clientMessageTranscoder = [[ClientMessageTranscoder alloc] initIn:self.syncMOC localNotificationDispatcher:localNotificationsDispatcher applicationStatus:applicationStatusDirectory];
+    self.clientMessageTranscoder = [[ClientMessageTranscoder alloc] initIn:self.syncMOC msgMoc:self.msgMOC localNotificationDispatcher:localNotificationsDispatcher applicationStatus:applicationStatusDirectory];
     self.missingUpdateEventsTranscoder = [[ZMMissingUpdateEventsTranscoder alloc] initWithSyncStrategy:self previouslyReceivedEventIDsCollection:self.eventDecoder application:self.application applicationStatus:applicationStatusDirectory];
     self.lastUpdateEventIDTranscoder = [[ZMLastUpdateEventIDTranscoder alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory syncStatus:applicationStatusDirectory.syncStatus objectDirectory:self];
     self.callingRequestStrategy = [[CallingRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC clientRegistrationDelegate:applicationStatusDirectory.clientRegistrationStatus flowManager:flowManager callEventStatus:applicationStatusDirectory.callEventStatus];
