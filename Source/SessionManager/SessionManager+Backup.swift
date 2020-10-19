@@ -170,7 +170,7 @@ fileprivate extension BackupMetadata {
     
     fileprivate static let nameAppName = "iTask"
     fileprivate static let nameFileName = "Backup"
-    fileprivate static let fileExtension = "ios_sbu"
+    fileprivate static let fileExtension = "ios_ibu"
 
     private static let formatter: DateFormatter = {
        let formatter = DateFormatter()
