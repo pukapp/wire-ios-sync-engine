@@ -21,7 +21,7 @@ import Foundation
 @objc
 public protocol FlowManagerType {
 
-    func setVideoCaptureDevice(_ device : CaptureDevice, for conversationId: UUID)
+    func setVideoCaptureDevice(_ device : CaptureDevice)
 }
 
 @objc
@@ -35,8 +35,8 @@ public class FlowManager : NSObject, FlowManagerType {
         self.mediaManager = mediaManager
     }
     
-    public func setVideoCaptureDevice(_ device : CaptureDevice, for conversationId: UUID) {
-        CallingRoomManager.shareInstance.mediaOutputManager?.flipCamera(isFront: device == .front)
+    public func setVideoCaptureDevice(_ device : CaptureDevice) {
+        CallingRoomManager.shareInstance.mediaOutputManager?.flipCamera(capture: device)
     }
     
 }

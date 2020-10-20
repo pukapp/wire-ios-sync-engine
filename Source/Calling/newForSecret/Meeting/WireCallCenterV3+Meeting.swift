@@ -33,7 +33,6 @@ extension WireCallCenterV3 {
     
     /// Returns the meetingParticipants currently in the meeting
     func meetingParticipants(meetingId: UUID) -> [MeetingParticipant] {
-        print("[calling] meetingParticipants : meetingId:\(meetingId), snapshot:\(callSnapshots[meetingId])")
         if let participants = callSnapshots[meetingId]?.callParticipants.members as? [MeetingParticipant] {
             return participants
         } else {
