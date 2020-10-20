@@ -12,7 +12,7 @@ import Mediasoupclient
 
 private let zmLog = ZMSLog(tag: "calling")
 
-extension CallingRoomManager: CallingSocketStateDelegate {
+extension CallingRoomManager: CallingSignalManagerDelegate {
     
     func socketConnected() {
         guard self.roomState == .socketConnecting else { return }
@@ -31,6 +31,18 @@ extension CallingRoomManager: CallingSocketStateDelegate {
         }
     }
 
+    func onReceiveRequest(with method: String, info: JSON) {
+        roomWorkQueue.async {
+            self.clientConnectManager?.webSocketReceiveRequest(with: method, info: info)
+        }
+    }
+    
+    func onNewNotification(with noti: String, info: JSON) {
+        roomWorkQueue.async {
+            self.clientConnectManager?.webSocketReceiveNewNotification(with: noti, info: info)
+        }
+    }
+    
 }
 
 protocol CallingRoomManagerDelegate {
@@ -45,13 +57,16 @@ protocol CallingRoomManagerDelegate {
 }
 
 ///client连接管理，具体实现分别由继承类独自实现
-protocol CallingClientConnectProtocol: CallingSignalManagerDelegate {
-    init(signalManager: CallingSignalManager, mediaManager: MediaOutputManager, membersManagerDelegate: CallingMembersManagerProtocol, mediaStateManagerDelegate: CallingMediaStateManagerProtocol, observe: CallingClientConnectStateObserve, isStarter: Bool, videoState: VideoState)
+protocol CallingClientConnectProtocol {
+    init(signalManager: CallingSignalManager, mediaManager: MediaOutputManager, membersManagerDelegate: CallingMembersManagerProtocol, mediaStateManagerDelegate: CallingMediaStateManagerProtocol, observe: CallingClientConnectStateObserve, isStarter: Bool, mediaState: AVSCallMediaState)
     func webSocketConnected()
     func webSocketDisConnected()
+    func webSocketReceiveRequest(with method: String, info: JSON)
+    func webSocketReceiveNewNotification(with noti: String, info: JSON)
     func dispose()
     func setLocalAudio(mute: Bool)
     func setLocalVideo(state: VideoState)
+    func setScreenShare(isStart: Bool)
     
     func muteOther(_ userId: String, isMute: Bool)
 }
@@ -89,7 +104,7 @@ class CallingRoomManager: NSObject {
     
     var roomId: UUID?
     private var userId: UUID?
-    private var videoState: VideoState = .stopped
+    private var mediaState: AVSCallMediaState = .none
     private var isStarter: Bool = false
     private var roomMode: AVSConversationType = .group
     private var roomState: RoomState = .none
@@ -110,15 +125,20 @@ class CallingRoomManager: NSObject {
     
     override init() {
         super.init()
-        signalManager = CallingSignalManager(socketStateDelegate: self)
+        signalManager = CallingSignalManager(signalManagerDelegate: self)
     }
     
     func setCallingConfigure(_ callingConfigure: CallingConfigure) {
         self.callingConfigure = callingConfigure
     }
     
-    func connectToRoom(with roomId: UUID, userId: UUID, roomMode: AVSConversationType, videoState: VideoState, isStarter: Bool, members: [CallMemberProtocol], token: String?) {
-        zmLog.info("CallingRoomManager-connectToRoom roomId:\(roomId) userId:\(userId)")
+    func connectToRoom(with roomId: UUID, userId: UUID, roomMode: AVSConversationType, mediaState: AVSCallMediaState, isStarter: Bool, members: [CallMemberProtocol], token: String?) {
+        roomWorkQueue.async {
+            self.internalConnectToRoom(with: roomId, userId: userId, roomMode: roomMode, mediaState: mediaState, isStarter: isStarter, members: members, token: token)
+        }
+    }
+    
+    private func internalConnectToRoom(with roomId: UUID, userId: UUID, roomMode: AVSConversationType, mediaState: AVSCallMediaState, isStarter: Bool, members: [CallMemberProtocol], token: String?) {
         guard let callingConfigure = self.callingConfigure,
             let wsUrl = callingConfigure.vaildGateway,
             self.roomId == nil else {
@@ -126,10 +146,13 @@ class CallingRoomManager: NSObject {
             zmLog.info("CallingRoomManager-connectToRoom err:获取configuare出错，或者roomId不为空")
             return
         }
+        
+        zmLog.info("CallingRoomManager-connectToRoom roomId:\(roomId) userId:\(userId)")
+        
         self.roomId = roomId
         self.userId = userId
         self.roomMode = roomMode
-        self.videoState = videoState
+        self.mediaState = mediaState
         self.isStarter = isStarter
         self.roomState = .socketConnecting
         
@@ -142,28 +165,38 @@ class CallingRoomManager: NSObject {
         })
         switch roomMode {
         case .oneToOne:
-            self.clientConnectManager = WebRTCClientManager(signalManager: self.signalManager, mediaManager: self.mediaOutputManager!, membersManagerDelegate: self.roomMembersManager!, mediaStateManagerDelegate: self.roomMembersManager!, observe: self, isStarter: self.isStarter, videoState: self.videoState)
+            self.clientConnectManager = WebRTCClientManager(signalManager: self.signalManager, mediaManager: self.mediaOutputManager!, membersManagerDelegate: self.roomMembersManager!, mediaStateManagerDelegate: self.roomMembersManager!, observe: self, isStarter: self.isStarter, mediaState: self.mediaState)
             //获取穿透服务器地址
             (clientConnectManager as! WebRTCClientManager).callingConfigure = callingConfigure
         case .group, .conference:
-            self.clientConnectManager = MediasoupClientManager(signalManager: self.signalManager, mediaManager: self.mediaOutputManager!, membersManagerDelegate: self.roomMembersManager!, mediaStateManagerDelegate: self.roomMembersManager!, observe: self, isStarter: self.isStarter, videoState: self.videoState)
+            self.clientConnectManager = MediasoupClientManager(signalManager: self.signalManager, mediaManager: self.mediaOutputManager!, membersManagerDelegate: self.roomMembersManager!, mediaStateManagerDelegate: self.roomMembersManager!, observe: self, isStarter: self.isStarter, mediaState: self.mediaState)
+            (clientConnectManager as! MediasoupClientManager).mode = roomMode
         }
-        self.signalManager.setSignalDelegate(self.clientConnectManager!)
     }
     
     private func roomConnected() {
-        self.roomState = .socketConnected
-        self.clientConnectManager?.webSocketConnected()
+        roomWorkQueue.async {
+            self.roomState = .socketConnected
+            self.clientConnectManager?.webSocketConnected()
+        }
     }
     
     ///网络断开连接
     private func disConnectedRoom() {
-        zmLog.info("CallingRoomManager-disConnectedRoom--thread:\(Thread.current)")
-        self.clientConnectManager?.webSocketDisConnected()
+        roomWorkQueue.async {
+            zmLog.info("CallingRoomManager-disConnectedRoom--thread:\(Thread.current)")
+            self.clientConnectManager?.webSocketDisConnected()
+        }
     }
     
     func leaveRoom(with roomId: UUID) {
-        ///需要在此线程中释放资源
+        /**需要先将线程解锁
+          *当前在roomWorkQueue中，则说明当前无同步请求，线程没有被卡住
+          *当前不在roomWorkQueue中，则不论roomWorkQueue是否被卡住，leaveGroup都会解锁线程，下面再在roomWorkQueue中异步释放资源，就不会造成等待的问题
+         */
+        self.signalManager.leaveGroup()
+        
+        ///必须此线程中释放资源，所以关于资源的操作都在roomWorkQueue中执行，防止异步线程访问已经被释放的资源造成崩溃
         roomWorkQueue.async {
             guard self.roomId == roomId else {
                 return
@@ -175,6 +208,7 @@ class CallingRoomManager: NSObject {
             self.roomState = .none
 
             self.clientConnectManager?.dispose()
+            self.clientConnectManager = nil
             
             self.roomId = nil
             
@@ -200,11 +234,21 @@ class CallingRoomManager: NSObject {
 extension CallingRoomManager {
     
     func muteOther(_ userId: String, isMute: Bool) {
-        self.clientConnectManager?.muteOther(userId, isMute: isMute)
+        roomWorkQueue.async {
+            self.clientConnectManager?.muteOther(userId, isMute: isMute)
+        }
     }
     
     func topUser(_ userId: String) {
-        self.roomMembersManager?.topUser(userId)
+        roomWorkQueue.async {
+            self.roomMembersManager?.topUser(userId)
+        }
+    }
+    
+    func setScreenShare(isStart: Bool) {
+        roomWorkQueue.async {
+            self.clientConnectManager?.setScreenShare(isStart: isStart)
+        }
     }
 }
 
@@ -214,6 +258,7 @@ extension CallingRoomManager {
     func setLocalAudio(mute: Bool) {
         roomWorkQueue.async {
             zmLog.info("CallingRoomManager-setLocalAudio--\(mute)")
+            self.mediaState.audioMuted(mute)
             self.clientConnectManager?.setLocalAudio(mute: mute)
             self.roomMembersManager?.setMemberAudio(mute, mid: self.userId!)
         }
@@ -222,7 +267,7 @@ extension CallingRoomManager {
     func setLocalVideo(state: VideoState) {
         roomWorkQueue.async {
             zmLog.info("CallingRoomManager-setLocalVideo--\(state)")
-            self.videoState = state
+            self.mediaState.videoStateChanged(state)
             self.clientConnectManager?.setLocalVideo(state: state)
             self.roomMembersManager?.setMemberVideo(state, mid: self.userId!)
         }
@@ -232,10 +277,11 @@ extension CallingRoomManager {
 extension CallingRoomManager: CallingClientConnectStateObserve {
     
     func onReceivePropertyChange(with property: MeetingProperty) {
+        guard let roomId = self.roomId else { return }
         if case .terminateMeet = property {
-            self.delegate?.leaveRoom(conversationId: self.roomId!, reason: .terminate)
+            self.delegate?.leaveRoom(conversationId: roomId, reason: .terminate)
         }
-        self.delegate?.onReceiveMeetingPropertyChange(in: self.roomId!, with: property)
+        self.delegate?.onReceiveMeetingPropertyChange(in: roomId, with: property)
     }
     
     func establishConnectionFailed() {
@@ -255,8 +301,7 @@ extension CallingRoomManager: CallingClientConnectStateObserve {
             self.roomMode = mode
             if mode == .group {
                 self.clientConnectManager?.dispose()
-                self.clientConnectManager = MediasoupClientManager(signalManager: self.signalManager, mediaManager: self.mediaOutputManager!, membersManagerDelegate: self.roomMembersManager!, mediaStateManagerDelegate: self.roomMembersManager!, observe: self, isStarter: self.isStarter, videoState: self.videoState)
-                self.signalManager.setSignalDelegate(self.clientConnectManager!)
+                self.clientConnectManager = MediasoupClientManager(signalManager: self.signalManager, mediaManager: self.mediaOutputManager!, membersManagerDelegate: self.roomMembersManager!, mediaStateManagerDelegate: self.roomMembersManager!, observe: self, isStarter: self.isStarter, mediaState: self.mediaState)
                 self.clientConnectManager?.webSocketConnected()
             }
         }
@@ -270,11 +315,11 @@ extension CallingRoomManager: CallingMembersObserver {
             return
         }
         zmLog.info("CallingRoomManager-roomEmpty")
-        self.leaveRoom(with: roomId)
         self.delegate?.leaveRoom(conversationId: roomId, reason: .normal)
     }
     
     func roomEstablished() {
+        zmLog.info("CallingRoomManager-roomEstablished")
         guard let roomId = self.roomId else {
             return
         }

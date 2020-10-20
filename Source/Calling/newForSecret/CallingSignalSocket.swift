@@ -22,7 +22,7 @@ protocol SocketActionDelegate {
     func receive(action: SocketAction)
 }
 
-private let socketRecvQueue: DispatchQueue = DispatchQueue(label: "MediasoupSignalSocket.RecvQueue")
+private let recvSocketSignalQueue: DispatchQueue = DispatchQueue.init(label: "MediasoupRecvSocketSignalQueue")
 
 public class CallingSignalSocket {
 
@@ -42,7 +42,7 @@ public class CallingSignalSocket {
     func createSocket() {
         self.socket = WebSocket(url: url, protocols: ["secret-media"])//secret-media--protoo
         self.socket!.disableSSLCertValidation = true
-        self.socket!.callbackQueue = socketRecvQueue
+        self.socket!.callbackQueue = recvSocketSignalQueue
         self.socket!.delegate = self
     }
 
@@ -93,7 +93,7 @@ extension CallingSignalSocket: WebSocketDelegate, WebSocketPongDelegate {
             self.delegate.receive(action: .disconnected(needDestory: true))
         } else {
             self.delegate.receive(action: .disconnected(needDestory: false))
-            socketRecvQueue.asyncAfter(deadline: .now() + 5) {
+            roomWorkQueue.asyncAfter(deadline: .now() + 5) {
                 self.reConnect()
             }
         }

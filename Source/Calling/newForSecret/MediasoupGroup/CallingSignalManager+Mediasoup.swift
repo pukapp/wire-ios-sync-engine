@@ -74,97 +74,81 @@ enum MediasoupSignalAction {
         case newPeer = "newPeer"
         case peerClosed = "peerClosed"
         case peerDisplayNameChanged = "peerDisplayNameChanged"
-        case peerLeave = "leave"
+        case peerLeave = "peerLeave"
     }
 }
 
 ///mediasoup + send
 extension CallingSignalManager {
     
-    func requestToGetRoomRtpCapabilities(completion: @escaping (String?) -> Void) {
-        sendMediasoupAction(with: .getRouterRtpCapabilities, data: nil) { (res) in
-            if res.ok && res.data != nil {
-                completion(res.data!.description)
-            } else {
-                completion(nil)
-            }
+    func requestToGetRoomRtpCapabilities() -> String? {
+        guard let res = sendMediasoupAction(with: .getRouterRtpCapabilities, data: nil), res.ok, res.data != nil else {
+            return nil
         }
+        return res.data!.description
      }
      
-     func createWebRtcTransportRequest(with producing: Bool, completion: @escaping (JSON?) -> Void) {
+     func createWebRtcTransportRequest(with producing: Bool) -> JSON? {
          let data:JSON = ["forceTcp" : false,
                           "producing" : producing,
                           "consuming" : !producing,
                           "sctpCapabilities" : ""]
-        sendMediasoupAction(with: .createWebRtcTransport(producing: producing), data: data) { (res) in
-            if res.ok {
-                completion(res.data)
-            } else {
-                completion(nil)
-            }
+        guard let res = sendMediasoupAction(with: .createWebRtcTransport(producing: producing), data: data), res.ok else {
+            return nil
         }
+        return res.data
      }
      
      func connectWebRtcTransportRequest(with transportId: String, dtlsParameters: String) {
          let data: JSON = ["transportId": transportId,
                            "dtlsParameters": JSON(parseJSON: dtlsParameters)]
-        sendMediasoupAction(with: .connectWebRtcTransport, data: data) { res in
-            zmLog.info("CallingSignalManager+Mediasoup -- connectWebRtcTransportRequest \(res.ok)")
-        }
+        let res = sendMediasoupAction(with: .connectWebRtcTransport, data: data)
+        zmLog.info("CallingSignalManager+Mediasoup -- connectWebRtcTransportRequest \(String(describing: res?.ok))")
      }
      
-     func loginRoom(with rtpCapabilities: String, completion: @escaping (JSON?) -> Void) {
+     func loginRoom(with rtpCapabilities: String) -> JSON? {
          let loginRoomRequestData: JSON = ["displayName" : "",
                                            "rtpCapabilities" : JSON(parseJSON: rtpCapabilities),
                                            "device" : "ios",
                                            "sctpCapabilities" : ""]
-        sendMediasoupAction(with: .loginRoom, data: loginRoomRequestData) { (res) in
-            if res.ok && res.data != nil {
-                completion(res.data)
-            } else {
-                completion(nil)
-            }
+        guard let res = sendMediasoupAction(with: .loginRoom, data: loginRoomRequestData), res.ok, res.data != nil else {
+            return nil
         }
+        return res.data
      }
      
-     func produceWebRtcTransportRequest(with transportId: String, kind: String, rtpParameters: String, appData: String, completion: @escaping (String?) -> Void) {
+     func produceWebRtcTransportRequest(with transportId: String, kind: String, rtpParameters: String, appData: String) -> String? {
          let data: JSON = [
              "transportId": transportId,
              "kind": kind,
              "rtpParameters": JSON.init(parseJSON: rtpParameters),
              "appData": appData
          ]
-        sendMediasoupAction(with: .produceTransport, data: data) { (res) in
-            if res.ok && res.data != nil {
-                completion(res.data!["id"].string)
-            } else {
-                completion(nil)
-            }
+        guard let res = sendMediasoupAction(with: .produceTransport, data: data), res.ok, res.data != nil else {
+            return nil
         }
+        return res.data!["id"].string
      }
 
      func setProduceState(with id: String, pause: Bool) {
          let data: JSON = [
              "producerId": id,
          ]
-        sendMediasoupAction(with: pause ? .pauseProducer : .resumeProducer, data: data) { _ in
-            
-        }
+        let res = sendMediasoupAction(with: pause ? .pauseProducer : .resumeProducer, data: data)
+        zmLog.info("CallingSignalManager+Mediasoup -- setProduceState \(String(describing: res?.ok))")
      }
      
      func closeProduce(with id: String) {
          let data: JSON = [
              "producerId": id,
          ]
-        sendMediasoupAction(with: .closeProducer, data: data) { _ in
-            
-        }
+        let res = sendMediasoupAction(with: .closeProducer, data: data)
+        zmLog.info("CallingSignalManager+Mediasoup -- closeProduce \(String(describing: res?.ok))")
     }
      
      func peerLeave() {
-        sendMediasoupAction(with: .peerLeave, data: nil) { _ in
-            
-        }
+        let res = sendMediasoupAction(with: .peerLeave, data: nil)
+        zmLog.info("CallingSignalManager+Mediasoup -- peerLeave \(String(describing: res?.ok))")
      }
     
 }
@@ -172,8 +156,8 @@ extension CallingSignalManager {
 ///mediasoup + receive
 extension CallingSignalManager {
 
-    private func sendMediasoupAction(with action: MediasoupSignalAction.SendRequest, data: JSON?, completion: @escaping CallingSignalResponseBlock) {
-        self.sendSocketRequest(with: action.description, data: data, completion: completion)
+    private func sendMediasoupAction(with action: MediasoupSignalAction.SendRequest, data: JSON?) -> CallingSignalResponse? {
+        return self.sendSocketRequest(with: action.description, data: data)
     }
     
 }

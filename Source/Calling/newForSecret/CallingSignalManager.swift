@@ -14,13 +14,11 @@ import AVFoundation
 private let zmLog = ZMSLog(tag: "calling")
 
 
-protocol CallingSocketStateDelegate {
+protocol CallingSignalManagerDelegate {
     func socketConnected()
     ///needDestory - true: socket会自动重连8次，如果8次都失败，则为true，而前几次则为false
     func socketDisconnected(needDestory: Bool)
-}
-
-protocol CallingSignalManagerDelegate {
+    
     func onReceiveRequest(with method: String, info: JSON)
     func onNewNotification(with noti: String, info: JSON)
 }
@@ -28,21 +26,19 @@ protocol CallingSignalManagerDelegate {
 extension CallingSignalManager: SocketActionDelegate {
     
     func receive(action: SocketAction) {
-        roomWorkQueue.async {
-            switch action {
-            case .connected:
-                zmLog.info("CallingSignalManager-SocketConnected--inThread:\(Thread.current)\n")
-                self.isSocketConnected = true
-                self.socketStateDelegate.socketConnected()
-            case .disconnected(let needDestory):
-                zmLog.info("CallingSignalManager-SocketDisConnected--inThread:\(Thread.current)\n")
-                self.isSocketConnected = false
-                self.socketStateDelegate.socketDisconnected(needDestory: needDestory)
-            case .text(text: let str):
-                self.receiveSocketData(with: JSON(parseJSON: str))
-            case .data(data: let data):
-                self.receiveSocketData(with: try! JSON(data: data))
-            }
+        switch action {
+        case .connected:
+            zmLog.info("CallingSignalManager-SocketConnected--inThread:\(Thread.current)\n")
+            self.isSocketConnected = true
+            self.signalManagerDelegate.socketConnected()
+        case .disconnected(let needDestory):
+            zmLog.info("CallingSignalManager-SocketDisConnected--inThread:\(Thread.current)\n")
+            self.isSocketConnected = false
+            self.signalManagerDelegate.socketDisconnected(needDestory: needDestory)
+        case .text(text: let str):
+            self.receiveSocketData(with: JSON(parseJSON: str))
+        case .data(data: let data):
+            self.receiveSocketData(with: try! JSON(data: data))
         }
     }
     
@@ -63,46 +59,58 @@ extension CallingSignalManager {
         ///先发response回给服务器
         let response = CallingSignalResponse(response: true, ok: true,  id: request.id, data: nil, method: request.method, roomId: request.roomId, peerId: request.peerId)
         self.send(string: response.jsonString())
-        self.signalDelegate?.onReceiveRequest(with: request.method, info: request.data)
+        self.signalManagerDelegate.onReceiveRequest(with: request.method, info: request.data)
     }
     
     func receiveSocketResponse(with response: CallingSignalResponse) {
-        zmLog.info("CallingSignalManager-receiveSocketResponse==responseId:\(response.id)")
-        if let block = self.responseBlockMap.first(where: { return $0.key == response.id })?.value {
-            block(response)
-            self.responseBlockMap.removeValue(forKey: response.id)
-        } else {
-            zmLog.info("CallingSignalManager-receiveSocketResponse==err:\(response.id)")
+        zmLog.info("CallingSignalManager-receiveSocketResponse==responseId:\(response.id)--thread:\(Thread.current)")
+        if currentRequestId == response.id {
+            self.syncResponse = response
+            self.leaveGroup()
         }
     }
     
     func receiveSocketNotification(with notification: CallingSignalNotification) {
-        self.signalDelegate?.onNewNotification(with: notification.method, info: notification.data)
+        self.signalManagerDelegate.onNewNotification(with: notification.method, info: notification.data)
     }
     
 }
 
-typealias CallingSignalResponseBlock = (CallingSignalResponse) -> Void
+//DispatchGroup + Action
+extension CallingSignalManager {
+    
+    private func enterGroup() {
+        if !self.isWaitForResponse {
+            isWaitForResponse = true
+            sendAckRequestDispatch.enter()
+        }
+    }
+    
+    func leaveGroup() {
+        if self.isWaitForResponse {
+            self.isWaitForResponse = false
+            self.sendAckRequestDispatch.leave()
+        }
+    }
+}
 
 class CallingSignalManager: NSObject {
-
-    //用来异步返回socket响应
-    private var responseBlockMap: [UInt32 : CallingSignalResponseBlock] = [:]
+    
+    //用来阻塞线程，从而将异步的发送请求可以同步返回响应
+    private var sendAckRequestDispatch: DispatchGroup = DispatchGroup()
+    fileprivate var isWaitForResponse: Bool = false
+    
+    fileprivate var currentRequestId: UInt32?
+    fileprivate var syncResponse: CallingSignalResponse?
     
     private var socket: CallingSignalSocket?
     private var isSocketConnected: Bool = false
     
-    ///socket的状态回调
-    private let socketStateDelegate: CallingSocketStateDelegate
     ///socket接收数据回调
-    private var signalDelegate: CallingSignalManagerDelegate?
+    private var signalManagerDelegate: CallingSignalManagerDelegate
 
-    init(socketStateDelegate:  CallingSocketStateDelegate) {
-        self.socketStateDelegate = socketStateDelegate
-    }
-    
-    func setSignalDelegate(_ signalDelegate: CallingSignalManagerDelegate) {
-        self.signalDelegate = signalDelegate
+    init(signalManagerDelegate:  CallingSignalManagerDelegate) {
+        self.signalManagerDelegate = signalManagerDelegate
     }
     
     func disConnectRoom() {
@@ -127,12 +135,9 @@ class CallingSignalManager: NSObject {
     
     func leaveRoom() {
         self.socket?.disConnect()
-        self.responseBlockMap.removeAll()
         self.socket = nil
     }
 }
-
-private let sendSocketSignalQueue: DispatchQueue = DispatchQueue.init(label: "MediasoupSendSocketSignalQueue")
 
 ///socket 发送同步异步请求
 extension CallingSignalManager{
@@ -145,12 +150,24 @@ extension CallingSignalManager{
         self.send(string: request.jsonString())
     }
     
-    func sendSocketRequest(with method: String, data: JSON?, completion: @escaping CallingSignalResponseBlock) {
-        guard self.isSocketConnected else { return }
+    func sendSocketRequest(with method: String, data: JSON?) -> CallingSignalResponse? {
+        guard self.isSocketConnected else { return nil }
         let request = CallingSignalRequest.init(method: method, data: data)
         zmLog.info("CallingSignalManager-sendSocketRequest==method:\(method)-requestId:\(request.id)")
-        self.responseBlockMap[request.id] = completion
+
+        self.enterGroup()
+        self.currentRequestId = request.id
+        self.syncResponse = nil
+        
         self.send(string: request.jsonString())
+        
+        let result = sendAckRequestDispatch.wait(timeout: .now() + 10)
+        if result == .success {
+            return self.syncResponse
+        } else {
+            zmLog.info("CallingSignalManager-wait ack response time out")
+            return nil
+        }
     }
     
 }
