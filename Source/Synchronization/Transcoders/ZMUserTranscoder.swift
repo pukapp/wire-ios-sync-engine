@@ -29,6 +29,8 @@ extension ZMUserTranscoder {
             processUserDeletion(updateEvent)
         case .userMomentUpdate:
             processUserMomentUpdate(updateEvent)
+        case .userNoticeMessage:
+            processUserNoticeMessage(updateEvent)
         default:
             break
         }
@@ -109,5 +111,21 @@ extension ZMUserTranscoder {
             break
         }
         
+    }
+    
+    private func processUserNoticeMessage(_ updateEvent: ZMUpdateEvent) {
+        guard updateEvent.type == .userNoticeMessage else { return }
+        if let data = updateEvent.payload["data"] as? [String: Any],
+            let msgType = data["msgType"] as? String, msgType == "40104",
+            let msgData = data["msgData"] as? [String: Any] {
+            processMeetingNotification(msgType, payload: msgData)
+        }
+    }
+    
+    private func processMeetingNotification(_ msgType: String, payload: [String: Any]) {
+        if msgType == "40104" {
+            ZMMeeting.createOrUpdateMeeting(with: payload, context: managedObjectContext)
+            NotificationCenter.default.post(name: NSNotification.Name(MeetingStartOrEnd), object: nil)
+        }
     }
 }
