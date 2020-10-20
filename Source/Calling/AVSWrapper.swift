@@ -39,8 +39,10 @@ public protocol AVSWrapperType {
     func members(in conversationId: UUID) -> [CallMemberProtocol]
     func update(callConfig: String?, httpStatusCode: Int)
     
+    func muteSelf(isMute: Bool)
     func muteOther(_ userId: String, isMute: Bool)
     func topUser(_ userId: String)
+    func setScreenShare(isStart: Bool)
 }
 
 

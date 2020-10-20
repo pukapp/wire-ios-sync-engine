@@ -43,7 +43,10 @@ public class DataWormholeClientManager: NSObject {
     }
     
     public func sendDataToHostApp(with data: Data) {
-        if self.socket == nil { return }
+        if self.socket == nil {
+            self.setUpSocket()
+            return
+        }
         
         self.sendDataQueue.async {
             autoreleasepool {
@@ -125,12 +128,12 @@ extension DataWormholeServerManager: GCDAsyncSocketDelegate {
     
     public func socketDidDisconnect(_ sock: GCDAsyncSocket, withError err: Error?) {
         NTESTPCircularBufferClear(self.recvBuffer)
-        self.sockets = self.sockets.filter({ return $0 == sock })
+        self.sockets = self.sockets.filter({ return $0 != sock })
     }
     
     public func socketDidCloseReadStream(_ sock: GCDAsyncSocket) {
         NTESTPCircularBufferClear(self.recvBuffer)
-        self.sockets = self.sockets.filter({ return $0 == sock })
+        self.sockets = self.sockets.filter({ return $0 != sock })
     }
     
     public func socket(_ sock: GCDAsyncSocket, didAcceptNewSocket newSocket: GCDAsyncSocket) {

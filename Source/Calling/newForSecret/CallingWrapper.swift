@@ -84,6 +84,10 @@ public class CallingWrapper: AVSWrapperType {
         
     }
     
+    public func muteSelf(isMute: Bool) {
+        callStateManager.muteSelf(isMute: isMute)
+    }
+    
     public func muteOther(_ userId: String, isMute: Bool) {
         callStateManager.muteOther(userId, isMute: isMute)
     }
@@ -92,6 +96,9 @@ public class CallingWrapper: AVSWrapperType {
         callStateManager.topUser(userId)
     }
 
+    public func setScreenShare(isStart: Bool) {
+        callStateManager.setScreenShare(isStart: isStart)
+    }
 }
 
 extension CallingWrapper: ConvsCallingStateObserve {
@@ -201,7 +208,7 @@ struct CallingModel {
         }
         
         if let callTypeValue = json["call_type"].int,
-            let mediaState = AVSCallMediaState(rawValue: Int32(callTypeValue)) {
+            let mediaState = AVSCallMediaState(rawValue: callTypeValue) {
             self.mediaState = mediaState
         } else {
             self.mediaState = nil
@@ -241,7 +248,7 @@ extension CallingWrapper {
         if model.callDate.compare(Date(timeIntervalSinceNow: -60)) == .orderedAscending {
             ///信令发送时间小于当前时间60s前，则认为该信令无效
             if model.callAction == .start {
-                self.callCenter?.handleMissedCall(conversationId: model.cid, messageTime: model.callDate, userId: model.userId, isVideoCall: model.mediaState == .video)
+                self.callCenter?.handleMissedCall(conversationId: model.cid, messageTime: model.callDate, userId: model.userId, isVideoCall: model.mediaState?.needSendVideo ?? false)
             }
             return
         }
