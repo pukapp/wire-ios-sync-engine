@@ -49,7 +49,7 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     private let connectStateObserver: CallingClientConnectStateObserve
     
     private let connectRole: ConnectRole
-    var videoState: VideoState = .stopped
+    private let mediaState: AVSCallMediaState
     // The `RTCPeerConnectionFactory` is in charge of creating new RTCPeerConnection instances.
     // A new RTCPeerConnection should be created every new call, but the factory is shared.
     private static let factory: RTCPeerConnectionFactory = {
@@ -88,7 +88,13 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     private var timer: ZMTimer?
     private var getStatstimer: Timer?
     
-    required init(signalManager: CallingSignalManager, mediaManager: MediaOutputManager, membersManagerDelegate: CallingMembersManagerProtocol, mediaStateManagerDelegate: CallingMediaStateManagerProtocol, observe: CallingClientConnectStateObserve, isStarter: Bool, videoState: VideoState) {
+    required init(signalManager: CallingSignalManager,
+                  mediaManager: MediaOutputManager,
+                  membersManagerDelegate: CallingMembersManagerProtocol,
+                  mediaStateManagerDelegate: CallingMediaStateManagerProtocol,
+                  observe: CallingClientConnectStateObserve,
+                  isStarter: Bool,
+                  mediaState: AVSCallMediaState) {
         self.signalManager = signalManager
         self.mediaManager = mediaManager
         self.membersManagerDelegate = membersManagerDelegate
@@ -96,12 +102,12 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
         self.connectStateObserver = observe
         self.connectRole = isStarter ? .offer : .answer
         
-        self.videoState = videoState
+        self.mediaState = mediaState
         super.init()
     }
     
     deinit {
-        zmLog.info("WebRTCClientManager: deinit")
+        zmLog.info("WebRTCClientManager -- deinit")
     }
     
     func webSocketConnected() {
@@ -124,6 +130,14 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     func webSocketDisConnected() {
         zmLog.info("WebRTCClientManager: disConnected")
         self.peerConnection?.close()
+    }
+    
+    func webSocketReceiveRequest(with method: String, info: JSON) {
+        self.handleSocketForwardMessage(with: method, info: info)
+    }
+    
+    func webSocketReceiveNewNotification(with noti: String, info: JSON) {
+        self.handleSocketNewNotification(with: noti, info: info)
     }
     
     func createPeerConnection() {
@@ -172,6 +186,10 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
             break
         }
         self.forwardP2PMessage(.videoState(state))
+    }
+    
+    func setScreenShare(isStart: Bool) {
+        // no-op
     }
     
     func muteOther(_ userId: String, isMute: Bool) {
@@ -260,7 +278,7 @@ extension WebRTCClientManager: ZMTimerClient {
             self.createPeerConnection()
             //由于双方交换sdp的时候就必须包含有是否开启音频或者视频，所以为了能从语音切换到视频，此处先创建视频的track，但是设置enable为false，当开关视频的时候，通过enable的设置
             self.produceAudio()
-            self.produceVideo(isEnabled: self.videoState == .started)
+            self.produceVideo(isEnabled: self.mediaState.needSendVideo)
         case .startICE:
             //打洞仅给30s时间，不成功则直接走mediasoup
             self.timer = ZMTimer(target: self)
@@ -372,7 +390,7 @@ extension WebRTCClientManager: RTCPeerConnectionDelegate {
 }
 
 
-extension WebRTCClientManager: CallingSignalManagerDelegate {
+extension WebRTCClientManager {
     
     private func requestToSwitchToP2PMode(completion: @escaping (Bool) -> Void) {
         self.signalManager.requestToSwitchRoomMode(to: .p2p, completion: completion)
@@ -411,7 +429,7 @@ extension WebRTCClientManager: CallingSignalManagerDelegate {
         }
     }
     
-    func onReceiveRequest(with method: String, info: JSON) {
+    func handleSocketForwardMessage(with method: String, info: JSON) {
         guard let action = WebRTCP2PSignalAction.ReceiveRequest(rawValue: method) else { return }
         zmLog.info("WebRTCClientManager-onReceiveRequest:action:\(action)")
         switch action {
@@ -421,7 +439,7 @@ extension WebRTCClientManager: CallingSignalManagerDelegate {
         }
     }
     
-    func onNewNotification(with noti: String, info: JSON) {
+    func handleSocketNewNotification(with noti: String, info: JSON) {
         guard let action = WebRTCP2PSignalAction.Notification(rawValue: noti) else { return }
         zmLog.info("WebRTCClientManager-onNewNotification:action:\(action)")
         switch action {

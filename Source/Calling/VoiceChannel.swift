@@ -57,7 +57,6 @@ public protocol CallRelyModel: NSObjectProtocol {
 
 extension ZMMeeting: CallRelyModel {
     public var remoteIdentifier: UUID? {
-        //"C24461AA-E4D4-4D45-B9EE-58ABD3B07D7B"
         return UUID(uuidString: self.meetingId)
     }
     
@@ -151,26 +150,27 @@ public protocol CallProperties : NSObjectProtocol {
     
     func connectState(forParticipant: ZMUser) -> CallParticipantState
     func videoState(forParticipant: ZMUser) -> VideoState
-    func setVideoCaptureDevice(_ device: CaptureDevice) throws
+    func setVideoCaptureDevice(_ device: CaptureDevice)
 }
 
 @objc
 public protocol CallActions : NSObjectProtocol {
     
-    func mute(_ muted: Bool, userSession: ZMUserSession)
-    func join(video: Bool, userSession: ZMUserSession) -> Bool
+    func muteSelf(_ isMute: Bool, userSession: ZMUserSession)
+    func join(mediaState: AVSCallMediaState, userSession: ZMUserSession) -> Bool
     func leave(userSession: ZMUserSession, completion: (() -> ())?)
     func continueByDecreasingConversationSecurity(userSession: ZMUserSession)
     func leaveAndDecreaseConversationSecurity(userSession: ZMUserSession)
     
     func muteOther(_ userId: String, isMute: Bool)
     func topUser(_ userId: String)
+    func setScreenShare(isStart: Bool)
 }
 
 @objc
 public protocol CallActionsInternal : NSObjectProtocol {
     
-    func join(video: Bool) -> Bool
+    func join(mediaState: AVSCallMediaState) -> Bool
     func leave()
     
 }

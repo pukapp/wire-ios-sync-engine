@@ -144,17 +144,15 @@ public class VoiceChannelV3 : NSObject, VoiceChannel {
         }
     }
     
-    public func setVideoCaptureDevice(_ device: CaptureDevice) throws {
-        guard let conversationId = relyModel?.remoteIdentifier else { throw VoiceChannelV3Error.switchToVideoNotAllowed }
-        
-        self.callCenter?.setVideoCaptureDevice(device, for: conversationId)
+    public func setVideoCaptureDevice(_ device: CaptureDevice) {
+        self.callCenter?.setVideoCaptureDevice(device)
     }
     
 }
 
 extension VoiceChannelV3 : CallActions {
     
-    public func mute(_ muted: Bool, userSession: ZMUserSession) {
+    public func muteSelf(_ isMute: Bool, userSession: ZMUserSession) {
 //        if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *) {
 //            userSession.callKitDelegate?.requestMuteCall(in: conversation!, muted: muted)
 //        }
@@ -163,8 +161,10 @@ extension VoiceChannelV3 : CallActions {
          *  所以这里不采用callKit
          */
         if let manager = userSession.mediaManager as? AVSMediaManager {
-            manager.isMicrophoneMuted = muted
+            manager.isMicrophoneMuted = isMute
         }
+        //上面只是记录状态，下面的才是真正的静音方法
+        callCenter?.muteSelf(isMute: isMute)
     }
     
     public func muteOther(_ userId: String, isMute: Bool) {
@@ -173,6 +173,10 @@ extension VoiceChannelV3 : CallActions {
     
     public func topUser(_ userId: String) {
         callCenter?.topUser(userId)
+    }
+    
+    public func setScreenShare(isStart: Bool) {
+        callCenter?.setScreenShare(isStart: isStart)
     }
     
     public func continueByDecreasingConversationSecurity(userSession: ZMUserSession) {
@@ -192,13 +196,13 @@ extension VoiceChannelV3 : CallActions {
         leave(userSession: userSession, completion: nil)
     }
     
-    public func join(video: Bool, userSession: ZMUserSession) -> Bool {
+    public func join(mediaState: AVSCallMediaState, userSession: ZMUserSession) -> Bool {
         if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *),
             relyModel?.needCallKit ?? false {
-            userSession.callKitDelegate?.requestJoinCall(in: relyModel as! ZMConversation, video: video)
+            userSession.callKitDelegate?.requestJoinCall(in: relyModel as! ZMConversation, mediaState: mediaState)
             return true
         } else {
-            return join(video: video)
+            return join(mediaState: mediaState)
         }
     }
     
@@ -214,9 +218,10 @@ extension VoiceChannelV3 : CallActions {
     
 }
 
-extension VoiceChannelV3 : CallActionsInternal {
+extension VoiceChannelV3: CallActionsInternal {
     
-    public func join(video: Bool) -> Bool {
+    //新增isMute，会议模式，可以静音进入会议
+    public func join(mediaState: AVSCallMediaState) -> Bool {
         guard let relyModel = relyModel else { return false }
         
         var joined = false
@@ -224,10 +229,10 @@ extension VoiceChannelV3 : CallActionsInternal {
         switch state {
         case .incoming(video: _, shouldRing: _, degraded: let degraded):
             if !degraded {
-                joined = callCenter?.answerCall(relyModel: relyModel, video: video) ?? false
+                joined = callCenter?.answerCall(relyModel: relyModel, mediaState: mediaState) ?? false
             }
         default:
-            joined = self.callCenter?.startCall(relyModel: relyModel, video: true) ?? false
+            joined = self.callCenter?.startCall(relyModel: relyModel, mediaState: mediaState) ?? false
         }
         
         return joined

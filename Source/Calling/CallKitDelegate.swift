@@ -166,7 +166,7 @@ extension CallKitDelegate {
         
         if let contacts = contacts {
             findConversationAssociated(with: contacts) { [weak self] (conversation) in
-                self?.requestStartCall(in: conversation, video: video)
+                self?.requestStartCall(in: conversation, mediaState: video ? .bothAudioAndVideo : .audioOnly)
             }
             
             return true
@@ -190,19 +190,19 @@ extension CallKitDelegate {
         }
     }
     
-    func requestJoinCall(in conversation: ZMConversation, video: Bool) {
+    func requestJoinCall(in conversation: ZMConversation, mediaState: AVSCallMediaState) {
         
         let existingCallUUID = callUUID(for: conversation)
         let existingCall = callController.callObserver.calls.first(where: { $0.uuid == existingCallUUID })
         
         if let call = existingCall, !call.isOutgoing {
-            requestAnswerCall(in: conversation, video: video)
+            requestAnswerCall(in: conversation, mediaState: mediaState)
         } else {
-            requestStartCall(in: conversation, video: video)
+            requestStartCall(in: conversation, mediaState: mediaState)
         }
     }
     
-    func requestStartCall(in conversation: ZMConversation, video: Bool) {
+    func requestStartCall(in conversation: ZMConversation, mediaState: AVSCallMediaState) {
         guard
             let managedObjectContext = conversation.managedObjectContext,
             let handle = conversation.callKitHandle
@@ -215,7 +215,7 @@ extension CallKitDelegate {
         calls[callUUID] = CallKitCall(conversation: conversation)
         
         let action = CXStartCallAction(call: callUUID, handle: handle)
-        action.isVideo = video
+        action.isVideo = mediaState.needSendVideo
         action.contactIdentifier = conversation.localizedCallerName(with: ZMUser.selfUser(in: managedObjectContext))
 
         let endCallActions = actionsToEndAllOngoingCalls(exceptIn: conversation)
@@ -225,7 +225,7 @@ extension CallKitDelegate {
         
         callController.request(transaction) { [weak self] (error) in
             if let error = error as? CXErrorCodeRequestTransactionError, error.code == .callUUIDAlreadyExists {
-                self?.requestAnswerCall(in: conversation, video: video)
+                self?.requestAnswerCall(in: conversation, mediaState: mediaState)
             } else if let error = error {
                 self?.log("Cannot start call: \(error)")
             }
@@ -233,7 +233,7 @@ extension CallKitDelegate {
         
     }
     
-    func requestAnswerCall(in conversation: ZMConversation, video: Bool) {
+    func requestAnswerCall(in conversation: ZMConversation, mediaState: AVSCallMediaState) {
         guard let callUUID = callUUID(for: conversation) else { return }
         
         let action = CXAnswerCallAction(call: callUUID)
@@ -376,7 +376,7 @@ extension CallKitDelegate : CXProviderDelegate {
         
         mediaManager?.setupAudioDevice()
         
-        if call.conversation.voiceChannel?.join(video: action.isVideo) == true {
+        if call.conversation.voiceChannel?.join(mediaState: action.isVideo ? .bothAudioAndVideo : .audioOnly) == true {
             action.fulfill()
         } else {
             action.fail()
@@ -412,7 +412,7 @@ extension CallKitDelegate : CXProviderDelegate {
             action.fail()
         }
         
-        if call.conversation.voiceChannel?.join(video: false) != true {
+        if call.conversation.voiceChannel?.join(mediaState: .audioOnly) != true {
             action.fail()
         }
     }

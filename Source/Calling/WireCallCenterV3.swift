@@ -138,7 +138,7 @@ extension WireCallCenterV3 {
      * - parameter conversationId: The identifier of the conversation that hosts the call.
      */
 
-    func createSnapshot(callState : CallState, members: [CallMemberProtocol], callStarter: UUID?, video: Bool, for remoteIdentifier: UUID, callType: AVSConversationType) {
+    func createSnapshot(callState : CallState, members: [CallMemberProtocol], callStarter: UUID?, mediaState: AVSCallMediaState, for remoteIdentifier: UUID, callType: AVSConversationType) {
 //        guard
 //            let moc = uiMOC
 //            let conversation = ZMConversation(remoteID: conversationId, createIfNeeded: false, in: moc)
@@ -157,10 +157,10 @@ extension WireCallCenterV3 {
             callParticipants: callParticipants,
             callState: callState,
             callStarter: callStarter ?? selfUserId,
-            mediaState: video ? .video : .normal,
+            mediaState: mediaState,
             callType: callType,
             isConstantBitRate: false,
-            videoState: video ? .started : .stopped,
+            videoState: mediaState.needSendVideo ? .started : .stopped,
             networkQuality: .normal,
             conversationObserverToken: nil
         )
@@ -197,7 +197,7 @@ extension WireCallCenterV3 {
 
     @objc(isVideoCallForConversationID:)
     public func isVideoCall(conversationId: UUID) -> Bool {
-        return callSnapshots[conversationId]?.mediaState == .video
+        return callSnapshots[conversationId]?.mediaState.needSendVideo ?? false
     }
 
     /**
@@ -303,7 +303,7 @@ extension WireCallCenterV3 {
 
     /// Call this method when the callParticipants changed and avs calls the handler `wcall_group_changed_h`
     func callParticipantsChanged(conversationId: UUID, participants: [CallMemberProtocol]) {
-        guard callSnapshots[conversationId]!.callType != .oneToOne else { return }
+        //guard callSnapshots[conversationId]!.callType != .oneToOne else { return }
         zmLog.info("callParticipantsChanged : conversationId:\(conversationId), participants:\(participants.count)")
         callSnapshots[conversationId]?.callParticipants.callParticipantsChanged(participants: participants)
     }
@@ -334,19 +334,12 @@ extension WireCallCenterV3 {
      * - parameter video: Whether to join the call with video.
      */
 
-    public func answerCall(relyModel: CallRelyModel, video: Bool) -> Bool {
+    public func answerCall(relyModel: CallRelyModel, mediaState: AVSCallMediaState) -> Bool {
         guard let remoteIdentifier = relyModel.remoteIdentifier else { return false }
         
         endAllCalls(exluding: remoteIdentifier)
         
-        let mediaState: AVSCallMediaState
-        if relyModel.activeParticipants.count > videoParticipantsLimit {
-            mediaState = .audioOnly
-        } else {
-            mediaState = video ? .video : .normal
-        }
-        
-        if !video {
+        if !mediaState.needSendVideo {
             setVideoState(conversationId: remoteIdentifier, videoState: VideoState.stopped)
         }
         
@@ -374,25 +367,18 @@ extension WireCallCenterV3 {
      * - parameter video: Whether to start the call as a video call.
      */
     
-    public func startCall(relyModel: CallRelyModel, video: Bool) -> Bool {
+    public func startCall(relyModel: CallRelyModel, mediaState: AVSCallMediaState) -> Bool {
         guard let remoteIdentifier = relyModel.remoteIdentifier else { return false }
         
         endAllCalls(exluding: remoteIdentifier)
         clearSnapshot(conversationId: remoteIdentifier) // make sure we don't have an old state for this conversation
-        
-        let mediaState: AVSCallMediaState
-        if relyModel.activeParticipants.count > videoParticipantsLimit {
-            mediaState = .audioOnly
-        } else {
-            mediaState = video ? .video : .normal
-        }
         
         let started = avsWrapper.startCall(conversationId: remoteIdentifier, mediaState: mediaState, conversationType: relyModel.callType, useCBR: useConstantBitRateAudio, members: relyModel.initialMember, token: relyModel.token)
         if started {
             let callState: CallState = .outgoing(degraded: isDegraded(conversationId: remoteIdentifier))
             
             let previousCallState = callSnapshots[remoteIdentifier]?.callState
-            createSnapshot(callState: callState, members: relyModel.initialMember, callStarter: selfUserId, video: video, for: remoteIdentifier, callType: relyModel.callType)
+            createSnapshot(callState: callState, members: relyModel.initialMember, callStarter: selfUserId, mediaState: mediaState, for: remoteIdentifier, callType: relyModel.callType)
             
             if let context = uiMOC {
                 WireCallCenterCallStateNotification(context: context, callState: callState, remoteIdentifier: remoteIdentifier, callType: relyModel.callType, callerId: selfUserId, messageTime: nil, previousCallState: previousCallState).post(in: context.notificationContext)
@@ -411,7 +397,7 @@ extension WireCallCenterV3 {
         avsWrapper.endCall(conversationId: conversationId)
         if let previousSnapshot = callSnapshots[conversationId] {
             if previousSnapshot.callType == .group {
-                let callState : CallState = .incoming(video: previousSnapshot.mediaState == .video, shouldRing: false, degraded: isDegraded(conversationId: conversationId))
+                let callState : CallState = .incoming(video: previousSnapshot.mediaState.needSendVideo, shouldRing: false, degraded: isDegraded(conversationId: conversationId))
                 callSnapshots[conversationId] = previousSnapshot.update(with: callState)
             } else {
                 callSnapshots[conversationId] = previousSnapshot.update(with: .terminating(reason: reason))
@@ -429,7 +415,7 @@ extension WireCallCenterV3 {
         avsWrapper.rejectCall(conversationId: conversationId)
         
         if let previousSnapshot = callSnapshots[conversationId] {
-            let callState : CallState = .incoming(video: previousSnapshot.mediaState == .video, shouldRing: false, degraded: isDegraded(conversationId: conversationId))
+            let callState : CallState = .incoming(video: previousSnapshot.mediaState.needSendVideo, shouldRing: false, degraded: isDegraded(conversationId: conversationId))
             callSnapshots[conversationId] = previousSnapshot.update(with: callState)
         }
     }
@@ -469,6 +455,10 @@ extension WireCallCenterV3 {
         avsWrapper.setVideoState(conversationId: conversationId, videoState: videoState)
     }
     
+    public func muteSelf(isMute: Bool) {
+        avsWrapper.muteSelf(isMute: isMute)
+    }
+    
     public func muteOther(_ userId: String, isMute: Bool) {
         avsWrapper.muteOther(userId, isMute: isMute)
     }
@@ -476,14 +466,18 @@ extension WireCallCenterV3 {
     func topUser(_ userId: String) {
         avsWrapper.topUser(userId)
     }
+    
+    func setScreenShare(isStart: Bool) {
+        avsWrapper.setScreenShare(isStart: isStart)
+    }
     /**
      * Sets the capture device type to use for video.
      * - parameter captureDevice: The device type to use to capture video for the call.
      * - parameter conversationId: The identifier of the conversation where the video call is hosted.
      */
 
-    public func setVideoCaptureDevice(_ captureDevice: CaptureDevice, for conversationId: UUID) {
-        flowManager.setVideoCaptureDevice(captureDevice, for: conversationId)
+    public func setVideoCaptureDevice(_ captureDevice: CaptureDevice) {
+        flowManager.setVideoCaptureDevice(captureDevice)
     }
 
 }
@@ -554,7 +548,7 @@ extension WireCallCenterV3 {
 
         switch callState {
         case .incoming(video: let video, shouldRing: _, degraded: _):
-            createSnapshot(callState: callState, members: [AVSCallMember(userId: userId!, callParticipantState: .connecting, isMute: false, videoState: video ? .stopped : .stopped)], callStarter: userId, video: video, for: remoteIdentifier, callType: .group)
+            createSnapshot(callState: callState, members: [AVSCallMember(userId: userId!, callParticipantState: .connecting, isMute: false, videoState: video ? .stopped : .stopped)], callStarter: userId, mediaState: .audioOnly, for: remoteIdentifier, callType: .group)
         case .established:
             // WORKAROUND: the call established handler will is called once for every participant in a
             // group call. Until that's no longer the case we must take care to only set establishedDate once.
@@ -592,10 +586,24 @@ extension WireCallCenterV3 {
 
     func meetingPropertyChange(in mid: UUID, with property: MeetingProperty) {
         if let context = uiMOC {
+            guard let meeting = ZMMeeting.fetchExistingMeeting(with: mid.transportString(), in: context) else {
+                return
+            }
             switch property {
+            case .mute(let state):
+                meeting.muteAll = state
             case .holder(let userId):
-                if let meeting = ZMMeeting.fetchExistingMeeting(with: mid.transportString(), in: context) {
-                    meeting.holdId = userId
+                meeting.holdId = userId
+            case .onlyHosterCanShareScreen(let isOnly):
+                meeting.onlyHosterCanShareScreen = isOnly
+            case .setInternal(let isInternal):
+                meeting.isInternal = isInternal
+            case .lockmMeeting(let isLocked):
+                meeting.isLocked = isLocked
+            case .removeUser(let userId):
+                if userId == self.selfUserId.transportString() {
+                    meeting.state = .off
+                    self.endAllCalls()
                 }
             default:break
             }

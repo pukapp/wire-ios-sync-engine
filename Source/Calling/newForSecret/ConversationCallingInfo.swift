@@ -22,7 +22,6 @@ class ConversationCallingInfo: ZMTimerClient {
     let starter: CallStarter
     
     var members: [CallMemberProtocol]
-    var videoState: VideoState = .stopped
     private var callTimer: ZMTimer?
     private let delegate: CallingTimeoutDelegate
     
