@@ -11,8 +11,6 @@ import WebRTC
 
 private let zmLog = ZMSLog(tag: "calling")
 
-let membersManagerQueue: DispatchQueue = DispatchQueue.init(label: "CallingMembersManagerQueue")
-
 protocol CallingMembersManagerProtocol {
     
     init(observer: CallingMembersObserver)
@@ -28,6 +26,7 @@ protocol CallingMembersManagerProtocol {
     func clear()
     
     func containUser(with id: UUID) -> Bool
+    func peer(with id: String) -> CallMemberProtocol?
     
     //会议
     func muteAll(isMute: Bool)
@@ -64,45 +63,40 @@ class CallingMembersManager: CallingMembersManagerProtocol {
     }
     
     func addNewMember(_ member: CallMemberProtocol) {
-        membersManagerQueue.async {
-            if var member = self.members.first(where: { return $0.remoteId == member.remoteId }) {
-                if member.callParticipantState != .connected {
-                    member.callParticipantState = .connecting
-                    self.members.replaceMember(with: member)
-                }
-            } else {
-                self.members.append(member)
+        if var member = self.members.first(where: { return $0.remoteId == member.remoteId }) {
+            if member.callParticipantState != .connected {
+                member.callParticipantState = .connecting
+                self.members.replaceMember(with: member)
             }
-            self.membersChanged()
+        } else {
+            self.members.append(member)
         }
+        self.membersChanged()
     }
     
     func removeMember(with id: UUID) {
-        membersManagerQueue.async {
-            guard var member = self.members.first(where: { return $0.remoteId == id }) else {
-                zmLog.info("CallingMembersManager--no peer to remove")
-                return
-            }
-            member.callParticipantState = .unconnected
-            self.members = self.members.filter({ return $0.remoteId != id })
-            if self.members.count == 0 {
-                self.observer.roomEmpty()
-            }
-            self.membersChanged()
+        guard var member = self.members.first(where: { return $0.remoteId == id }) else {
+            zmLog.info("CallingMembersManager--no peer to remove")
+            return
         }
+        member.callParticipantState = .unconnected
+        self.members = self.members.filter({ return $0.remoteId != id })
+        if self.members.count == 0 {
+            self.observer.roomEmpty()
+        }
+        zmLog.info("CallingMembersManager--removeMember:\(id)--lastMember:\(self.members.map({return $0.remoteId}))")
+        self.membersChanged()
     }
     
     func memberConnectStateChanged(with id: UUID, state: CallParticipantState) {
-        membersManagerQueue.async {
-            if var member = self.members.first(where: { return $0.remoteId == id }) {
-                member.callParticipantState = state
-                self.members.replaceMember(with: member)
-                if state == .connected {
-                    ///只要有一个用户连接，就认为此次会话已经连接
-                    self.observer.roomEstablished()
-                }
-                self.membersChanged()
+        if var member = self.members.first(where: { return $0.remoteId == id }) {
+            member.callParticipantState = state
+            self.members.replaceMember(with: member)
+            if state == .connected {
+                ///只要有一个用户连接，就认为此次会话已经连接
+                self.observer.roomEstablished()
             }
+            self.membersChanged()
         }
     }
     
@@ -111,56 +105,52 @@ class CallingMembersManager: CallingMembersManagerProtocol {
     }
     
     func setMemberAudio(_ isMute: Bool, mid: UUID) {
-        membersManagerQueue.async {
-            guard var member = self.members.first(where: { return $0.remoteId == mid }), member.isMute != isMute else {
-                zmLog.info("CallingMembersManager--no peer to setMemberVideo")
-                return
-            }
-            member.isMute = isMute
-            self.members.replaceMember(with: member)
-            self.membersChanged()
+        guard var member = self.members.first(where: { return $0.remoteId == mid }), member.isMute != isMute else {
+            zmLog.info("CallingMembersManager--no peer to setMemberVideo")
+            return
         }
+        member.isMute = isMute
+        self.members.replaceMember(with: member)
+        self.membersChanged()
     }
     
     func setMemberVideo(_ state: VideoState, mid: UUID) {
-        membersManagerQueue.async {
-            guard var member = self.members.first(where: { return $0.remoteId == mid }) else {
-                zmLog.info("CallingMembersManager--no peer to setMemberVideo")
-                return
-            }
-            member.videoState = state
-            self.members.replaceMember(with: member)
-            self.membersChanged()
+        guard var member = self.members.first(where: { return $0.remoteId == mid }) else {
+            zmLog.info("CallingMembersManager--no peer to setMemberVideo")
+            return
         }
+        member.videoState = state
+        self.members.replaceMember(with: member)
+        self.membersChanged()
     }
     
     func muteAll(isMute: Bool) {
-        membersManagerQueue.async {
-            self.members = self.members.map({ member in
-                if member.isMute == isMute {
-                    return member
-                } else {
-                    var updateMember = member
-                    updateMember.isMute = isMute
-                    return updateMember
-                }
-            })
-            self.membersChanged()
-        }
+        self.members = self.members.map({ member in
+            if member.isMute == isMute {
+                return member
+            } else {
+                var updateMember = member
+                updateMember.isMute = isMute
+                return updateMember
+            }
+        })
+        self.membersChanged()
     }
     
     func topUser(_ userId: String) {
-        membersManagerQueue.async {
-            guard var member = self.members.first(where: { return $0.remoteId == UUID(uuidString: userId) }) as? MeetingParticipant,
-                 !member.isTop else { return }
-            member.isTop = true
-            self.members.replaceMember(with: member)
-            self.membersChanged()
-        }
+        guard var member = self.members.first(where: { return $0.remoteId == UUID(uuidString: userId) }) as? MeetingParticipant,
+             !member.isTop else { return }
+        member.isTop = true
+        self.members.replaceMember(with: member)
+        self.membersChanged()
     }
     
     func containUser(with id: UUID) -> Bool {
         return self.members.contains(where: { return $0.remoteId == id })
+    }
+    
+    func peer(with id: String) -> CallMemberProtocol? {
+        return self.members.first(where: { return $0.remoteId == UUID(uuidString: id) })
     }
     
     ///总共接收到的视频个数
@@ -169,9 +159,7 @@ class CallingMembersManager: CallingMembersManagerProtocol {
     }
     
     func clear() {
-        membersManagerQueue.async {
-            self.members.removeAll()
-        }
+        self.members.removeAll()
     }
     
     deinit {
@@ -199,19 +187,15 @@ protocol CallingMediaStateManagerProtocol {
 extension CallingMembersManager: CallingMediaStateManagerProtocol {
     
     func addVideoTrack(with mid: UUID, videoTrack: RTCVideoTrack) {
-        membersManagerQueue.async {
-            if let index = self.videoTracks.firstIndex(where: { return $0.0 == mid }) {
-                self.videoTracks[index] = (mid, videoTrack)
-            } else {
-                self.videoTracks.append((mid, videoTrack))
-            }
+        if let index = self.videoTracks.firstIndex(where: { return $0.0 == mid }) {
+            self.videoTracks[index] = (mid, videoTrack)
+        } else {
+            self.videoTracks.append((mid, videoTrack))
         }
     }
     
     func removeVideoTrack(with mid: UUID) {
-        membersManagerQueue.async {
-            self.videoTracks = self.videoTracks.filter({ return $0.0 != mid })
-        }
+        self.videoTracks = self.videoTracks.filter({ return $0.0 != mid })
     }
     
     func getVideoTrack(with mid: UUID) -> RTCVideoTrack? {
