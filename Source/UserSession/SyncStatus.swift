@@ -18,18 +18,15 @@
 
 @objc public enum SyncPhase : Int, CustomStringConvertible, CaseIterable {
     case fetchingLastUpdateEventID
-    case fetchingTeams
     case fetchingConnections
     case fetchingConversations
     case fetchingUsers
     case fetchingSelfUser
-    case fetchingLegalHoldStatus
-    case fetchingLabels
     case fetchingMissedEvents
     case done
     
     var isLastSlowSyncPhase : Bool {
-        return self == .fetchingLabels
+        return self == .fetchingSelfUser
     }
     
     var isSyncing : Bool {
@@ -48,16 +45,10 @@
             return "fetchingConnections"
         case .fetchingConversations:
             return "fetchingConversations"
-        case .fetchingTeams:
-            return "fetchingTeams"
         case .fetchingUsers:
             return "fetchingUsers"
         case .fetchingSelfUser:
             return "fetchingSelfUser"
-        case .fetchingLegalHoldStatus:
-            return "fetchingLegalHoldStatus"
-        case .fetchingLabels:
-            return "fetchingLabels"
         case .fetchingMissedEvents:
             return "fetchingMissedEvents"
         case .done:
