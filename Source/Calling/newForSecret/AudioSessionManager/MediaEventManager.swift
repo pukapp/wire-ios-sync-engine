@@ -294,11 +294,7 @@ fileprivate extension MediaEventManager {
         }
     }
     
-    ///直接此处调用MediasoupRoomManager的方法
     func microphoneMuted(isMute: Bool) {
         zmLog.info("MediaEventManager--microphoneMuted-isMute:\(isMute)")
-        if self.isCalling {
-            CallingRoomManager.shareInstance.setLocalAudio(mute: isMute)
-        }
     }
 }
