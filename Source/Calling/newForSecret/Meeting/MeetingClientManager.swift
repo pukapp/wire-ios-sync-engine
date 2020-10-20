@@ -13,8 +13,10 @@ private let zmLog = ZMSLog(tag: "calling")
 
 public enum MeetingProperty {
     case mute(MeetingMuteState) //当前会议状态
+    case mutedByHoster(Bool)    //自己被管理静音或请求取消静音
     case lockmMeeting(Bool) //是否锁定会议
-    case canScreenShare(Bool) //是否允许开启屏幕共享
+    case setInternal(Bool) //是否开启内部会议
+    case onlyHosterCanShareScreen(Bool) //是否允许开启屏幕共享
     case screenShareUser(String) //设置屏幕共享用户
     case watchUser(String) //全员看他
     case holder(String) //主持人
@@ -72,18 +74,27 @@ extension MediasoupClientManager {
             self.membersManagerDelegate.muteAll(isMute: true)
         case .closeMute:
             property = .mute(.no)
+        case .peerOpenMute:
+            guard let userId = info["roomProperties"]["holder"]["user_id"].string, self.membersManagerDelegate.peer(with: userId)?.isSelf ?? false else { return }
+            property = .mutedByHoster(true)
+        case .peerCloseMute:
+             guard let userId = info["roomProperties"]["holder"]["user_id"].string, self.membersManagerDelegate.peer(with: userId)?.isSelf ?? false else { return }
+            property = .mutedByHoster(false)
         case .changeRoomProperty:
             //更改房间属性
             let changedProperty = MeetingSignalAction.Notification.ChangeRoomProperty(rawValue: info["field"].stringValue)!
             switch changedProperty {
-            case .lockMeet, .unlockMeet:
-                break;
+            case .lockMeet:
+                guard let isLocked = info["roomProperties"]["lock_meeting"].int else { return }
+                property = .lockmMeeting(isLocked == 1)
+            case .setInternal:
+                guard let isInternal = info["roomProperties"]["internal"].int else { return }
+                property = .setInternal(isInternal == 1)
             case .newSpeaker, .cancelSpeaker:
                 break
-            case .openScreenShared:
-                property = .canScreenShare(true)
-            case .closeScreenShared:
-                property = .canScreenShare(false)
+            case .onlyHosterCanShareScreen:
+                guard let canShare = info["roomProperties"]["screen_share"].int else { return }
+                property = .onlyHosterCanShareScreen(canShare == 1)
             case .newHolder:
                 guard let userId = info["roomProperties"]["holder"]["user_id"].string, let uid = UUID(uuidString: userId),
                     self.membersManagerDelegate.containUser(with: uid) else {

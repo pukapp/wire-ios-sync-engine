@@ -360,7 +360,7 @@ extension WireCallCenterV3 {
     
     public class func getRelyModel(with remoteIdentifier: UUID, callType: AVSConversationType, in context: NSManagedObjectContext) -> CallRelyModel? {
         if callType == .conference {
-            return ZMMeeting.fetchExistingRandomMeeting(in: context)
+            return ZMMeeting.fetchExistingMeeting(with: remoteIdentifier.transportString(), in: context)
         } else {
             return ZMConversation.init(remoteID: remoteIdentifier, createIfNeeded: false, in: context)
         }
