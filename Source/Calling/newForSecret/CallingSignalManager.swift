@@ -57,7 +57,7 @@ extension CallingSignalManager {
     
     func receiveSocketRequest(with request: CallingSignalRequest) {
         ///先发response回给服务器
-        let response = CallingSignalResponse(response: true, ok: true,  id: request.id, data: nil, method: request.method, roomId: request.roomId, peerId: request.peerId)
+        let response = CallingSignalResponse(response: true, ok: true,  id: request.id, data: nil)
         self.send(string: response.jsonString())
         self.signalManagerDelegate.onReceiveRequest(with: request.method, info: request.data)
     }
@@ -146,7 +146,7 @@ extension CallingSignalManager{
     func forwardSocketMessage(to peerId: String, method: String, data: JSON?) {
         guard self.isSocketConnected else { return }
         zmLog.info("CallingSignalManager-forwardSocketMessage==method:\(method)-data:\(String(describing: data))")
-        let request = CallingSignalForwardMessage.init(toId: peerId, method: method, data: data)
+        let request = CallingSignalForwardMessage(toId: peerId, method: method, data: data)
         self.send(string: request.jsonString())
     }
     

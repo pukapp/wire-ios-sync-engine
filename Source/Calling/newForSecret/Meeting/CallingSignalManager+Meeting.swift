@@ -19,6 +19,7 @@ enum MeetingSignalAction {
     }
     
     enum Notification: String {
+        case peerOpened         = "peerOpened"          //用户websocket连接成功
         case openMute           = "openMute"            //开启全员静音(不强制)
         case openForceMute      = "openForceMute"       //开启全员静音(强制)
         case closeMute          = "closeMute"           //关闭全员静音
@@ -58,8 +59,7 @@ extension CallingSignalManager {
     
     func muteOther(_ userId: String, isMute: Bool) {
         let data: JSON = ["peerId" : userId]
-        let res = sendMediasoupAction(with: .muteOther(isMute), data: data)
-        zmLog.info("CallingSignalManager+Meeting -- muteOther:\(userId) \(String(describing: res?.ok))")
+        sendMeetingAction(to: userId, action: .muteOther(isMute), data: data)
     }
     
 }
@@ -68,8 +68,14 @@ extension CallingSignalManager {
 ///meeting + SignalManager
 extension CallingSignalManager {
 
-    private func sendMediasoupAction(with action: MeetingSignalAction.SendRequest, data: JSON?) -> CallingSignalResponse? {
+    //发送请求给服务器
+    private func sendMeetingAction(with action: MeetingSignalAction.SendRequest, data: JSON?) -> CallingSignalResponse? {
         return self.sendSocketRequest(with: action.description, data: data)
+    }
+    
+    //发送请求来操作个人
+    private func sendMeetingAction(to peerId: String, action: MeetingSignalAction.SendRequest, data: JSON?) {
+        return self.forwardSocketMessage(to: peerId, method: action.description, data: data)
     }
     
 }

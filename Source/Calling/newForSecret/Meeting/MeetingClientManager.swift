@@ -12,6 +12,7 @@ import SwiftyJSON
 private let zmLog = ZMSLog(tag: "calling")
 
 public enum MeetingProperty {
+    case userOnline(String) //用户上线了
     case mute(MeetingMuteState) //当前会议状态
     case mutedByHoster(Bool)    //自己被管理静音或请求取消静音
     case lockmMeeting(Bool) //是否锁定会议
@@ -64,22 +65,33 @@ extension MediasoupClientManager {
     
     func onReceiveMeetingNotification(with action: MeetingSignalAction.Notification, info: JSON) {
         zmLog.info("MediasoupClientManager:onReceiveMeetingNotification---\(action) -- \(info)")
-        var property: MeetingProperty = .mute(.no)
+        var property: MeetingProperty? = nil
         switch action {
+        case .peerOpened:
+            guard let userId = info["peerId"].string, let uid = UUID(uuidString: userId),
+                    self.membersManagerDelegate.containUser(with: uid) else {
+                return
+            }
+            property = .userOnline(userId)
         case .openMute:
             property = .mute(.soft)
-            self.membersManagerDelegate.muteAll(isMute: true)
         case .openForceMute:
             property = .mute(.hard)
-            self.membersManagerDelegate.muteAll(isMute: true)
         case .closeMute:
             property = .mute(.no)
         case .peerOpenMute:
-            guard let userId = info["roomProperties"]["holder"]["user_id"].string, self.membersManagerDelegate.peer(with: userId)?.isSelf ?? false else { return }
-            property = .mutedByHoster(true)
+            guard let userId = info["peerId"].string, let peer = self.membersManagerDelegate.peer(with: userId) else { return }
+            if peer.isSelf {
+                //别人被静音的状态是根据consumer的paused推送来设置，收到自己被静音的话，需要手动的设置自己的状态
+                AVSMediaManager.sharedInstance.isMicrophoneMuted = true
+                self.membersManagerDelegate.setMemberAudio(true, mid: UUID(uuidString: userId)!)
+                property = .mutedByHoster(true)
+            }
         case .peerCloseMute:
-             guard let userId = info["roomProperties"]["holder"]["user_id"].string, self.membersManagerDelegate.peer(with: userId)?.isSelf ?? false else { return }
-            property = .mutedByHoster(false)
+            guard let userId = info["peerId"].string, let peer = self.membersManagerDelegate.peer(with: userId) else { return }
+            if peer.isSelf {
+                property = .mutedByHoster(false)
+            }
         case .changeRoomProperty:
             //更改房间属性
             let changedProperty = MeetingSignalAction.Notification.ChangeRoomProperty(rawValue: info["field"].stringValue)!
@@ -126,7 +138,9 @@ extension MediasoupClientManager {
                 self.membersManagerDelegate.addNewMember(MeetingParticipant(json: $0, isSelf: false))
             })
         }
-        self.onReceivePropertyChange(with: property)
+        if let property = property {
+            self.onReceivePropertyChange(with: property)
+        }
     }
     
     func onReceivePropertyChange(with property: MeetingProperty) {

@@ -29,7 +29,6 @@ protocol CallingMembersManagerProtocol {
     func peer(with id: String) -> CallMemberProtocol?
     
     //会议
-    func muteAll(isMute: Bool)
     func topUser(_ userId: String)
 }
 
@@ -121,19 +120,6 @@ class CallingMembersManager: CallingMembersManagerProtocol {
         }
         member.videoState = state
         self.members.replaceMember(with: member)
-        self.membersChanged()
-    }
-    
-    func muteAll(isMute: Bool) {
-        self.members = self.members.map({ member in
-            if member.isMute == isMute {
-                return member
-            } else {
-                var updateMember = member
-                updateMember.isMute = isMute
-                return updateMember
-            }
-        })
         self.membersChanged()
     }
     
