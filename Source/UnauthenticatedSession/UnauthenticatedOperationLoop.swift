@@ -71,7 +71,7 @@ extension UnauthenticatedOperationLoop: RequestAvailableObserver {
         }
     }
     
-    func newUIRequestsAvailable() {}
+    func newMsgRequestsAvailable() {}
     
     private var generator: ZMTransportRequestGenerator {
         return { [weak self] in

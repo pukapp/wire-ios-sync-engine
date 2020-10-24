@@ -978,15 +978,6 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     
 }
 
-- (void)fetchImageData:(NSString *)key complete:(void(^)(NSData *)) complete {
-    NSString *path = [NSString pathWithComponents:@[V3Assetspath, key]];
-    ZMTransportRequest *request = [[ZMTransportRequest alloc]initWithPath:path method:ZMMethodGET payload:nil authentication:ZMTransportRequestAuthNeedsAccess];
-    [request addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:self.managedObjectContext block:^(ZMTransportResponse * response) {
-        complete(response.rawData);
-    }]];
-    [((SessionManager *)[(NSObject *)UIApplication.sharedApplication.delegate valueForKeyPath:@"rootViewController.sessionManager"]).activeUserSession.transportSession enqueueOneTimeRequest:request];
-}
-
 - (void)processMemberUpdateEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation previousLastServerTimeStamp:(NSDate *)previousLastServerTimestamp
 {
     NSDictionary *dataPayload = [event.payload.asDictionary dictionaryForKey:@"data"];

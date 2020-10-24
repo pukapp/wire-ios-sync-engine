@@ -98,9 +98,9 @@
             [self.msgMOC processPendingChanges]; // We need this because merging sometimes leaves the MOC in a 'dirty' state
         }];
         
-    } else if (mocThatSaved.zm_isSyncContext || mocThatSaved.zm_isMsgContext) {
+    } else if (mocThatSaved.zm_isSyncContext) {
         
-//        RequireString(mocThatSaved != self.syncMOC, "Not the right MOC!");
+        //        RequireString(mocThatSaved != self.syncMOC, "Not the right MOC!");
         
         NSSet<NSManagedObjectID*>* changedObjectsIDs = [self extractManagedObjectIDsFrom:note];
         
@@ -115,6 +115,36 @@
             [strongUiMoc mergeChangesFromContextDidSaveNotification:note];
             [strongUiMoc processPendingChanges]; // We need this because merging sometimes leaves the MOC in a 'dirty' state
             [self.notificationDispatcher didMergeChanges:changedObjectsIDs];
+            [self.eventProcessingTracker registerSavePerformed];
+        }];
+    } else if (mocThatSaved.zm_isMsgContext) {
+        
+        //        RequireString(mocThatSaved != self.syncMOC, "Not the right MOC!");
+        
+        NSSet<NSManagedObjectID*>* changedObjectsIDs = [self extractManagedObjectIDsFrom:note];
+        
+        ZM_WEAK(self);
+        [strongUiMoc performGroupedBlock:^{
+            ZM_STRONG(self);
+            if(self == nil || self.tornDown) {
+                return;
+            }
+            
+            [strongUiMoc mergeUserInfoFromUserInfo:userInfo];
+            [strongUiMoc mergeChangesFromContextDidSaveNotification:note];
+            [strongUiMoc processPendingChanges]; // We need this because merging sometimes leaves the MOC in a 'dirty' state
+            [self.notificationDispatcher didMergeChanges:changedObjectsIDs];
+            [self.eventProcessingTracker registerSavePerformed];
+        }];
+        
+        [self.syncMOC performGroupedBlock:^{
+            ZM_STRONG(self);
+            if(self == nil || self.tornDown) {
+                return;
+            }
+            [self.syncMOC mergeUserInfoFromUserInfo:userInfo];
+            [self.syncMOC mergeChangesFromContextDidSaveNotification:note];
+            [self.syncMOC processPendingChanges]; // We need this because merging sometimes leaves the MOC in a 'dirty' state
             [self.eventProcessingTracker registerSavePerformed];
         }];
     }

@@ -162,6 +162,7 @@ ZM_EMPTY_ASSERTING_INIT()
             self.syncManagedObjectContext.zm_userInterfaceContext = self.managedObjectContext;
         }];
         self.managedObjectContext.zm_syncContext = self.syncManagedObjectContext;
+        self.syncManagedObjectContext.zm_msgContext = self.msgManagedObjectContext;
         
         NSURL *cacheLocation = [NSFileManager.defaultManager cachesURLForAccountWith:storeProvider.userIdentifier in:storeProvider.applicationContainer];
         [self.class moveCachesIfNeededForAccountWith:storeProvider.userIdentifier in:storeProvider.applicationContainer];

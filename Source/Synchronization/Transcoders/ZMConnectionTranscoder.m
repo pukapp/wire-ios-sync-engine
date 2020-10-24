@@ -153,7 +153,7 @@ NSUInteger ZMConnectionTranscoderPageSize = 90;
     ZM_WEAK(self);
     NSManagedObjectID *conversationID = conversation.objectID;
     
-    return [ZMCompletionHandler handlerOnGroupQueue:self.managedObjectContext block:^(ZMTransportResponse *response) {
+    return [ZMCompletionHandler handlerOnGroupQueue:conversation.managedObjectContext block:^(ZMTransportResponse *response) {
         ZM_STRONG(self);
         if (response.HTTPStatus == 403 && [[response payloadLabel] isEqualToString:@"connection-limit"])
         {
