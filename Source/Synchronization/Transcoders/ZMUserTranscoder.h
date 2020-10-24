@@ -32,6 +32,7 @@ extern NSString * _Nullable const UserMomentUpdate;
 extern NSString * _Nullable const UserMomentAdd;
 
 extern NSString * _Nullable const MeetingStartOrEnd;
+extern NSString * _Nullable const MeetingReceMetingCall;
 
 @interface ZMUserTranscoder : ZMAbstractRequestStrategy <ZMObjectStrategy>
 

@@ -108,18 +108,26 @@ extension MediasoupClientManager {
                 guard let canShare = info["roomProperties"]["screen_share"].int else { return }
                 property = .onlyHosterCanShareScreen(canShare == 1)
             case .newHolder:
-                guard let userId = info["roomProperties"]["holder"]["user_id"].string, let uid = UUID(uuidString: userId),
-                    self.membersManagerDelegate.containUser(with: uid) else {
+                guard let userId = info["roomProperties"]["holder"]["user_id"].string,
+                    self.membersManagerDelegate.containUser(with: userId) else {
                     return
                 }
                 property = .holder(userId)
             case .watchUser:
-                guard let userId = info["roomProperties"]["watch_user"]["user_id"].string, let uid = UUID(uuidString: userId),
-                    self.membersManagerDelegate.containUser(with: uid) else {
+                guard let userId = info["roomProperties"]["watch_user"]["user_id"].string,
+                    self.membersManagerDelegate.containUser(with: userId) else {
                     return
                 }
                 property = .watchUser(userId)
             }
+        case .changeUserProperty:
+            let userProperty = info["property"]
+            guard let userId = userProperty["user_id"].string,
+                var member = self.membersManagerDelegate.peer(with: userId) as? MeetingParticipant else {
+                return
+            }
+            member.update(with: userProperty)
+            self.membersManagerDelegate.replaceMember(member)
         case .kickoutMeet:
             guard let userId = info["peerId"].string, let uid = UUID(uuidString: userId),
                 self.membersManagerDelegate.containUser(with: uid) else {

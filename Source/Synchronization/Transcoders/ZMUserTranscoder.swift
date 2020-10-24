@@ -116,16 +116,45 @@ extension ZMUserTranscoder {
     private func processUserNoticeMessage(_ updateEvent: ZMUpdateEvent) {
         guard updateEvent.type == .userNoticeMessage else { return }
         if let data = updateEvent.payload["data"] as? [String: Any],
-            let msgType = data["msgType"] as? String, msgType == "40104",
+            let time = updateEvent.payload["time"] as? String,
+            let msgType = data["msgType"] as? String, let noticeType = UserNoticeMessageType(rawValue: msgType),
             let msgData = data["msgData"] as? [String: Any] {
-            processMeetingNotification(msgType, payload: msgData)
+            if noticeType.isMeetingNotification {
+                processMeetingNotification(noticeType, payload: msgData, time: time)
+            }
         }
     }
     
-    private func processMeetingNotification(_ msgType: String, payload: [String: Any]) {
-        if msgType == "40104" {
+    private func processMeetingNotification(_ noticeType: UserNoticeMessageType, payload: [String: Any], time: String) {
+        switch noticeType {
+        case .meetingStateChange:
             ZMMeeting.createOrUpdateMeeting(with: payload, context: managedObjectContext)
             NotificationCenter.default.post(name: NSNotification.Name(MeetingStartOrEnd), object: nil)
+        case .removeMember:
+            NotificationCenter.default.post(name: NSNotification.Name(MeetingStartOrEnd), object: nil)
+        case .callMember:
+            let date = NSDate(transport: time)!
+            guard  date.compare(Date(timeIntervalSinceNow: -90)) != .orderedAscending else {
+                //超过90s之后才接收到信令，就不弹框
+                return
+            }
+            if let meeting = ZMMeeting.createOrUpdateMeeting(with: payload, context: managedObjectContext) {
+                NotificationCenter.default.post(name: NSNotification.Name(MeetingReceMetingCall), object: nil, userInfo: ["meetingId" : meeting.meetingId])
+            }
+        }
+    }
+}
+
+enum UserNoticeMessageType: String {
+    case meetingStateChange = "40104" //会议状态通知
+    case removeMember = "40105"       //移除成员通知
+    case callMember = "40107"         //呼叫成员通知
+    
+    var isMeetingNotification: Bool {
+        switch self {
+        case .meetingStateChange, .removeMember, .callMember:
+            return true
+        default: return false
         }
     }
 }

@@ -48,6 +48,7 @@ public enum MeetingParticipantInviteState: String {
     case reject        = "reject"
     case calling       = "calling"
     case callLimit     = "call_limit"
+    case left         = "left"
     
     public var description: String {
         switch self {
@@ -61,6 +62,8 @@ public enum MeetingParticipantInviteState: String {
             return "呼叫中"
         case .callLimit:
             return "呼叫受限"
+        case .left:
+            return "已离开"
         }
     }
 }
@@ -70,8 +73,10 @@ extension MeetingParticipantInviteState {
     var sortValue: Int {
         switch self {
         case .accepted:
-            return 5
+            return 6
         case .calling:
+            return 5
+        case .left:
             return 4
         case .noResponse:
             return 3
@@ -113,10 +118,10 @@ public struct MeetingParticipant: CallMemberProtocol {
     //服务器返回状态
     public let userId: String
     public let inviteLink: String
-    public let state: MeetingParticipantInviteState
+    public var state: MeetingParticipantInviteState
     public var isMute: Bool
-    public let nickName: String
-    public let avatar: String
+    public var nickName: String
+    public var avatar: String
     
     public init(json: JSON, isSelf: Bool) {
         self.isSelf = isSelf
@@ -135,4 +140,13 @@ public struct MeetingParticipant: CallMemberProtocol {
         networkQuality = .normal
     }
     
+    mutating func update(with json: JSON) {
+        if let stateValue = json["state"].string,
+            let state = MeetingParticipantInviteState(rawValue: stateValue) {
+            self.state = state
+        }
+        if let nickName = json["nickname"].string {
+            self.nickName = nickName
+        }
+    }
 }

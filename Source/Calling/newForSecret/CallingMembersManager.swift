@@ -17,6 +17,7 @@ protocol CallingMembersManagerProtocol {
 
     func addNewMember(_ member: CallMemberProtocol)
     func removeMember(with id: UUID)
+    func replaceMember(_ member: CallMemberProtocol)
     ///连接状态
     func memberConnectStateChanged(with id: UUID, state: CallParticipantState)
     ///媒体状态
@@ -25,6 +26,7 @@ protocol CallingMembersManagerProtocol {
     
     func clear()
     
+    func containUser(with id: String) -> Bool
     func containUser(with id: UUID) -> Bool
     func peer(with id: String) -> CallMemberProtocol?
     
@@ -87,6 +89,13 @@ class CallingMembersManager: CallingMembersManagerProtocol {
         self.membersChanged()
     }
     
+    func replaceMember(_ updateMember: CallMemberProtocol) {
+        if self.containUser(with: updateMember.remoteId) {
+            self.members.replaceMember(with: updateMember)
+            self.membersChanged()
+        }
+    }
+    
     func memberConnectStateChanged(with id: UUID, state: CallParticipantState) {
         if var member = self.members.first(where: { return $0.remoteId == id }) {
             member.callParticipantState = state
@@ -104,6 +113,7 @@ class CallingMembersManager: CallingMembersManagerProtocol {
     }
     
     func setMemberAudio(_ isMute: Bool, mid: UUID) {
+        zmLog.info("CallingMembersManager--setMemberAudio:\(mid)-\(isMute)")
         guard var member = self.members.first(where: { return $0.remoteId == mid }), member.isMute != isMute else {
             zmLog.info("CallingMembersManager--no peer to setMemberVideo")
             return
@@ -131,8 +141,13 @@ class CallingMembersManager: CallingMembersManagerProtocol {
         self.membersChanged()
     }
     
-    func containUser(with id: UUID) -> Bool {
-        return self.members.contains(where: { return $0.remoteId == id })
+    func containUser(with uid: UUID) -> Bool {
+        return self.members.contains(where: { return $0.remoteId == uid })
+    }
+    
+    func containUser(with id: String) -> Bool {
+        guard let uid = UUID(uuidString: id) else { return false }
+        return self.members.contains(where: { return $0.remoteId == uid })
     }
     
     func peer(with id: String) -> CallMemberProtocol? {

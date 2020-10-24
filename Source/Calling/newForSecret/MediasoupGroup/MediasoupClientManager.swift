@@ -216,7 +216,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     }
     
     func webSocketReceiveNewNotification(with noti: String, info: JSON) {
-        guard noti != "producerScore", noti != "consumerScore" else { return }
+        guard noti != "producerScore", noti != "consumerScore",  noti != "activeSpeaker" else { return }
         zmLog.info("MediasoupClientManager-onNewNotification:action:\(noti)，info:\(info)")
         if let action = MeetingSignalAction.Notification(rawValue: noti) {
             self.onReceiveMeetingNotification(with: action, info: info)
@@ -533,7 +533,6 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             consumer.pause()
             self.membersManagerDelegate.setMemberAudio(true, mid: peer.peerId)
         case ("audio", .consumerClosed):
-            self.membersManagerDelegate.setMemberAudio(true, mid: peer.peerId)
             peer.removeConsumer(consumerId)
         case ("video", .consumerClosed):
             peer.removeConsumer(consumerId)
