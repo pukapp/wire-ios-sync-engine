@@ -36,6 +36,7 @@ NSString *const V3Assetspath = @"/assets/v3";
 NSString *const ConversationServiceMessageAdd = @"ConversationServiceMessageAdd";
 NSString *const ConversationOtrMessageAdd = @"ConversationOtrMessageAdd";
 NSString *const ConversationUserConnection = @"ConversationUserConnection";
+NSString *const ConversationApplyToTestNotification = @"ConversationApplyToTestNotification";
 
 static NSString *const ConversationIDsPath = @"/conversations/ids";
 
@@ -639,6 +640,15 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 - (void)processConversationAppMessageAddEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation {
     NSString *userid = [event.payload optionalStringForKey:@"from"];
     if (userid && userid.length > 0 && [userid.lowercaseString isEqualToString:[ZMUser selfUserInContext:self.managedObjectContext].remoteIdentifier.transportString]) {
+        return;
+    }
+    
+    //拦截服务器下发的小应用申请开始测试通知消息，发送通知，让主界面弹框即可
+    NSDictionary *data = [event.payload dictionaryForKey:@"data"];
+    NSString *msgType = [data optionalStringForKey:@"msgType"];
+    if ([msgType isEqualToString:@"20032"]) {
+        NSDictionary *msgData = [data dictionaryForKey:@"msgData"];
+        [[NSNotificationCenter defaultCenter] postNotificationName:ConversationApplyToTestNotification object:nil userInfo:msgData];
         return;
     }
     
