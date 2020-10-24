@@ -381,6 +381,9 @@ ZM_EMPTY_ASSERTING_INIT()
         self.didFetchObjects = YES;
         [self.changeTrackerBootStrap fetchObjectsForChangeTrackers];
     }
+    [self.uiMOC performBlock:^{
+        [[NSNotificationQueue defaultQueue] enqueueNotification:[NSNotification notificationWithName:SaveHugeNoMuteConversationsNotificationName object:nil] postingStyle:NSPostWhenIdle coalesceMask:NSNotificationCoalescingOnName forModes:@[NSDefaultRunLoopMode]];
+    }];
 }
 
 @end

@@ -221,7 +221,7 @@ extension SessionManager: PKPushRegistryDelegate {
     
     private func pushNotificationToAccount(conversation cid: UUID, needBeNoticedAccount: @escaping (Account) -> Void) {
         accountManager.accounts.forEach { account in
-            if HugeConversationSetting.muteHugeConversationInBackground(with: cid, in: account) {
+            if HugeConversationSetting.muteHugeConversationInBackground(with: cid, userId: account.userIdentifier.transportString()) {
                 return
             }
             

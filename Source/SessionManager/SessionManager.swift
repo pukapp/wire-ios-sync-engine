@@ -432,6 +432,8 @@ public protocol ForegroundNotificationResponder: class {
         postLoginAuthenticationToken = PostLoginAuthenticationNotification.addObserver(self, queue: self.groupQueue)
         callCenterObserverToken = WireCallCenterV3.addGlobalCallStateObserver(observer: self)
         
+        NotificationCenter.default.addObserver(self, selector: #selector(saveNoMuteHugeConversations), name: NSNotification.Name(SaveHugeNoMuteConversationsNotificationName), object: nil)
+        
         checkJailbreakIfNeeded()
     }
     
@@ -1066,13 +1068,6 @@ extension SessionManager {
     }
     
     @objc fileprivate func applicationWillResignActive(_ note: Notification) {
-        ///应用进入后台，保存一下万人群信息
-        for (_, session) in backgroundUserSessions {
-            if session.isAuthenticated() {
-                session.saveHugeGroup()
-            }
-        }
-        
         updateAllUnreadCounts()
     }
     
