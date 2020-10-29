@@ -106,11 +106,11 @@ extension CallingSignalManager {
         zmLog.info("CallingSignalManager+Mediasoup -- connectWebRtcTransportRequest \(String(describing: res?.ok))")
      }
      
-     func loginRoom(with rtpCapabilities: String) -> JSON? {
-         let loginRoomRequestData: JSON = ["displayName" : "",
-                                           "rtpCapabilities" : JSON(parseJSON: rtpCapabilities),
-                                           "device" : "ios",
-                                           "sctpCapabilities" : ""]
+    func loginRoom(with rtpCapabilities: String, mediaState: AVSCallMediaState) -> JSON? {
+         let loginRoomRequestData: JSON = ["rtpCapabilities": JSON(parseJSON: rtpCapabilities),
+                                           "audioStatus": mediaState.isMute ? 0 : 1,
+                                           "videoStatus": mediaState.needSendVideo ? 1 : 0,
+                                           "device": "ios"]
         guard let res = sendMediasoupAction(with: .loginRoom, data: loginRoomRequestData), res.ok, res.data != nil else {
             return nil
         }

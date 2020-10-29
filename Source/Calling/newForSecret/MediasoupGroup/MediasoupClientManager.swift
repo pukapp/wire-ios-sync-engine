@@ -139,6 +139,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         
         Mediasoupclient.initializePC()
         Logger.setLogLevel(LogLevel.TRACE)
+        //Logger.setDefaultHandler()
         self.device = MPDevice()
         
         self.signalManager = signalManager
@@ -216,11 +217,11 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     }
     
     func webSocketReceiveNewNotification(with noti: String, info: JSON) {
-        guard noti != "producerScore", noti != "consumerScore",  noti != "activeSpeaker" else { return }
-        zmLog.info("MediasoupClientManager-onNewNotification:action:\(noti)，info:\(info)")
+        guard noti != "producerScore", noti != "consumerScore" else { return }
         if let action = MeetingSignalAction.Notification(rawValue: noti) {
             self.onReceiveMeetingNotification(with: action, info: info)
         } else if let action = MediasoupSignalAction.Notification(rawValue: noti) {
+            zmLog.info("MediasoupClientManager-onNewNotification:action:\(noti)，info:\(info)")
             self.onReceiveMediasoupNotification(with: action, info: info)
         }
     }
@@ -305,7 +306,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     
     ///登录房间，并且获取房间内peer信息
     private func loginRoom() {
-        guard let result = self.signalManager.loginRoom(with: self.device!.getRtpCapabilities()) else {
+        guard let result = self.signalManager.loginRoom(with: self.device!.getRtpCapabilities(), mediaState: self.mediaState) else {
             zmLog.info("MediasoupClientManager-loginRoom--error Result")
             self.changeMediasoupConnectStep(.connectFailure)
             return
@@ -335,9 +336,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
                 zmLog.info("MediasoupClientManager-can not produceVideo")
                 return
         }
-        if TARGET_OS_SIMULATOR == 1 {
-            return
-        }
+        if TARGET_OS_SIMULATOR == 1 { return }
         let videoTrack = self.mediaManager.produceVideoTrack(with: VideoOutputFormat(count: self.mediaStateManagerDelegate.totalVideoTracksCount))
         videoTrack.isEnabled = true
         self.createProducer(kind: .video, track: videoTrack, codecOptions: nil, encodings: nil)
@@ -440,7 +439,9 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     
     func receiveNewPeer(peerInfo: JSON) {
         zmLog.info("MediasoupClientManager--receiveNewPeer \(peerInfo)")
-        guard let peerId = peerInfo["id"].string else {
+        guard let peerId = peerInfo["id"].string,
+            let audioState = peerInfo["audioStatus"].int,
+            let videoStatus = peerInfo["videoStatus"].int else {
             return
         }
         var uid: UUID! = UUID(uuidString: peerId)
@@ -448,8 +449,16 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             uid = UUID()
             temp[peerId] = uid
         }
-        let member = AVSCallMember.init(userId: uid, callParticipantState: .connecting, isMute: false, videoState: .stopped)
-        self.membersManagerDelegate.addNewMember(member)
+        var member: CallMemberProtocol
+        switch self.mode {
+        case .conference:
+            //会议中，由于成员已经在列表之中，所以只需要设置一下音频的状态即可
+            self.membersManagerDelegate.setMemberAudio(audioState != 1, mid: uid)
+            self.membersManagerDelegate.memberConnectStateChanged(with: uid, state: .connecting)
+        case .group, .oneToOne:
+            member = AVSCallMember(userId: uid, callParticipantState: .connecting, isMute: audioState != 1, videoState: (videoStatus != 1) ? .stopped : .started)
+            self.membersManagerDelegate.addNewMember(member)
+        }
     }
     
     func removePeer(with id: UUID) {
@@ -497,12 +506,13 @@ class MediasoupClientManager: CallingClientConnectProtocol {
                 }
             }
         }
-        
+
         zmLog.info("MediasoupClientManager-handleNewConsumer-began:peer:\(peerId),kind:\(kind)")
         let consumerListen = MediasoupConsumerListener(consumerId: id)
-        let consumer: Consumer = recvTransport.consume(consumerListen, id: id, producerId: producerId, kind: kind, rtpParameters: rtpParameters.description)
+        consumerListen.delegate = consumerListen
+        let consumer: Consumer = recvTransport.consume(consumerListen.delegate, id: id, producerId: producerId, kind: kind, rtpParameters: rtpParameters.description)
         
-        zmLog.info("MediasoupClientManager-handleNewConsumer-end:peer:\(peerId),kind:\(kind)")
+        zmLog.info("MediasoupClientManager-handleNewConsumer-end:peer:\(peerId),kind:\(kind)--\(Thread.current)")
         if let peer = self.peerConsumers.first(where: { return $0.peerId == peerUId }) {
             peer.addConsumer(consumer, listener: consumerListen)
         } else {
@@ -513,7 +523,8 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         self.membersManagerDelegate.memberConnectStateChanged(with: peerUId, state: .connected)
 
         if kind == "video" {
-            self.mediaStateManagerDelegate.addVideoTrack(with: peerUId, videoTrack: consumer.getTrack() as! RTCVideoTrack)
+            let videoTrack = consumer.getTrack() as! RTCVideoTrack
+            self.mediaStateManagerDelegate.addVideoTrack(with: peerUId, videoTrack: videoTrack)
             self.membersManagerDelegate.setMemberVideo(.started, mid: peerUId)
         }
     }
@@ -556,7 +567,7 @@ extension MediasoupClientManager {
 class MediasoupConsumerListener: NSObject, ConsumerListener {
     
     let consumerId: String
-    
+    weak var delegate: ConsumerListener?
     init(consumerId: String) {
         self.consumerId = consumerId
     }
