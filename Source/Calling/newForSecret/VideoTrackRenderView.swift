@@ -61,13 +61,18 @@ public class SelfVideoRenderView : RTCEAGLVideoView {
 
 
 public enum VideoRenderMode: Equatable {
+    case none
     case renderSelf
     case renderOther(userId: String)
     
     public static func == (lhs: Self, rhs: Self) -> Bool {
         switch (lhs, rhs) {
+        case (.none, .none):
+            return true
         case (.renderSelf, .renderSelf):
             return true
+        case (.renderOther(let l), .renderOther(let r)):
+            return l == r
         default:
             return false
         }
@@ -82,19 +87,22 @@ public class VideoRenderView : RTCEAGLVideoView {
     }
     
     //由于项目中有用到collectionView展示成员视频，所以mode这个参数需要为可变的
-    private var mode: VideoRenderMode?
+    private var mode: VideoRenderMode = .none
     
     //MARK: 这个方法为必须调用的方法,必须给mode设置一个值
     public func updateMode(_ mode: VideoRenderMode) {
-        zmLog.info("aaaa---VideoRenderView--updateMode--new:\(String(describing: self.mode)),old:\(mode)")
         guard self.mode != mode else { return }
+        zmLog.info("aaaa---VideoRenderView--updateMode--old:\(String(describing: self.mode)),new:\(mode)")
         self.mode = mode
+        self.isHidden = (mode == .none)
         self.renderView()
     }
     
     private func renderView() {
-        guard let mode = self.mode else { return }
+        guard TARGET_OS_SIMULATOR != 1 else { return }
         switch mode {
+        case .none:
+            self.removeAddedTrack()
         case .renderSelf:
             self.videoTrack = CallingRoomManager.shareInstance.mediaOutputManager?.produceVideoTrack(with: .high)
         case .renderOther(userId: let userId):
@@ -115,7 +123,6 @@ public class VideoRenderView : RTCEAGLVideoView {
     private var videoTrack: RTCVideoTrack? {
         didSet {
             guard videoTrack != oldValue else { return }
-            zmLog.info("aaaa---VideoRenderView--videoTrack--newValue:\(String(describing: videoTrack)),oldValue\(String(describing: oldValue))")
             oldValue?.remove(self)
             videoTrack?.add(self)
         }
@@ -123,6 +130,7 @@ public class VideoRenderView : RTCEAGLVideoView {
     
     //当界面被移除时，也需要手动的移除track
     override public func removeFromSuperview() {
+        zmLog.info("aaaa---VideoRenderView--removeFromSuperview")
         super.removeFromSuperview()
         self.removeAddedTrack()
     }
