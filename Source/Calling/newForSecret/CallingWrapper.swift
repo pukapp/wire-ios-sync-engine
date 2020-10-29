@@ -46,9 +46,9 @@ public class CallingWrapper: AVSWrapperType {
         return callStateManager.answerCall(cid: conversationId, members: members, token: token)
     }
     
-    public func endCall(conversationId: UUID) {
-        zmLog.info("Mediasoup::Wrapper-endCall")
-        callStateManager.endCall(cid: conversationId, reason: .normal)
+    public func endCall(conversationId: UUID, reason: CallClosedReason) {
+        zmLog.info("Mediasoup::Wrapper-endCall--\(reason)")
+        callStateManager.endCall(cid: conversationId, reason: reason)
     }
     
     public func rejectCall(conversationId: UUID) {

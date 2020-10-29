@@ -30,7 +30,7 @@ public protocol AVSWrapperType {
     //TODO: 由于p2p模式下无法从websocket获取peerId,所以这里新增了一个参数
     func startCall(conversationId: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool, members: [CallMemberProtocol], token: String?) -> Bool
     func answerCall(conversationId: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool, members: [CallMemberProtocol], token: String?) -> Bool
-    func endCall(conversationId: UUID)
+    func endCall(conversationId: UUID, reason: CallClosedReason)
     func rejectCall(conversationId: UUID)
     func close()
     func received(callEvent: CallEvent) -> CallError?

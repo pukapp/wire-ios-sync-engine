@@ -109,21 +109,9 @@ class ConvsCallingStateManager {
         zmLog.info("ConvsCallingStateManager-endCall--memberCount:\(convInfo.members.count)--reason:\(reason)")
         
         let previousState = convInfo.state
-//        if convInfo.convType == .oneToOne {
-            convInfo.state = .terminating(reason: reason)
-//        } else if convInfo.convType == .group || convInfo.convType == .conference {
-//            if reason == .timeout {///群聊，当因为未响应或者webSocket连接超时，导致超时时，改变该群的状态为still
-//                convInfo.state = .terminating(reason: .stillOngoing)
-//            } else {
-//                if convInfo.members.count > 1 {
-//                    convInfo.state = .terminating(reason: .stillOngoing)
-//                } else {
-//                    convInfo.state = .terminating(reason: reason)
-//                }
-//            }
-//        }
+        convInfo.state = .terminating(reason: reason)
         self.handleCallStateChange(in: convInfo, userId: selfUserID, oldState: previousState, newState: convInfo.state)
-        if reason == .rejectedElsewhere {
+        if reason == .rejectedElsewhere || convInfo.convType == .conference {
             return
         }
         self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .end, convType: nil, mediaState: nil, to: nil, memberCount: convInfo.members.count)
@@ -201,7 +189,7 @@ class ConvsCallingStateManager {
             }
         case .established:
             AVSMediaManager.sharedInstance.enterdCall()
-            if conv.mediaState.needSendVideo {
+            if conv.mediaState.needSendVideo && conv.convType != .conference {
                 //当连接成功之后，需要判断下视频状态是否是开启状态，如开启，则改为扩音模式
                 AVSMediaManager.sharedInstance.isSpeakerEnabled = true
             }
@@ -361,7 +349,7 @@ extension ConvsCallingStateManager: CallingRoomManagerDelegate {
         self.handleCallStateChange(in: convInfo, userId: selfUserID, oldState: previousState, newState: convInfo.state)
     }
     
-    func  leaveRoom(conversationId: UUID, reason: CallClosedReason) {
+    func onCallEnd(conversationId: UUID, reason: CallClosedReason) {
         guard let convInfo = self.convsCallingState.first(where: { return $0.cid == conversationId }) else {
             zmLog.info("ConvsCallingStateManager-error-leaveRoom-no exist convInfo")
             return
@@ -371,9 +359,10 @@ extension ConvsCallingStateManager: CallingRoomManagerDelegate {
             return
         }
         let previousState = convInfo.state
-        if convInfo.convType == .oneToOne {
+        switch convInfo.convType {
+        case .oneToOne:
             convInfo.state = .terminating(reason: reason)
-        } else if convInfo.convType == .group {
+        case .group:
             if reason == .timeout {///群聊，当因为未响应或者webSocket连接超时，导致超时时，改变该群的状态为still
                 convInfo.state = .terminating(reason: .stillOngoing)
             } else {
@@ -383,7 +372,7 @@ extension ConvsCallingStateManager: CallingRoomManagerDelegate {
                     convInfo.state = .terminating(reason: reason)
                 }
             }
-        } else if convInfo.convType == .conference {
+        case .conference:
             if reason != .terminate {
                 convInfo.state = .terminating(reason: .stillOngoing)
             } else {
@@ -391,6 +380,8 @@ extension ConvsCallingStateManager: CallingRoomManagerDelegate {
             }
         }
         self.handleCallStateChange(in: convInfo, userId: selfUserID, oldState: previousState, newState: convInfo.state)
+        guard convInfo.convType != .conference else { return }
+        self.observer?.changeCallStateNeedToSendMessage(in: conversationId, callAction: .end, convType: nil, mediaState: nil, to: nil, memberCount: convInfo.members.count)
     }
     
     func onVideoStateChange(conversationId: UUID, memberId: UUID, videoState: VideoState) {
@@ -402,7 +393,7 @@ extension ConvsCallingStateManager: CallingRoomManagerDelegate {
             zmLog.info("ConvsCallingStateManager-error-onGroupMemberChange-no exist convInfo")
             return
         }
-        //convInfo.members.count = memberCount
+        convInfo.members = self.roomManager.roomMembersManager!.members
         observer?.onGroupMemberChange(conversationId: conversationId, callType: convInfo.convType)
     }
     

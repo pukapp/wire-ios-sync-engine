@@ -394,7 +394,7 @@ extension WireCallCenterV3 {
      */
 
     public func closeCall(conversationId: UUID, reason: CallClosedReason = .normal) {
-        avsWrapper.endCall(conversationId: conversationId)
+        avsWrapper.endCall(conversationId: conversationId, reason: reason)
         if let previousSnapshot = callSnapshots[conversationId] {
             if previousSnapshot.callType == .group {
                 let callState : CallState = .incoming(video: previousSnapshot.mediaState.needSendVideo, shouldRing: false, degraded: isDegraded(conversationId: conversationId))
@@ -602,8 +602,8 @@ extension WireCallCenterV3 {
                 meeting.isLocked = isLocked
             case .removeUser(let userId):
                 if userId == self.selfUserId.transportString() {
-                    meeting.state = .off
-                    self.endAllCalls()
+                    //TODO:由于conversation那里是根据特定的通知来更新页面，这里仅仅更改属性，页面上是不会被更新的
+                    meeting.notificationState = .hide
                 }
             default:break
             }
