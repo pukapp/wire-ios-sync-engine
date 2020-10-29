@@ -39,7 +39,9 @@ enum MeetingSignalAction {
             case newHolder          = "holder"           //新的主持人
             case watchUser          = "watch_user"          //全员看TA
         }
+        
         case changeUserProperty = "changeUserProperty" //改变成员属性
+        case activeSpeaker = "activeSpeaker"            //获取当前正在说话的人
     }
     
     enum SendRequest {

@@ -28,10 +28,18 @@ protocol CallingMembersManagerProtocol {
     
     func containUser(with id: String) -> Bool
     func containUser(with id: UUID) -> Bool
-    func peer(with id: String) -> CallMemberProtocol?
+    func user(with id: String) -> CallMemberProtocol?
+    func user(with uid: UUID) -> CallMemberProtocol?
     
     //会议
     func topUser(_ userId: String)
+    func setActiveSpeaker(_ uid: UUID, volume: Int)
+}
+
+//当前谁在说话
+fileprivate protocol ActiveSpeakerManagerProtocol {
+    var activeSpeakers: [UUID : Date] { get set }
+    func setActiveSpeaker(_ uid: UUID, volume: Int)
 }
 
 protocol CallingMembersObserver {
@@ -55,22 +63,24 @@ private extension Array where Element == CallMemberProtocol {
 class CallingMembersManager: CallingMembersManagerProtocol {
     
     let observer: CallingMembersObserver
+    
     var members : [CallMemberProtocol] = []
+    private var connectStateObserve: [UUID: ZMTimer] = [:]
+    
     private var audioTracks: [(UUID, RTCAudioTrack)] = []
     private var videoTracks: [(UUID, RTCVideoTrack)] = []
+    
+    fileprivate var activeSpeakers: [UUID : Date] = [:]
     
     required init(observer: CallingMembersObserver) {
         self.observer = observer
     }
     
-    func addNewMember(_ member: CallMemberProtocol) {
-        if var member = self.members.first(where: { return $0.remoteId == member.remoteId }) {
-            if member.callParticipantState != .connected {
-                member.callParticipantState = .connecting
-                self.members.replaceMember(with: member)
-            }
+    func addNewMember(_ newMember: CallMemberProtocol) {
+        if self.containUser(with: newMember.remoteId) {
+            self.members.replaceMember(with: newMember)
         } else {
-            self.members.append(member)
+            self.members.append(newMember)
         }
         self.membersChanged()
     }
@@ -142,16 +152,19 @@ class CallingMembersManager: CallingMembersManagerProtocol {
     }
     
     func containUser(with uid: UUID) -> Bool {
-        return self.members.contains(where: { return $0.remoteId == uid })
+        return self.user(with: uid) != nil
     }
-    
     func containUser(with id: String) -> Bool {
         guard let uid = UUID(uuidString: id) else { return false }
-        return self.members.contains(where: { return $0.remoteId == uid })
+        return self.containUser(with: uid)
     }
     
-    func peer(with id: String) -> CallMemberProtocol? {
-        return self.members.first(where: { return $0.remoteId == UUID(uuidString: id) })
+    func user(with uid: UUID) -> CallMemberProtocol? {
+        return self.members.first(where: { return $0.remoteId == uid })
+    }
+    func user(with id: String) -> CallMemberProtocol? {
+        guard let uid = UUID(uuidString: id) else { return nil }
+        return self.user(with: uid)
     }
     
     ///总共接收到的视频个数
@@ -212,92 +225,56 @@ extension CallingMembersManager {
     }
 }
 
-//extension CallingMembersManager: CallingMemberStateObserver {
-//    func callMemberConnectStateChange(with mid: UUID, isConnected: Bool) {
-//        self.observer.roomMembersConnectStateChange(with: mid, isConnected: isConnected)
-//    }
-//    func callMemberVideoStateChange(memberId: UUID, videoState: VideoState) {
-//        self.observer.roomMembersVideoStateChange(with: memberId, videoState: videoState)
-//    }
-//    func callMemberConnectingTimeout(with memberId: UUID) {
-//        self.removeMember(with: memberId)
-//        self.observer.roomMembersConnectStateChange(with: memberId, isConnected: false)
-//    }
-//}-
-//
-//protocol CallingMemberStateObserver {
-//    func callMemberConnectStateChange(with mid: UUID, isConnected: Bool)
-//    func callMemberVideoStateChange(memberId: UUID, videoState: VideoState)
-//    func callMemberConnectingTimeout(with memberId: UUID)
-//}
-//
-//class CallingMember: ZMTimerClient {
-//
-//    private let connectTimeInterval: TimeInterval = 80
-//
-//    let memberId: UUID
-//    let isSelf: Bool
-//    let stateObserver: CallingMemberStateObserver
-//
-//    private var connectState: CallParticipantState = .connecting
-//
-//    var hasAudio: Bool
-//    var videoState: VideoState
-//    var videoTrack: RTCVideoTrack?
-//
-//    private var callTimer: ZMTimer?
-//
-//    fileprivate init(memberId: UUID, isSelf: Bool, stateObserver: CallingMemberStateObserver, hasAudio: Bool, videoState: VideoState) {
-//        zmLog.info("CallingMember- peer init--\(memberId)\n")
-//        self.memberId = memberId
-//        self.isSelf = isSelf
-//        if isSelf {
-//            connectState = .connected
-//        }
-//        self.stateObserver = stateObserver
-//        self.hasAudio = hasAudio
-//        self.videoState = videoState
-//
-//        callTimer = ZMTimer(target: self)
-//        callTimer?.fire(afterTimeInterval: connectTimeInterval)
-//    }
-//
-//    fileprivate func setMemberConnectState(with state: CallParticipantState) {
-//        self.connectState = state
-//        callTimer?.cancel()
-//        callTimer = nil
-//        if state == .connecting {
-//            callTimer = ZMTimer(target: self)
-//            callTimer?.fire(afterTimeInterval: connectTimeInterval)
-//        }
-//        zmLog.info("CallingMember-setPeerConnectState--\(state)\n")
-//        let isConnected = (state != .connecting && state != .unconnected)
-//        self.stateObserver.callMemberConnectStateChange(with: self.memberId, isConnected: isConnected)
-//    }
-//
-//    fileprivate func setVideoState(_ state: VideoState) {
-//        if state != self.videoState {
-//            self.videoState = state
-//            self.stateObserver.callMemberVideoStateChange(memberId: self.memberId, videoState: state)
-//        }
-//    }
-//
-//    func timerDidFire(_ timer: ZMTimer!) {
-//        if self.connectState == .connecting || self.connectState == .unconnected {
-//            zmLog.info("CallingMember--timerDidFire--\(self.memberId)\n")
-//            self.stateObserver.callMemberConnectingTimeout(with: self.memberId)
-//        }
-//    }
-//
-//    func toAvsMember() -> AVSCallMember {
-//        return AVSCallMember(userId: self.memberId, callParticipantState: self.connectState, videoState: self.videoState, networkQuality: .normal)
-//    }
-//
-//    func clear() {
-//        self.videoTrack = nil
-//    }
-//
-//    deinit {
-//        zmLog.info("CallingMember-deinit")
-//    }
-//}
+private let resignActiveSpeakingTimeInterval: TimeInterval = 10 //从活跃状态变成不活跃状态的间隔默认为10s
+private let activeSpeakingVolume: Int = -50 //当前音量大于这个值即认为是活跃状态
+
+extension CallingMembersManager: ActiveSpeakerManagerProtocol {
+
+    func setActiveSpeaker(_ uid: UUID, volume: Int) {
+        let isSpeaking = volume >= activeSpeakingVolume
+        
+        if isSpeaking {
+            self.activeSpeakers[uid] = Date()
+            self.setMemberActiveSpeaking(uid)
+        } else {
+            if self.activeSpeakers.keys.contains(uid) {
+                self.activeSpeakers.removeValue(forKey: uid)
+                self.setMemberResignActiveSpeaking(uid)
+            }
+        }
+        
+        let needResignDate = Date(timeIntervalSinceNow: -resignActiveSpeakingTimeInterval)
+        var tempNeedRemoveUser: [UUID] = []
+        for uid in self.activeSpeakers.keys {
+            let oldDate = self.activeSpeakers[uid]!
+            if  oldDate.compare(needResignDate) == .orderedAscending {
+                //距离上次设置活跃状态的时间间隔超过了规定时间，则将其变成不活跃的状态
+                self.setMemberResignActiveSpeaking(uid)
+                tempNeedRemoveUser.append(uid)
+            }
+        }
+        tempNeedRemoveUser.forEach({ self.activeSpeakers.removeValue(forKey: $0) })
+        //print("aaaa------activeSpeakers:\(activeSpeakers)")
+        
+        self.membersChanged()
+    }
+    
+    func setMemberActiveSpeaking(_ uid: UUID) {
+        guard var member = self.members.first(where: { return $0.remoteId == uid }) as? MeetingParticipant, !member.isSpeaking else {
+            zmLog.info("CallingMembersManager--no peer to setMemberVideo")
+            return
+        }
+        member.isSpeaking = true
+        self.members.replaceMember(with: member)
+    }
+    
+    func setMemberResignActiveSpeaking(_ uid: UUID) {
+        guard var member = self.members.first(where: { return $0.remoteId == uid }) as? MeetingParticipant, member.isSpeaking else {
+            zmLog.info("CallingMembersManager--no peer to setMemberVideo")
+            return
+        }
+        member.isSpeaking = false
+        self.members.replaceMember(with: member)
+    }
+
+}

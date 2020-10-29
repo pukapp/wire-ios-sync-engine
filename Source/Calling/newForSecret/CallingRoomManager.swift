@@ -23,7 +23,7 @@ extension CallingRoomManager: CallingSignalManagerDelegate {
     func socketDisconnected(needDestory: Bool) {
         if needDestory {
             self.roomState = .disonnected
-            self.delegate?.leaveRoom(conversationId: self.roomId!, reason: .internalError)
+            self.delegate?.onCallEnd(conversationId: self.roomId!, reason: .internalError)
         } else {
             self.roomState = .socketConnecting
             self.disConnectedRoom()
@@ -48,7 +48,7 @@ extension CallingRoomManager: CallingSignalManagerDelegate {
 protocol CallingRoomManagerDelegate {
     func onEstablishedCall(conversationId: UUID)
     func onReconnectingCall(conversationId: UUID)
-    func leaveRoom(conversationId: UUID, reason: CallClosedReason)
+    func onCallEnd(conversationId: UUID, reason: CallClosedReason)
     func onVideoStateChange(conversationId: UUID, memberId: UUID, videoState: VideoState)
     func onGroupMemberChange(conversationId: UUID, memberCount: Int)
     
@@ -279,7 +279,7 @@ extension CallingRoomManager: CallingClientConnectStateObserve {
     func onReceivePropertyChange(with property: MeetingProperty) {
         guard let roomId = self.roomId else { return }
         if case .terminateMeet = property {
-            self.delegate?.leaveRoom(conversationId: roomId, reason: .terminate)
+            self.delegate?.onCallEnd(conversationId: roomId, reason: .terminate)
         }
         self.delegate?.onReceiveMeetingPropertyChange(in: roomId, with: property)
     }
@@ -289,7 +289,7 @@ extension CallingRoomManager: CallingClientConnectStateObserve {
             //p2p模式下打洞失败的话，就走mediasoup模式
             self.switchMode(mode: .group)
         } else {
-            self.delegate?.leaveRoom(conversationId: self.roomId!, reason: .internalError)
+            self.delegate?.onCallEnd(conversationId: self.roomId!, reason: .internalError)
         }
     }
     
@@ -315,7 +315,7 @@ extension CallingRoomManager: CallingMembersObserver {
             return
         }
         zmLog.info("CallingRoomManager-roomEmpty")
-        self.delegate?.leaveRoom(conversationId: roomId, reason: .normal)
+        self.delegate?.onCallEnd(conversationId: roomId, reason: .normal)
     }
     
     func roomEstablished() {

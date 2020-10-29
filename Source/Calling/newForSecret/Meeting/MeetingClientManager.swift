@@ -64,7 +64,9 @@ extension WireCallCenterV3 {
 extension MediasoupClientManager {
     
     func onReceiveMeetingNotification(with action: MeetingSignalAction.Notification, info: JSON) {
-        zmLog.info("MediasoupClientManager:onReceiveMeetingNotification---\(action) -- \(info)")
+        if action != .activeSpeaker {
+            zmLog.info("MediasoupClientManager:onReceiveMeetingNotification---\(action) -- \(info)")
+        }
         var property: MeetingProperty? = nil
         switch action {
         case .peerOpened:
@@ -80,7 +82,7 @@ extension MediasoupClientManager {
         case .closeMute:
             property = .mute(.no)
         case .peerOpenMute:
-            guard let userId = info["peerId"].string, let peer = self.membersManagerDelegate.peer(with: userId) else { return }
+            guard let userId = info["peerId"].string, let peer = self.membersManagerDelegate.user(with: userId) else { return }
             if peer.isSelf {
                 //别人被静音的状态是根据consumer的paused推送来设置，收到自己被静音的话，需要手动的设置自己的状态
                 AVSMediaManager.sharedInstance.isMicrophoneMuted = true
@@ -88,7 +90,7 @@ extension MediasoupClientManager {
                 property = .mutedByHoster(true)
             }
         case .peerCloseMute:
-            guard let userId = info["peerId"].string, let peer = self.membersManagerDelegate.peer(with: userId) else { return }
+            guard let userId = info["peerId"].string, let peer = self.membersManagerDelegate.user(with: userId) else { return }
             if peer.isSelf {
                 property = .mutedByHoster(false)
             }
@@ -123,7 +125,7 @@ extension MediasoupClientManager {
         case .changeUserProperty:
             let userProperty = info["property"]
             guard let userId = userProperty["user_id"].string,
-                var member = self.membersManagerDelegate.peer(with: userId) as? MeetingParticipant else {
+                var member = self.membersManagerDelegate.user(with: userId) as? MeetingParticipant else {
                 return
             }
             member.update(with: userProperty)
@@ -145,6 +147,13 @@ extension MediasoupClientManager {
             userJsons.forEach({
                 self.membersManagerDelegate.addNewMember(MeetingParticipant(json: $0, isSelf: false))
             })
+        case .activeSpeaker:
+            guard let userId = info["peerId"].string, let uid = UUID(uuidString: userId),
+                self.membersManagerDelegate.containUser(with: uid),
+                let volume = info["volume"].int else {
+                return
+            }
+            self.membersManagerDelegate.setActiveSpeaker(uid, volume: volume)
         }
         if let property = property {
             self.onReceivePropertyChange(with: property)

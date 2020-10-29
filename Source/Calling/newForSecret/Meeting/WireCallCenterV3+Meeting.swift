@@ -123,6 +123,8 @@ public struct MeetingParticipant: CallMemberProtocol {
     public var nickName: String
     public var avatar: String
     
+    public var isSpeaking: Bool = false//判断用户当前时候正在说话,仅用于九宫格模式下
+    
     public init(json: JSON, isSelf: Bool) {
         self.isSelf = isSelf
         userId = json["user_id"].stringValue
