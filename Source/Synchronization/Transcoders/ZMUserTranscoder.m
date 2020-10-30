@@ -34,9 +34,6 @@ NSString *const UserMomentSync = @"UserMomentSync";
 NSString *const UserMomentUpdate = @"UserMomentUpdate";
 NSString *const UserMomentAdd = @"UserMomentAdd";
 
-NSString *const MeetingStartOrEnd = @"MeetingStartOrEnd";
-NSString *const MeetingReceMetingCall = @"MeetingReceMetingCall";
-
 @interface ZMUserTranscoder ()
 
 @property (nonatomic) ZMRemoteIdentifierObjectSync *remoteIDObjectSync;

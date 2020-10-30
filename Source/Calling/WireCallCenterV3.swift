@@ -585,31 +585,37 @@ extension WireCallCenterV3 {
     }
 
     func meetingPropertyChange(in mid: UUID, with property: MeetingProperty) {
-        if let context = uiMOC {
-            guard let meeting = ZMMeeting.fetchExistingMeeting(with: mid.transportString(), in: context) else {
-                return
-            }
-            switch property {
-            case .mute(let state):
-                meeting.muteAll = state
-            case .holder(let userId):
-                meeting.holdId = userId
-            case .onlyHosterCanShareScreen(let isOnly):
-                meeting.onlyHosterCanShareScreen = isOnly
-            case .setInternal(let isInternal):
-                meeting.isInternal = isInternal
-            case .lockmMeeting(let isLocked):
-                meeting.isLocked = isLocked
-            case .removeUser(let userId):
-                if userId == self.selfUserId.transportString() {
-                    //TODO:由于conversation那里是根据特定的通知来更新页面，这里仅仅更改属性，页面上是不会被更新的
-                    meeting.notificationState = .hide
+        if let context = uiMOC?.zm_sync {
+            //修改coredata属性需要在syncContext中修改，才能触发通知
+            context.perform {
+                guard let meeting = ZMMeeting.fetchExistingMeeting(with: mid.transportString(), in: context) else {
+                    return
                 }
-            default:break
+                switch property {
+                case .mute(let state):
+                    meeting.muteAll = state
+                case .holder(let userId):
+                    meeting.holdId = userId
+                case .onlyHosterCanShareScreen(let isOnly):
+                    meeting.onlyHosterCanShareScreen = isOnly
+                case .setInternal(let isInternal):
+                    meeting.isInternal = isInternal
+                case .lockmMeeting(let isLocked):
+                    meeting.isLocked = isLocked
+                case .removeUser(let userId):
+                    if userId == self.selfUserId.transportString() {
+                        meeting.notificationState = .hide
+                    }
+                case .terminateMeet:
+                    meeting.state = .off
+                default:break
+                }
+                
+                context.saveOrRollback()
             }
-            
-            WireCallCenterMeetingPropertyChangedNotification(meetingId: mid, property: property).post(in: context.notificationContext)
         }
+        
+        WireCallCenterMeetingPropertyChangedNotification(meetingId: mid, property: property).post(in: uiMOC!.notificationContext)
     }
     
 }

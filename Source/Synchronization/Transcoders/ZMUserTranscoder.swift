@@ -129,17 +129,16 @@ extension ZMUserTranscoder {
         switch noticeType {
         case .meetingStateChange:
             ZMMeeting.createOrUpdateMeeting(with: payload, context: managedObjectContext)
-            NotificationCenter.default.post(name: NSNotification.Name(MeetingStartOrEnd), object: nil)
         case .removeMember:
-            NotificationCenter.default.post(name: NSNotification.Name(MeetingStartOrEnd), object: nil)
+            break
         case .callMember:
             let date = NSDate(transport: time)!
-            guard  date.compare(Date(timeIntervalSinceNow: -90)) != .orderedAscending else {
+            guard date.compare(Date(timeIntervalSinceNow: -90)) != .orderedAscending else {
                 //超过90s之后才接收到信令，就不弹框
                 return
             }
             if let meeting = ZMMeeting.createOrUpdateMeeting(with: payload, context: managedObjectContext) {
-                NotificationCenter.default.post(name: NSNotification.Name(MeetingReceMetingCall), object: nil, userInfo: ["meetingId" : meeting.meetingId])
+                meeting.callingDate = date as Date
             }
         }
     }
