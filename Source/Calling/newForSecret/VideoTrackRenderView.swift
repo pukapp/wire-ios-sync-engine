@@ -91,10 +91,10 @@ public class VideoRenderView : RTCEAGLVideoView {
     
     //MARK: 这个方法为必须调用的方法,必须给mode设置一个值
     public func updateMode(_ mode: VideoRenderMode) {
+        self.isHidden = (mode == .none)
         guard self.mode != mode else { return }
         zmLog.info("aaaa---VideoRenderView--updateMode--old:\(String(describing: self.mode)),new:\(mode)")
         self.mode = mode
-        self.isHidden = (mode == .none)
         self.renderView()
     }
     
