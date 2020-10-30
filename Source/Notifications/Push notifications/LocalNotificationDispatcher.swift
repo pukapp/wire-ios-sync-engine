@@ -137,19 +137,31 @@ extension LocalNotificationDispatcher {
 
     /// Informs the user that the message failed to send
     public func didFailToSend(_ message: ZMMessage) {
-        if message.visibleInConversation == nil || message.conversation?.conversationType == .self {
-            return
+        let objectID = message.objectID
+        self.syncMOC.performGroupedBlock {
+            [unowned self] in
+            if let syncMessage = (try? self.syncMOC.existingObject(with: objectID)) as? ZMMessage {
+                if syncMessage.visibleInConversation == nil || syncMessage.conversation?.conversationType == .self {
+                    return
+                }
+                let note = ZMLocalNotification(expiredMessage: syncMessage)
+                note.apply(self.scheduleLocalNotification)
+                note.apply(self.failedMessageNotifications.addObject)
+            }
         }
-        let note = ZMLocalNotification(expiredMessage: message)
-        note.apply(scheduleLocalNotification)
-        note.apply(failedMessageNotifications.addObject)
     }
 
     /// Informs the user that a message in a conversation failed to send
     public func didFailToSendMessage(in conversation: ZMConversation) {
-        let note = ZMLocalNotification(expiredMessageIn: conversation)
-        note.apply(scheduleLocalNotification)
-        note.apply(failedMessageNotifications.addObject)
+        let objectID = conversation.objectID
+        self.syncMOC.performGroupedBlock {
+            [unowned self] in
+            if let syncConversation = (try? self.syncMOC.existingObject(with: objectID)) as? ZMConversation {
+                let note = ZMLocalNotification(expiredMessageIn: syncConversation)
+                note.apply(self.scheduleLocalNotification)
+                note.apply(self.failedMessageNotifications.addObject)
+            }
+        }
     }
 }
 
@@ -179,16 +191,10 @@ extension LocalNotificationDispatcher {
     /// Cancels all notification in the conversation that is speficied as object of the notification
     func cancelNotificationForLastReadChanged(notification: NotificationInContext) {
         guard let conversation = notification.object as? ZMConversation else { return }
-        let isUIObject = conversation.managedObjectContext?.zm_isUserInterfaceContext ?? false
-
+        let conversationID = conversation.objectID
         self.syncMOC.performGroupedBlock {
-            if isUIObject {
-                // clear all notifications for this conversation
-                if let syncConversation = (try? self.syncMOC.existingObject(with: conversation.objectID)) as? ZMConversation {
-                    self.cancelNotification(for: syncConversation)
-                }
-            } else {
-                self.cancelNotification(for: conversation)
+            if let syncConversation = (try? self.syncMOC.existingObject(with: conversationID)) as? ZMConversation {
+                self.cancelNotification(for: syncConversation)
             }
         }
     }

@@ -189,43 +189,53 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
 
 - (void)userInterfaceContextDidSave:(NSNotification *)note
 {
-    NSSet *insertedObjectsIDs = [ZMOperationLoop objectIDsetFromObject:note.userInfo[NSInsertedObjectsKey]];
-    NSSet *updatedObjectsIDs = [ZMOperationLoop objectIDsetFromObject:note.userInfo[NSUpdatedObjectsKey]];
-    
     // We need to proceed even if those to sets are empty because the metadata might have been updated.
-        
+    // 所有ui更改对象
     ZM_WEAK(self);
+    NSSet *uiInsertedObjects = note.userInfo[NSInsertedObjectsKey];
+    NSSet *uiUpdatedObjects = note.userInfo[NSUpdatedObjectsKey];
+    // 过滤出ui插入消息对象
+    NSSet *messageInsertObjects = [uiInsertedObjects filteredSetUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id  _Nullable evaluatedObject, NSDictionary<NSString *,id> * _Nullable bindings) {
+        return [evaluatedObject isKindOfClass:[ZMClientMessage class]] ||
+                [evaluatedObject isKindOfClass:[ZMAssetClientMessage class]] || [evaluatedObject isKindOfClass:[ZMGenericMessageData class]];
+    }]];
+    // 过滤出ui更新的消息对象
+    NSSet *messageUpdateObjects = [uiUpdatedObjects filteredSetUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id  _Nullable evaluatedObject, NSDictionary<NSString *,id> * _Nullable bindings) {
+        return [evaluatedObject isKindOfClass:[ZMClientMessage class]] ||
+        [evaluatedObject isKindOfClass:[ZMAssetClientMessage class]] || [evaluatedObject isKindOfClass:[ZMGenericMessageData class]];
+    }]];
+    // 处理消息发送 使用msgMoc
+    if (messageInsertObjects.count > 0 || messageUpdateObjects.count > 0) {
+        NSSet *messageInsertObjectsIds = [ZMOperationLoop objectIDsetFromObject: messageInsertObjects];
+        NSSet *messageUpdateObjectsIds = [ZMOperationLoop objectIDsetFromObject: messageUpdateObjects];
+        [self.msgMOC performGroupedBlock:^{
+            ZM_STRONG(self);
+            NSSet *msgMessageInsertedObjects = [ZMOperationLoop objectSetFromObjectIDs:messageInsertObjectsIds inContext:self.syncStrategy.msgMOC];
+            NSSet *msgMessageUpdatedObjects = [ZMOperationLoop objectSetFromObjectIDs:messageUpdateObjectsIds inContext:self.syncStrategy.msgMOC];
+            [self.syncStrategy processSaveWithMessageInsertedObjects:msgMessageInsertedObjects updateObjects:msgMessageUpdatedObjects];
+            [ZMRequestAvailableNotification msgNotifyNewRequestsAvailable:self];
+        }];
+    }
+    // 其他非消息对象 使用syncMoc
+    NSMutableSet *muUIInsertObject = [NSMutableSet setWithSet:uiInsertedObjects];
+    [muUIInsertObject minusSet: messageInsertObjects];
+    NSMutableSet *muUIUpdateObject = [NSMutableSet setWithSet:uiUpdatedObjects];
+    [muUIUpdateObject minusSet: messageUpdateObjects];
+    NSSet *remainInsertObjectsIDs = [ZMOperationLoop objectIDsetFromObject: muUIInsertObject];
+    NSSet *remainUpdateObjectsIDs = [ZMOperationLoop objectIDsetFromObject: muUIUpdateObject];
+
+    if (remainInsertObjectsIDs.count == 0 && remainUpdateObjectsIDs.count == 0) {
+        return;
+    }
     [self.syncMOC performGroupedBlock:^{
         ZM_STRONG(self);
-        NSSet *syncInsertedObjects = [ZMOperationLoop objectSetFromObjectIDs:insertedObjectsIDs inContext:self.syncStrategy.syncMOC];
-        NSSet *syncUpdatedObjects = [ZMOperationLoop objectSetFromObjectIDs:updatedObjectsIDs inContext:self.syncStrategy.syncMOC];
-        
-        syncInsertedObjects = [syncInsertedObjects filteredSetUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id  _Nullable evaluatedObject, NSDictionary<NSString *,id> * _Nullable bindings) {
-            return ![evaluatedObject isKindOfClass:[ZMClientMessage class]];
-        }]];
-        
+        NSSet *syncInsertedObjects = [ZMOperationLoop objectSetFromObjectIDs:remainInsertObjectsIDs inContext:self.syncStrategy.syncMOC];
+        NSSet *syncUpdatedObjects = [ZMOperationLoop objectSetFromObjectIDs:remainUpdateObjectsIDs inContext:self.syncStrategy.syncMOC];
         [self.syncStrategy processSaveWithInsertedObjects:syncInsertedObjects updateObjects:syncUpdatedObjects];
         [ZMRequestAvailableNotification notifyNewRequestsAvailable:self];
     }];
     
-    //普通消息发送
-    NSSet *uiInsertedObjects = note.userInfo[NSInsertedObjectsKey];
-    NSSet *messageObjects = [uiInsertedObjects filteredSetUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id  _Nullable evaluatedObject, NSDictionary<NSString *,id> * _Nullable bindings) {
-        return [evaluatedObject isKindOfClass:[ZMClientMessage class]];
-    }]];
     
-    if (messageObjects.count == 0) {
-        return;
-    }
-    
-    NSSet *messageObjectsIds = [ZMOperationLoop objectIDsetFromObject:messageObjects];
-    
-    [self.msgMOC performGroupedBlock:^{
-        ZM_STRONG(self);
-        NSSet *msgMessageObjects = [ZMOperationLoop objectSetFromObjectIDs:messageObjectsIds inContext:self.syncStrategy.msgMOC];
-        [self.syncStrategy processSaveWithInsertedObjects:msgMessageObjects updateObjects:nil];
-        [ZMRequestAvailableNotification msgNotifyNewRequestsAvailable:self];
-    }];
 }
 
 - (void)syncContextDidSave:(NSNotification *)note
@@ -258,7 +268,7 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
         return;
     }
     
-    [self.syncStrategy processSaveWithInsertedObjects:msgInsertedObjects updateObjects:msgUpdatedObjects];
+    [self.syncStrategy processSaveWithMessageInsertedObjects:msgInsertedObjects updateObjects:msgUpdatedObjects];
     [ZMRequestAvailableNotification msgNotifyNewRequestsAvailable:self];
 }
 
@@ -292,7 +302,7 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
         if (self == nil) {
             return nil;
         }
-        ZMTransportRequest *request = [self.syncStrategy nextRequest];
+        ZMTransportRequest *request = [self.syncStrategy messagNextRequest];
         [request addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:self.msgMOC block:^(ZMTransportResponse *response) {
             ZM_STRONG(self);
             [self.syncStrategy.msgMOC enqueueDelayedSaveWithGroup:response.dispatchGroup];

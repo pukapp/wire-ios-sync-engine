@@ -55,6 +55,7 @@
                    localNotificationsDispatcher:(LocalNotificationDispatcher * _Nonnull)localNotificationsDispatcher
                         notificationsDispatcher:(NotificationDispatcher * _Nonnull)notificationsDispatcher
                      applicationStatusDirectory:(ApplicationStatusDirectory * _Nonnull)applicationStatusDirectory
+                    msgApplicationStatusDirectory:(ApplicationStatusDirectory * _Nonnull)msgApplicationStatusDirectory
                                     application:(id<ZMApplication> _Nonnull)application;
 
 - (void)didInterruptUpdateEventsStream;
@@ -62,10 +63,11 @@
 - (void)didFinishSync;
 
 - (ZMTransportRequest *_Nullable)nextRequest;
+- (ZMTransportRequest *_Nullable)messagNextRequest;
 
 - (void)tearDown;
 
-- (void) startTrack;
+- (void) saveHugeConversationMuteInfo;
 
 @property (nonatomic, readonly, nonnull) NSManagedObjectContext *syncMOC;
 @property (nonatomic, readonly, nonnull) NSManagedObjectContext *msgMOC;

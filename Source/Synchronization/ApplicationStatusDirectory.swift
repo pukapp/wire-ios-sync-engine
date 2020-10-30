@@ -42,7 +42,8 @@ public final class ApplicationStatusDirectory : NSObject, ApplicationStatus {
     
     fileprivate var callInProgressObserverToken : Any? = nil
     
-    public init(withManagedObjectContext managedObjectContext : NSManagedObjectContext, cookieStorage : ZMPersistentCookieStorage, requestCancellation: ZMRequestCancellation, application : ZMApplication, syncStateDelegate: ZMSyncStateDelegate, analytics: AnalyticsType? = nil) {
+    public init(withManagedObjectContext managedObjectContext : NSManagedObjectContext,
+                cookieStorage : ZMPersistentCookieStorage, requestCancellation: ZMRequestCancellation, application : ZMApplication, syncStateDelegate: ZMSyncStateDelegate, analytics: AnalyticsType? = nil) {
         self.requestCancellation = requestCancellation
         self.apnsConfirmationStatus = BackgroundAPNSConfirmationStatus(application: application, managedObjectContext: managedObjectContext)
         self.operationStatus = OperationStatus()

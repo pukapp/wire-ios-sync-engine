@@ -117,6 +117,17 @@
             [self.notificationDispatcher didMergeChanges:changedObjectsIDs];
             [self.eventProcessingTracker registerSavePerformed];
         }];
+        
+        [self.msgMOC performGroupedBlock:^{
+            ZM_STRONG(self);
+            if(self == nil || self.tornDown) {
+                return;
+            }
+            [self.msgMOC mergeUserInfoFromUserInfo:userInfo];
+            [self.msgMOC mergeChangesFromContextDidSaveNotification:note];
+            [self.msgMOC processPendingChanges]; // We need this because merging sometimes leaves the MOC in a 'dirty' state
+        }];
+        
     } else if (mocThatSaved.zm_isMsgContext) {
         
         //        RequireString(mocThatSaved != self.syncMOC, "Not the right MOC!");
@@ -175,5 +186,18 @@
     
     return YES;
 }
+
+- (BOOL)processSaveWithMessageInsertedObjects:(NSSet *)insertedObjects updateObjects:(NSSet *)updatedObjects
+{
+    NSSet *allObjects = [NSSet zmSetByCompiningSets:insertedObjects, updatedObjects, nil];
+    
+    for(id<ZMContextChangeTracker> tracker in self.messageTrackers)
+    {
+        [tracker objectsDidChange:allObjects];
+    }
+    
+    return YES;
+}
+
 
 @end

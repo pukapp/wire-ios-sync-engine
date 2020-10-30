@@ -57,6 +57,7 @@ static NSString * const AppstoreURL = @"https://itunes.apple.com/us/app/zeta-cli
 @property (nonatomic) LocalNotificationDispatcher *localNotificationDispatcher;
 @property (nonatomic) NSMutableArray* observersToken;
 @property (nonatomic) ApplicationStatusDirectory *applicationStatusDirectory;
+@property (nonatomic) ApplicationStatusDirectory *applicationMsgStatusDirectory;
 
 @property (nonatomic) TopConversationsDirectory *topConversationsDirectory;
 @property (nonatomic) BOOL hasCompletedInitialSync;
@@ -160,9 +161,12 @@ ZM_EMPTY_ASSERTING_INIT()
         
         [self.syncManagedObjectContext performBlockAndWait:^{
             self.syncManagedObjectContext.zm_userInterfaceContext = self.managedObjectContext;
+            self.syncManagedObjectContext.zm_msgContext = self.msgManagedObjectContext;
+        }];
+        [self.msgManagedObjectContext performBlockAndWait:^{
+            self.msgManagedObjectContext.zm_userInterfaceContext = self.managedObjectContext;
         }];
         self.managedObjectContext.zm_syncContext = self.syncManagedObjectContext;
-        self.syncManagedObjectContext.zm_msgContext = self.msgManagedObjectContext;
         
         NSURL *cacheLocation = [NSFileManager.defaultManager cachesURLForAccountWith:storeProvider.userIdentifier in:storeProvider.applicationContainer];
         [self.class moveCachesIfNeededForAccountWith:storeProvider.userIdentifier in:storeProvider.applicationContainer];
@@ -181,7 +185,7 @@ ZM_EMPTY_ASSERTING_INIT()
         
         self.notificationDispatcher = [[NotificationDispatcher alloc] initWithManagedObjectContext:self.managedObjectContext];
         
-        [self.syncManagedObjectContext performBlockAndWait:^{
+        [self.syncManagedObjectContext performGroupedBlockAndWait:^{
             self.applicationStatusDirectory = [[ApplicationStatusDirectory alloc] initWithManagedObjectContext:self.syncManagedObjectContext
                                                                                                    cookieStorage:transportSession.cookieStorage
                                                                                              requestCancellation:transportSession
@@ -203,6 +207,18 @@ ZM_EMPTY_ASSERTING_INIT()
             self.mediaManager = mediaManager;
             self.hasCompletedInitialSync = !self.applicationStatusDirectory.syncStatus.isSlowSyncing;
         }];
+        
+        [self.msgManagedObjectContext performGroupedBlockAndWait:^{
+            self.msgManagedObjectContext.zm_userImageCache = userImageCache;
+            self.msgManagedObjectContext.zm_conversationAvatarCache = conversationAvatarCache;
+            self.msgManagedObjectContext.zm_fileAssetCache = fileAssetCache;
+            self.applicationMsgStatusDirectory = [[ApplicationStatusDirectory alloc] initWithManagedObjectContext:self.msgManagedObjectContext
+                  cookieStorage:transportSession.cookieStorage
+            requestCancellation:transportSession
+                    application:application
+              syncStateDelegate:self
+                      analytics:analytics];
+        }];
 
         _application = application;
         self.topConversationsDirectory = [[TopConversationsDirectory alloc] initWithManagedObjectContext:self.managedObjectContext];
@@ -215,6 +231,7 @@ ZM_EMPTY_ASSERTING_INIT()
                                                  localNotificationsDispatcher:self.localNotificationDispatcher
                                                       notificationsDispatcher:self.notificationDispatcher
                                                    applicationStatusDirectory:self.applicationStatusDirectory
+                                                msgApplicationStatusDirectory:self.applicationMsgStatusDirectory
                                                                   application:application];
             
             self.operationLoop = operationLoop ?: [[ZMOperationLoop alloc] initWithTransportSession:transportSession
@@ -244,7 +261,7 @@ ZM_EMPTY_ASSERTING_INIT()
         [self observeChangesOnShareExtension];
         
         
-        [self.syncManagedObjectContext performBlockAndWait:^{
+        [self.syncManagedObjectContext performGroupedBlockAndWait:^{
             if (self.clientRegistrationStatus.currentPhase != ZMClientRegistrationPhaseRegistered) {
                 [self.clientRegistrationStatus prepareForClientRegistration];
             }
@@ -255,6 +272,7 @@ ZM_EMPTY_ASSERTING_INIT()
         self.userExpirationObserver = [[UserExpirationObserver alloc] initWithManagedObjectContext:self.managedObjectContext];
         
         [ZMRequestAvailableNotification notifyNewRequestsAvailable:self];
+        [ZMRequestAvailableNotification msgNotifyNewRequestsAvailable:self];
     }
     return self;
 }
@@ -325,7 +343,7 @@ ZM_EMPTY_ASSERTING_INIT()
 - (BOOL)isLoggedIn
 {
     return self.authenticationStatus.isAuthenticated &&
-           self.clientRegistrationStatus.currentPhase == ZMClientRegistrationPhaseRegistered;
+    [self.clientRegistrationStatus isLogin: self.msgManagedObjectContext];
 }
 
 - (void)registerForBackgroundNotifications;
