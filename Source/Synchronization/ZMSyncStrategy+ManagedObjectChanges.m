@@ -26,34 +26,34 @@
 
 - (void)logDidSaveNotification:(NSNotification *)note;
 {
-    NSManagedObjectContext * ZM_UNUSED moc = note.object;
-    ZMLogWithLevelAndTag(ZMLogLevelDebug, ZMTAG_CORE_DATA, @"<%@: %p> did save. Context type = %@",
-                         moc.class, moc,
-                         moc.zm_isUserInterfaceContext ? @"UI" : moc.zm_isSyncContext ? @"Sync" : @"");
-    NSSet *inserted = note.userInfo[NSInsertedObjectsKey];
-    if (inserted.count > 0) {
-        NSString * ZM_UNUSED description = [[inserted.allObjects mapWithBlock:^id(NSManagedObject *mo) {
-            return mo.objectID.URIRepresentation;
-        }] componentsJoinedByString:@", "];
-        ZMLogWithLevelAndTag(ZMLogLevelDebug, ZMTAG_CORE_DATA, @"    Inserted: %@", description);
-        [self.eventProcessingTracker registerDataInsertionPerformedWithAmount:inserted.count];
-    }
-    NSSet *updated = note.userInfo[NSUpdatedObjectsKey];
-    if (updated.count > 0) {
-        NSString * ZM_UNUSED description = [[updated.allObjects mapWithBlock:^id(NSManagedObject *mo) {
-            return mo.objectID.URIRepresentation;
-        }] componentsJoinedByString:@", "];
-        ZMLogWithLevelAndTag(ZMLogLevelDebug, ZMTAG_CORE_DATA, @"    Updated: %@", description);
-        [self.eventProcessingTracker registerDataUpdatePerformedWithAmount:updated.count];
-    }
-    NSSet *deleted = note.userInfo[NSDeletedObjectsKey];
-    if (deleted.count > 0) {
-        NSString * ZM_UNUSED description = [[deleted.allObjects mapWithBlock:^id(NSManagedObject *mo) {
-            return mo.objectID.URIRepresentation;
-        }] componentsJoinedByString:@", "];
-        ZMLogWithLevelAndTag(ZMLogLevelDebug, ZMTAG_CORE_DATA, @"    Deleted: %@", description);
-        [self.eventProcessingTracker registerDataDeletionPerformedWithAmount:deleted.count];
-    }
+//    NSManagedObjectContext * ZM_UNUSED moc = note.object;
+//    ZMLogWithLevelAndTag(ZMLogLevelDebug, ZMTAG_CORE_DATA, @"<%@: %p> did save. Context type = %@",
+//                         moc.class, moc,
+//                         moc.zm_isUserInterfaceContext ? @"UI" : moc.zm_isSyncContext ? @"Sync" : @"");
+//    NSSet *inserted = note.userInfo[NSInsertedObjectsKey];
+//    if (inserted.count > 0) {
+//        NSString * ZM_UNUSED description = [[inserted.allObjects mapWithBlock:^id(NSManagedObject *mo) {
+//            return mo.objectID.URIRepresentation;
+//        }] componentsJoinedByString:@", "];
+//        ZMLogWithLevelAndTag(ZMLogLevelDebug, ZMTAG_CORE_DATA, @"    Inserted: %@", description);
+//        [self.eventProcessingTracker registerDataInsertionPerformedWithAmount:inserted.count];
+//    }
+//    NSSet *updated = note.userInfo[NSUpdatedObjectsKey];
+//    if (updated.count > 0) {
+//        NSString * ZM_UNUSED description = [[updated.allObjects mapWithBlock:^id(NSManagedObject *mo) {
+//            return mo.objectID.URIRepresentation;
+//        }] componentsJoinedByString:@", "];
+//        ZMLogWithLevelAndTag(ZMLogLevelDebug, ZMTAG_CORE_DATA, @"    Updated: %@", description);
+//        [self.eventProcessingTracker registerDataUpdatePerformedWithAmount:updated.count];
+//    }
+//    NSSet *deleted = note.userInfo[NSDeletedObjectsKey];
+//    if (deleted.count > 0) {
+//        NSString * ZM_UNUSED description = [[deleted.allObjects mapWithBlock:^id(NSManagedObject *mo) {
+//            return mo.objectID.URIRepresentation;
+//        }] componentsJoinedByString:@", "];
+//        ZMLogWithLevelAndTag(ZMLogLevelDebug, ZMTAG_CORE_DATA, @"    Deleted: %@", description);
+//        [self.eventProcessingTracker registerDataDeletionPerformedWithAmount:deleted.count];
+//    }
 }
 
 - (void)managedObjectContextDidSave:(NSNotification *)note;
