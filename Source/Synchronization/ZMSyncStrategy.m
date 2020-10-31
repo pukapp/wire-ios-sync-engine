@@ -401,12 +401,6 @@ ZM_EMPTY_ASSERTING_INIT()
     if(self.tornDown) {
         return nil;
     }
-    
-    if (!self.didFetchObjects) {
-        self.didFetchObjects = YES;
-        [self.changeTrackerBootStrap fetchObjectsForChangeTrackers];
-    }
-    
     return [self.requestStrategies firstNonNilReturnedFromSelector:@selector(nextRequest)];
 }
 
@@ -415,16 +409,25 @@ ZM_EMPTY_ASSERTING_INIT()
     if(self.tornDown) {
         return nil;
     }
-    
-    if (!self.didFetchMessageObjects) {
-        self.didFetchMessageObjects = YES;
-        [self.messageChangeTrackerBootStrap fetchObjectsForChangeTrackers];
-    }
-    
     return [self.messageRequestStrategies firstNonNilReturnedFromSelector:@selector(nextRequest)];
 }
 
 - (void) saveHugeConversationMuteInfo {
+    
+    [self.msgMOC performGroupedBlock:^{
+        if (!self.didFetchMessageObjects) {
+            self.didFetchMessageObjects = YES;
+            [self.messageChangeTrackerBootStrap fetchObjectsForChangeTrackers];
+        }
+    }];
+    
+    [self.syncMOC performGroupedBlock:^{
+        if (!self.didFetchObjects) {
+            self.didFetchObjects = YES;
+            [self.changeTrackerBootStrap fetchObjectsForChangeTrackers];
+        }
+    }];
+    
     [[NSNotificationQueue defaultQueue] enqueueNotification:[NSNotification notificationWithName:SaveHugeNoMuteConversationsNotificationName object:nil] postingStyle:NSPostWhenIdle coalesceMask:NSNotificationCoalescingOnName forModes:@[NSDefaultRunLoopMode]];
 }
 

@@ -112,6 +112,9 @@ extern NSString * const ZMUserSessionResetPushTokensNotificationName;
 /// The sync has been completed as least once
 @property (nonatomic, readonly) BOOL hasCompletedInitialSync;
 
+//界面出现
+- (void)uiFinished;
+
 @end
 
 

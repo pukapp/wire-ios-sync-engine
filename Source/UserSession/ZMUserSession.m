@@ -489,6 +489,11 @@ ZM_EMPTY_ASSERTING_INIT()
     return self.applicationStatusDirectory.operationStatus;
 }
 
+- (void)uiFinished {
+    self.notificationDispatcher.isDisabled = NO;
+    [self.syncStrategy saveHugeConversationMuteInfo];
+}
+
 @end
 
 
@@ -570,7 +575,6 @@ ZM_EMPTY_ASSERTING_INIT()
     [self.managedObjectContext performGroupedBlock:^{
         ZM_STRONG(self);
         self.isPerformingSync = YES;
-//        self.notificationDispatcher.isDisabled = YES;
         [self changeNetworkStateAndNotify];
         [self migrateOldAliasname];
     }];
@@ -582,7 +586,6 @@ ZM_EMPTY_ASSERTING_INIT()
     [self.managedObjectContext performGroupedBlock:^{
         ZM_STRONG(self);
         self.hasCompletedInitialSync = YES;
-//        self.notificationDispatcher.isDisabled = NO;
         [ZMUserSession notifyInitialSyncCompletedWithContext:self.managedObjectContext];
     }];
 }
