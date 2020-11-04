@@ -31,9 +31,9 @@ extension CallingRoomManager: CallingSignalManagerDelegate {
         }
     }
 
-    func onReceiveRequest(with method: String, info: JSON) {
+    func onReceiveRequest(with method: String, info: JSON, completion: @escaping (Bool) -> Void) {
         roomWorkQueue.async {
-            self.clientConnectManager?.webSocketReceiveRequest(with: method, info: info)
+            self.clientConnectManager?.webSocketReceiveRequest(with: method, info: info, completion: completion)
         }
     }
     
@@ -61,7 +61,7 @@ protocol CallingClientConnectProtocol {
     init(signalManager: CallingSignalManager, mediaManager: MediaOutputManager, membersManagerDelegate: CallingMembersManagerProtocol, mediaStateManagerDelegate: CallingMediaStateManagerProtocol, observe: CallingClientConnectStateObserve, isStarter: Bool, mediaState: AVSCallMediaState)
     func webSocketConnected()
     func webSocketDisConnected()
-    func webSocketReceiveRequest(with method: String, info: JSON)
+    func webSocketReceiveRequest(with method: String, info: JSON, completion: (Bool) -> Void)
     func webSocketReceiveNewNotification(with noti: String, info: JSON)
     func dispose()
     func setLocalAudio(mute: Bool)

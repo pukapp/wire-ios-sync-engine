@@ -132,8 +132,9 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
         self.peerConnection?.close()
     }
     
-    func webSocketReceiveRequest(with method: String, info: JSON) {
+    func webSocketReceiveRequest(with method: String, info: JSON, completion: (Bool) -> Void) {
         self.handleSocketForwardMessage(with: method, info: info)
+        completion(true)
     }
     
     func webSocketReceiveNewNotification(with noti: String, info: JSON) {

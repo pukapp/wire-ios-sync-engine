@@ -99,7 +99,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     
     var mode: AVSConversationType = .group
     
-    private var device: MPDevice?
+    private var device: MediasoupDevice?
     
     private let signalManager: CallingSignalManager
     private let mediaManager: MediaOutputManager
@@ -137,10 +137,9 @@ class MediasoupClientManager: CallingClientConnectProtocol {
                   mediaState: AVSCallMediaState) {
         zmLog.info("MediasoupClientManager-init")
         
-        Mediasoupclient.initializePC()
-        Logger.setLogLevel(LogLevel.TRACE)
+        //Logger.setLogLevel(LogLevel.TRACE)
         //Logger.setDefaultHandler()
-        self.device = MPDevice()
+        self.device = MediasoupDevice()
         
         self.signalManager = signalManager
         self.mediaManager = mediaManager
@@ -207,12 +206,15 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         self.device = nil
     }
     
-    func webSocketReceiveRequest(with method: String, info: JSON) {
+    func webSocketReceiveRequest(with method: String, info: JSON, completion: (Bool) -> Void) {
         guard let action = MediasoupSignalAction.ReceiveRequest(rawValue: method) else { return }
         zmLog.info("MediasoupClientManager-onReceiveRequest:action:\(action) queue: \(Thread.current)")
         switch action {
         case .newConsumer:
+            //newConsumer这个request信令，必须要等transport创建了consumer之后才能回响应
+            //否则会产生bug:https://mediasoup.discourse.group/t/create-server-side-consumers-with-paused-true/244
             self.handleNewConsumer(with: info)
+            completion(true)
         }
     }
     
@@ -238,14 +240,12 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         
         if self.sendTransport != nil {
             self.sendTransport?.close()
-            self.sendTransport?.dispose()
             self.sendTransport = nil
             self.sendTransportListen = nil
         }
         
         if self.recvTransport != nil {
             self.recvTransport?.close()
-            self.recvTransport?.dispose()
             self.recvTransport = nil
             self.recvTransportListen = nil
         }
@@ -256,7 +256,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     
     func configureDevice() {
         if self.device == nil {
-            self.device = MPDevice()
+            self.device = MediasoupDevice()
         }
         if !self.device!.isLoaded() {
             guard let rtpCapabilities = self.signalManager.requestToGetRoomRtpCapabilities() else {
@@ -493,21 +493,6 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         let producerId: String = consumerInfo["producerId"].stringValue
         let rtpParameters: JSON = consumerInfo["rtpParameters"]
         
-        if kind == "audio" {
-            if firstAudioConsumerDate == nil {
-                firstAudioConsumerDate = Date()
-            } else {
-                if Date().timeIntervalSince(firstAudioConsumerDate!) < 4 {
-                    zmLog.info("MediasoupClientManager-handleNewConsumer-delayDeal:peer:\(peerId),kind:\(kind)")
-                    roomWorkQueue.asyncAfter(deadline: .now() + 4) {
-                        self.handleNewConsumer(with: consumerInfo)
-                    }
-                    return
-                }
-            }
-        }
-
-        zmLog.info("MediasoupClientManager-handleNewConsumer-began:peer:\(peerId),kind:\(kind)")
         let consumerListen = MediasoupConsumerListener(consumerId: id)
         consumerListen.delegate = consumerListen
         let consumer: Consumer = recvTransport.consume(consumerListen.delegate, id: id, producerId: producerId, kind: kind, rtpParameters: rtpParameters.description)

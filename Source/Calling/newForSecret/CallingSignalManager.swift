@@ -19,7 +19,7 @@ protocol CallingSignalManagerDelegate {
     ///needDestory - true: socket会自动重连8次，如果8次都失败，则为true，而前几次则为false
     func socketDisconnected(needDestory: Bool)
     
-    func onReceiveRequest(with method: String, info: JSON)
+    func onReceiveRequest(with method: String, info: JSON, completion: @escaping (Bool) -> Void)
     func onNewNotification(with noti: String, info: JSON)
 }
 
@@ -56,10 +56,11 @@ extension CallingSignalManager: SocketActionDelegate {
 extension CallingSignalManager {
     
     func receiveSocketRequest(with request: CallingSignalRequest) {
-        ///先发response回给服务器
-        let response = CallingSignalResponse(response: true, ok: true,  id: request.id, data: nil)
-        self.send(string: response.jsonString())
-        self.signalManagerDelegate.onReceiveRequest(with: request.method, info: request.data)
+        self.signalManagerDelegate.onReceiveRequest(with: request.method, info: request.data, completion: { isOk in
+            ///发送response回给服务器
+            let response = CallingSignalResponse(response: true, ok: isOk,  id: request.id, data: nil)
+            self.send(string: response.jsonString())
+        })
     }
     
     func receiveSocketResponse(with response: CallingSignalResponse) {
