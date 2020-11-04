@@ -226,7 +226,7 @@ extension CallingMembersManager {
 }
 
 private let resignActiveSpeakingTimeInterval: TimeInterval = 10 //从活跃状态变成不活跃状态的间隔默认为10s
-private let activeSpeakingVolume: Int = -50 //当前音量大于这个值即认为是活跃状态
+private let activeSpeakingVolume: Int = -40 //当前音量大于这个值即认为是活跃状态
 
 extension CallingMembersManager: ActiveSpeakerManagerProtocol {
 
@@ -254,14 +254,13 @@ extension CallingMembersManager: ActiveSpeakerManagerProtocol {
             }
         }
         tempNeedRemoveUser.forEach({ self.activeSpeakers.removeValue(forKey: $0) })
-        //print("aaaa------activeSpeakers:\(activeSpeakers)")
         
         self.membersChanged()
     }
     
     func setMemberActiveSpeaking(_ uid: UUID) {
         guard var member = self.members.first(where: { return $0.remoteId == uid }) as? MeetingParticipant, !member.isSpeaking else {
-            zmLog.info("CallingMembersManager--no peer to setMemberVideo")
+            zmLog.info("CallingMembersManager--no peer to setMemberActiveSpeaking")
             return
         }
         member.isSpeaking = true
@@ -270,7 +269,7 @@ extension CallingMembersManager: ActiveSpeakerManagerProtocol {
     
     func setMemberResignActiveSpeaking(_ uid: UUID) {
         guard var member = self.members.first(where: { return $0.remoteId == uid }) as? MeetingParticipant, member.isSpeaking else {
-            zmLog.info("CallingMembersManager--no peer to setMemberVideo")
+            zmLog.info("CallingMembersManager--no peer to setMemberResignActiveSpeaking")
             return
         }
         member.isSpeaking = false
