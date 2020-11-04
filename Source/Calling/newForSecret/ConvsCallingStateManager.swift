@@ -271,7 +271,7 @@ extension ConvsCallingStateManager {
         if convInfo.convType == .oneToOne {
             convInfo.state = .terminating(reason: reason)
         } else if convInfo.convType == .group {
-            if let leftMemberCount = leftMemberCount, leftMemberCount <= 1, convInfo.state == .terminating(reason: .stillOngoing)  {
+            if let leftMemberCount = leftMemberCount, leftMemberCount <= 1 {
                 convInfo.state = .terminating(reason: reason)
             } else {
                 if convInfo.members.count == 0 {
