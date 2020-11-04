@@ -48,9 +48,9 @@ class CallParticipantsSnapshot {
         let callMembers = members.reduce([CallMemberProtocol]()){ (filtered, member) in
             var newFiltered = filtered
             if let idx = newFiltered.firstIndex(where: { return member.remoteId == $0.remoteId }) {
-                //if !newFiltered[idx].audioEstablished && member.audioEstablished {
+                if !newFiltered[idx].audioEstablished && member.audioEstablished {
                     newFiltered[idx] = member
-                //}
+                }
             } else {
                 newFiltered.append(member)
             }

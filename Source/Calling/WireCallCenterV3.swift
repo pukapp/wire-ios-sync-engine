@@ -586,7 +586,7 @@ extension WireCallCenterV3 {
 
     func meetingPropertyChange(in mid: UUID, with property: MeetingProperty) {
         if let context = uiMOC?.zm_sync {
-            //修改coredata属性需要在syncContext中修改，才能触发通知
+            //修改coredata属性需要在syncContext中修改，才能触发通知,并且需要阻塞住线程
             context.perform {
                 guard let meeting = ZMMeeting.fetchExistingMeeting(with: mid.transportString(), in: context) else {
                     return
@@ -610,12 +610,15 @@ extension WireCallCenterV3 {
                     meeting.state = .off
                 default:break
                 }
-                
                 context.saveOrRollback()
+                
+                //需要回到主线程去刷新页面
+                DispatchQueue.main.async {
+                    WireCallCenterMeetingPropertyChangedNotification(meetingId: mid, property: property).post(in: self.uiMOC!.notificationContext)
+                }
             }
+            
         }
-        
-        WireCallCenterMeetingPropertyChangedNotification(meetingId: mid, property: property).post(in: uiMOC!.notificationContext)
     }
     
 }
