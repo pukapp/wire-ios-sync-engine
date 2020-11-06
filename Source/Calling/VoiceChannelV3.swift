@@ -36,9 +36,11 @@ public class VoiceChannelV3 : NSObject, VoiceChannel {
     }
     
     /// The date and time of current call start
-    public var callStartDate: Date? {
+    public var callEstablishedDate: Date? {
         return self.callCenter?.establishedDate
     }
+    
+    public var callStartDate: Date?
     
     weak public var relyModel: CallRelyModel?
     
@@ -234,6 +236,7 @@ extension VoiceChannelV3: CallActionsInternal {
         default:
             joined = self.callCenter?.startCall(relyModel: relyModel, mediaState: mediaState) ?? false
         }
+        callStartDate = Date()
         
         return joined
     }

@@ -136,6 +136,9 @@ public protocol CallProperties : NSObjectProtocol {
     var callTitle: String? { get }
     
     /// The date and time of current call start
+    var callEstablishedDate: Date? { get }
+    
+    //开始时间
     var callStartDate: Date? { get }
     
     /// Voice channel participants. May be a subset of conversation participants.
