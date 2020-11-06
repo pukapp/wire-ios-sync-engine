@@ -64,6 +64,10 @@ public class ZMLocalNotification: NSObject {
     public var category: String
     public var sound: NotificationSound
     public var userInfo: NotificationUserInfo?
+    
+    deinit {
+        print("ZMLocalNotification deinit")
+    }
 
     init?(conversation: ZMConversation?, builder: NotificationBuilder) {
         guard builder.shouldCreateNotification() else { return nil }
