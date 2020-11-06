@@ -35,11 +35,11 @@ extern NSString * _Nullable const UserMomentAdd;
 @interface ZMUserTranscoder : ZMAbstractRequestStrategy <ZMObjectStrategy>
 
 - (instancetype _Nonnull)initWithManagedObjectContext:(NSManagedObjectContext * _Nonnull)moc
-                                     applicationStatus:(id<ZMApplicationStatus> _Nonnull)applicationStatus NS_UNAVAILABLE;
+                                     applicationStatus:(id<ZMApplicationStatus> _Nullable)applicationStatus NS_UNAVAILABLE;
 
 - (instancetype _Nonnull)initWithManagedObjectContext:(NSManagedObjectContext * _Nonnull)moc
-                                    applicationStatus:(id<ZMApplicationStatus> _Nonnull)applicationStatus
-                                           syncStatus:(SyncStatus * _Nonnull)syncStatus;
+                                    applicationStatus:(id<ZMApplicationStatus> _Nullable)applicationStatus
+                                           syncStatus:(SyncStatus * _Nullable)syncStatus;
 
 + (ZMTransportRequest * _Nullable)requestForRemoteIdentifiers:(NSArray * _Nonnull)remoteIdentifiers;
 

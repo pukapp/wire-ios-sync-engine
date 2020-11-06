@@ -30,6 +30,7 @@ public final class ApplicationStatusDirectory : NSObject, ApplicationStatus {
     public let clientRegistrationStatus : ZMClientRegistrationStatus
     public let clientUpdateStatus : ClientUpdateStatus
     public let pushNotificationStatus : PushNotificationStatus
+    public let pushHugeNotificationStatus : PushHugeNotificationStatus
     public let accountStatus : AccountStatus
     public let proxiedRequestStatus : ProxiedRequestsStatus
     public let syncStatus : SyncStatus
@@ -59,6 +60,7 @@ public final class ApplicationStatusDirectory : NSObject, ApplicationStatus {
                                                                    registrationStatusDelegate: syncStateDelegate)
         self.accountStatus = AccountStatus(managedObjectContext: managedObjectContext)
         self.pushNotificationStatus = PushNotificationStatus(managedObjectContext: managedObjectContext)
+        self.pushHugeNotificationStatus = PushHugeNotificationStatus(managedObjectContext: managedObjectContext)
         self.proxiedRequestStatus = ProxiedRequestsStatus(requestCancellation: requestCancellation)
         self.userProfileImageUpdateStatus = UserProfileImageUpdateStatus(managedObjectContext: managedObjectContext)
         self.assetDeletionStatus = AssetDeletionStatus(provider: managedObjectContext, queue: managedObjectContext)
@@ -107,12 +109,11 @@ public final class ApplicationStatusDirectory : NSObject, ApplicationStatus {
     }
     
     public var notificationFetchStatus: BackgroundNotificationFetchStatus {
-        switch pushNotificationStatus.status {
-        case .done:
+        if case .done = pushNotificationStatus.status,
+            case .done = pushHugeNotificationStatus.status {
             return .done
-        case .inProgress:
-            return syncStatus.isSlowSyncing ? .done : .inProgress
         }
+        return syncStatus.isSlowSyncing ? .done : .inProgress
     }
     
     public func requestSlowSync() {

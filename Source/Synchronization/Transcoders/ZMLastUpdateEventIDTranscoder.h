@@ -27,7 +27,7 @@
 
 @property (nonatomic, readonly) BOOL isDownloadingLastUpdateEventID;
 
-- (instancetype _Nonnull)initWithManagedObjectContext:(NSManagedObjectContext * _Nonnull)moc applicationStatus:(id<ZMApplicationStatus> _Nonnull)applicationStatus NS_UNAVAILABLE;
+- (instancetype _Nonnull)initWithManagedObjectContext:(NSManagedObjectContext * _Nonnull)moc applicationStatus:(id<ZMApplicationStatus> _Nullable)applicationStatus NS_UNAVAILABLE;
 
 - (instancetype _Nonnull)initWithManagedObjectContext:(NSManagedObjectContext * _Nonnull)moc
                                     applicationStatus:(id<ZMApplicationStatus> _Nonnull)applicationStatus
@@ -36,6 +36,6 @@
 
 
 - (void)startRequestingLastUpdateEventIDWithoutPersistingIt;
-- (void)persistLastUpdateEventID;
+//- (void)persistLastUpdateEventID;
 
 @end

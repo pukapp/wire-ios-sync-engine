@@ -26,7 +26,10 @@ extension ZMOperationLoop: ZMPushChannelConsumer {
         if let events = ZMUpdateEvent.eventsArray(fromPushChannelData: data), !events.isEmpty {
             Logging.eventProcessing.info("Received \(events.count) events from push channel")
             events.forEach({ $0.appendDebugInformation("from push channel (web socket)")})
-            syncStrategy.process(updateEvents: events, ignoreBuffer: false)
+            let hugeEvents = events.filter {$0.convType == .huge}
+            let normalEvents = events.filter {$0.convType != .huge && $0.convType != .iTask}
+            syncStrategy.process(updateEvents: normalEvents, ignoreBuffer: false)
+            syncStrategy.processHuge(updateEvents: hugeEvents, ignoreBuffer: false)
         }
     }
     

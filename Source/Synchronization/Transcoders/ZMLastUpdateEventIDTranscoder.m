@@ -61,14 +61,14 @@
     [self.lastUpdateEventIDSync readyForNextRequest];
 }
 
-- (void)persistLastUpdateEventID
-{
-    if(self.lastUpdateEventID != nil) {
-        ZMMissingUpdateEventsTranscoder *noteSync = [self.directory missingUpdateEventsTranscoder];
-        noteSync.lastUpdateEventID = self.lastUpdateEventID;
-    }
-    self.lastUpdateEventID = nil;
-}
+//- (void)persistLastUpdateEventID
+//{
+//    if(self.lastUpdateEventID != nil) {
+//        ZMMissingUpdateEventsTranscoder *noteSync = [self.directory missingUpdateEventsTranscoder];
+//        noteSync.lastUpdateEventID = self.lastUpdateEventID;
+//    }
+//    self.lastUpdateEventID = nil;
+//}
 
 - (BOOL)isDownloadingLastUpdateEventID
 {
@@ -139,6 +139,7 @@
         self.lastUpdateEventID = lastNotificationID;
         if (status.currentSyncPhase == self.expectedSyncPhase) {
             [status updateLastUpdateEventIDWithEventID:lastNotificationID];
+            [status updateLastHugeUpdateEventIDWithEventID:lastNotificationID];
             [status finishCurrentSyncPhaseWithPhase:self.expectedSyncPhase];
         }
     }

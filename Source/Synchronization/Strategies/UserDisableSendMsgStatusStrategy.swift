@@ -20,7 +20,7 @@ public final class UserDisableSendMsgStatusStrategy: ZMObjectSyncStrategy, ZMObj
     fileprivate(set) var modifiedSync: ZMUpstreamModifiedObjectSync! = nil
     fileprivate(set) var insertSync: ZMUpstreamInsertedObjectSync! = nil
     public var requestsFactory: UserDisableSendMsgRequestFactory! = nil
-    public weak var dispatcher: LocalNotificationDispatcher! = nil
+    public weak var dispatcher: LocalNotificationDispatcher?
     
     fileprivate var didRetryRegisteringSignalingKeys : Bool = false
     
@@ -38,7 +38,7 @@ public final class UserDisableSendMsgStatusStrategy: ZMObjectSyncStrategy, ZMObj
         }
     }
     
-    public init(context: NSManagedObjectContext, dispatcher: LocalNotificationDispatcher)
+    public init(context: NSManagedObjectContext, dispatcher: LocalNotificationDispatcher? = nil)
     {
         super.init(managedObjectContext: context)
         self.dispatcher = dispatcher
@@ -176,7 +176,7 @@ public final class UserDisableSendMsgStatusStrategy: ZMObjectSyncStrategy, ZMObj
     func appendSystemMessage(event: ZMUpdateEvent, inConversation:ZMConversation) {
         guard let context = self.managedObjectContext else {return}
         guard let systemMessage = ZMSystemMessage.createOrUpdate(from: event, in: context) else {return}
-        self.dispatcher.process(systemMessage)
+        self.dispatcher?.process(systemMessage)
     }
     
 }

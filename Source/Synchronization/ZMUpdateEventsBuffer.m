@@ -23,7 +23,7 @@
 
 @property (nonatomic, readonly, weak) id<ZMUpdateEventConsumer> consumer;
 @property (nonatomic, readonly) NSMutableArray *bufferedEvents;
-
+@property (nonatomic, readonly) BOOL isHuge;
 @end
 
 
@@ -31,12 +31,13 @@
 
 @implementation ZMUpdateEventsBuffer
 
-- (instancetype)initWithUpdateEventConsumer:(id<ZMUpdateEventConsumer>)eventConsumer
+- (instancetype)initWithUpdateEventConsumer:(id<ZMUpdateEventConsumer>)eventConsumer isHuge:(BOOL) ishuge
 {
     self = [super self];
     if(self) {
         _bufferedEvents = [NSMutableArray array];
         _consumer = eventConsumer;
+        _isHuge = ishuge;
     }
     return self;
 }
@@ -48,8 +49,16 @@
 
 - (void)processAllEventsInBuffer
 {
-    [self.consumer consumeUpdateEvents:self.bufferedEvents];
+    self.isHuge ? [self processHugeEvents] : [self processEvents];
     [self.bufferedEvents removeAllObjects];
+}
+
+- (void)processEvents {
+    [self.consumer consumeUpdateEvents:self.bufferedEvents];
+}
+
+- (void)processHugeEvents {
+    [self.consumer consumeHugeUpdateEvents:self.bufferedEvents];
 }
 
 - (void)discardAllUpdateEvents

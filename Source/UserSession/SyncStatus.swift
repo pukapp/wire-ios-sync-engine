@@ -23,6 +23,7 @@
     case fetchingUsers
     case fetchingSelfUser
     case fetchingMissedEvents
+    case fetchingHugeMissedEvents
     case done
     
     var isLastSlowSyncPhase : Bool {
@@ -51,6 +52,8 @@
             return "fetchingSelfUser"
         case .fetchingMissedEvents:
             return "fetchingMissedEvents"
+        case .fetchingHugeMissedEvents:
+            return "fetchingHugeMissedEvents"
         case .done:
             return "done"
         }
@@ -81,6 +84,7 @@ extension Notification.Name {
     }
 
     fileprivate var lastUpdateEventID : UUID?
+    fileprivate var lastHugeUpdateEventID : UUID?
     fileprivate unowned var managedObjectContext: NSManagedObjectContext
     fileprivate unowned var syncStateDelegate: ZMSyncStateDelegate
     fileprivate var forceSlowSyncToken : Any?
@@ -94,7 +98,7 @@ extension Notification.Name {
     }
     
     public var isSlowSyncing : Bool {
-        return !currentSyncPhase.isOne(of: [.fetchingMissedEvents, .done])
+        return !currentSyncPhase.isOne(of: [.fetchingMissedEvents, .fetchingHugeMissedEvents, .done])
     }
     
     public var isSyncing : Bool {
@@ -187,10 +191,18 @@ extension SyncStatus {
         lastUpdateEventID = eventID
     }
     
+    public func updateLastHugeUpdateEventID(eventID : UUID) {
+        zmLog.debug("update last huge eventID: \(eventID)")
+        lastHugeUpdateEventID = eventID
+    }
+    
     public func persistLastUpdateEventID() {
         guard let lastUpdateEventID = lastUpdateEventID else { return }
+        guard let lastHugeUpdateEventID = lastHugeUpdateEventID else { return }
         zmLog.debug("persist last eventID: \(lastUpdateEventID)")
+        zmLog.debug("persist last huge eventID: \(lastHugeUpdateEventID)")
         managedObjectContext.zm_lastNotificationID = lastUpdateEventID
+        managedObjectContext.zm_lastHugeNotificationID = lastHugeUpdateEventID
     }
 }
 

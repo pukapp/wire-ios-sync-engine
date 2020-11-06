@@ -25,6 +25,8 @@
 
 - (void)consumeUpdateEvents:(NSArray<ZMUpdateEvent *>* _Nonnull)updateEvents NS_SWIFT_NAME(consume(updateEvents:));
 
+- (void)consumeHugeUpdateEvents:(NSArray<ZMUpdateEvent *>* _Nonnull)updateEvents NS_SWIFT_NAME(consumeHuge(updateEvents:));
+
 @end
 
 @protocol ZMUpdateEventsFlushableCollection <NSObject>
@@ -37,7 +39,7 @@
 
 @interface ZMUpdateEventsBuffer : NSObject <ZMUpdateEventsFlushableCollection>
 
-- (instancetype _Nonnull )initWithUpdateEventConsumer:(id <ZMUpdateEventConsumer> _Nonnull)eventConsumer;
+- (instancetype _Nonnull )initWithUpdateEventConsumer:(id <ZMUpdateEventConsumer> _Nonnull)eventConsumer isHuge:(BOOL) ishuge;
 
 /// discard all events in the buffer
 - (void)discardAllUpdateEvents;
@@ -48,5 +50,7 @@
 - (void)addUpdateEvent:(ZMUpdateEvent *_Nonnull)event;
 
 - (NSArray *_Nonnull)updateEvents;
+
+- (BOOL)isHuge;
 
 @end

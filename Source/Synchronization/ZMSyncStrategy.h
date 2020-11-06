@@ -75,6 +75,7 @@
 @property (nonatomic, readonly, nonnull) CallingRequestStrategy *callingRequestStrategy;
 @property (nonatomic, readonly, nonnull) EventDecoder *eventDecoder;
 @property (nonatomic, readonly, nonnull) ZMUpdateEventsBuffer *eventsBuffer;
+@property (nonatomic, readonly, nonnull) ZMUpdateEventsBuffer *hugeEventsBuffer;
 @property (nonatomic, readonly, nonnull) NSArray<id<ZMEventConsumer>> *eventConsumers;
 @property (nonatomic, weak, readonly, nullable) LocalNotificationDispatcher *localNotificationDispatcher;
 @property (nonatomic, readonly) BOOL isReadyToProcessEvents;

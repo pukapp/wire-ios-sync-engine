@@ -420,7 +420,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
                                                                   inContext:self.managedObjectContext];
     
     ZMConnection *connection = [ZMConnection connectionWithUserUUID:userId
-                                                          inContext:self.managedObjectContext.zm_syncContext];
+                                                          inContext:self.managedObjectContext];
     
     conversation.conversationType = ZMConversationTypeOneOnOne;
     conversation.connection = connection;
@@ -517,6 +517,10 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
 
 - (void)markConversationForDownloadIfNeeded:(ZMConversation *)conversation afterEvent:(ZMUpdateEvent *)event {
+    
+    if (conversation.conversationType == ZMConversationTypeHugeGroup) {
+        return;
+    }
     
     if (event.type == ZMUpdateEventTypeConversationMemberLeave) {
         NSDictionary *data = [event.payload dictionaryForKey:@"data"];
@@ -761,9 +765,10 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         if (membersCountNumber != nil) {
             conversation.membersCount = membersCountNumber.integerValue;
         }
-    } else {
-        conversation.membersCount = (NSInteger)conversation.activeParticipants.count;
     }
+//    else {
+//        conversation.membersCount = (NSInteger)conversation.activeParticipants.count;
+//    }
 }
 
 - (void)shouldDeleteConversation: (ZMConversation *)conversation ifSelfUserLeftWithEvent: (ZMUpdateEvent *)event {

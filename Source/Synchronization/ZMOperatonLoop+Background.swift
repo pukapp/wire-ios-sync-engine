@@ -41,14 +41,27 @@ public extension ZMOperationLoop {
                 return completionHandler()
             }
             
-            self.pushNotificationStatus.fetch(eventId: nonce, completionHandler: {
-                 self.callEventStatus.waitForCallEventProcessingToComplete { [weak self] in
-                    guard let strongSelf = self else { return }
-                    strongSelf.syncMOC.performGroupedBlock {
-                        completionHandler()
+            if payload.hugeGroupConversationId() != nil {
+                self.pushHugeNotificationStatus.fetch(eventId: nonce, completionHandler: {
+                     self.callEventStatus.waitForCallEventProcessingToComplete { [weak self] in
+                        guard let strongSelf = self else { return }
+                        strongSelf.syncMOC.performGroupedBlock {
+                            completionHandler()
+                        }
                     }
-                }
-            })
+                })
+            } else if payload.accountId() != nil  {
+                self.pushNotificationStatus.fetch(eventId: nonce, completionHandler: {
+                     self.callEventStatus.waitForCallEventProcessingToComplete { [weak self] in
+                        guard let strongSelf = self else { return }
+                        strongSelf.syncMOC.performGroupedBlock {
+                            completionHandler()
+                        }
+                    }
+                })
+            }
+            
+            
         }
     }
     

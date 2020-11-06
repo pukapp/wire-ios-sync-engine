@@ -28,7 +28,7 @@
 
 static NSString * const LastUpdateEventIDStoreKey = @"LastUpdateEventID";
 static NSString * const NotificationsKey = @"notifications";
-static NSString * const NotificationsPath = @"/notifications";
+static NSString * const NotificationsPath = @"/notifications/user";
 static NSString * const StartKey = @"since";
 
 NSUInteger const ZMMissingUpdateEventsTranscoderListPageSize = 500;
@@ -235,7 +235,7 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
     }
     
     for (ZMUpdateEvent *event in events) {
-        if (event.uuid != nil && ! event.isTransient && event.source != ZMUpdateEventSourcePushNotification) {
+        if (event.uuid != nil && !event.isTransient && !event.isHuge) {
             self.lastUpdateEventID = event.uuid;
         }
     }
@@ -253,8 +253,11 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
     // or if we have a new notification ID that requires a pingback.
     if (self.isFetchingStreamForAPNS || self.isFetchingStreamInBackground || self.isSyncing) {
         
+        NSLog(@"isFetchingStreamForAPNS: %d  isFetchingStreamInBackground %d  isSyncing: %d",self.isFetchingStreamForAPNS, self.isFetchingStreamInBackground, self.isSyncing);
+        
         // We only reset the paginator if it is neither in progress nor has more pages to fetch.
-        if (self.listPaginator.status != ZMSingleRequestInProgress && !self.listPaginator.hasMoreToFetch) {
+        if (self.listPaginator.status != ZMSingleRequestInProgress && !self.listPaginator.hasMoreToFetch &&
+            !self.listPaginator.inProgress) {
             [self.listPaginator resetFetching];
         }
 

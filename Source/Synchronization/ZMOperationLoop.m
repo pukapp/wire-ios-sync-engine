@@ -374,6 +374,11 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
     return self.applicationStatusDirectory.pushNotificationStatus;
 }
 
+- (PushHugeNotificationStatus *)pushHugeNotificationStatus
+{
+    return self.applicationStatusDirectory.pushHugeNotificationStatus;
+}
+
 - (CallEventStatus *)callEventStatus {
     return self.applicationStatusDirectory.callEventStatus;
 }
