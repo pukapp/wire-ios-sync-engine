@@ -28,15 +28,6 @@ enum MediasoupSignalAction {
         
         case peerLeave
         
-//        var needProcessResponse: Bool {
-//            switch self {
-//            case .getRouterRtpCapabilities, .loginRoom, .createWebRtcTransport, .produceTransport:
-//                return true
-//            default:
-//                return false
-//            }
-//        }
-        
         var description: String {
             switch self {
             case .getRouterRtpCapabilities:

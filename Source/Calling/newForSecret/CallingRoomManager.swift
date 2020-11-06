@@ -278,8 +278,15 @@ extension CallingRoomManager: CallingClientConnectStateObserve {
     
     func onReceivePropertyChange(with property: MeetingProperty) {
         guard let roomId = self.roomId else { return }
-        if case .terminateMeet = property {
+        //被移除了，或者会议结束了，则需要关闭房间
+        switch property {
+        case .removeUser(let userId):
+            if self.userId?.transportString() == userId {
+                self.delegate?.onCallEnd(conversationId: roomId, reason: .terminate)
+            }
+        case .terminateMeet:
             self.delegate?.onCallEnd(conversationId: roomId, reason: .terminate)
+        default:break
         }
         self.delegate?.onReceiveMeetingPropertyChange(in: roomId, with: property)
     }

@@ -190,14 +190,12 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         
         if self.sendTransport != nil {
             self.sendTransport?.close()
-            self.sendTransport?.dispose()
             self.sendTransport = nil
             self.sendTransportListen = nil
         }
         
         if self.recvTransport != nil {
             self.recvTransport?.close()
-            self.recvTransport?.dispose()
             self.recvTransport = nil
             self.recvTransportListen = nil
         }
@@ -249,7 +247,8 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             self.recvTransport = nil
             self.recvTransportListen = nil
         }
-
+        //Consumers必须在transport之后释放，因为transport释放了之后会去通知consumerListener，去释放consumers
+        self.peerConsumers.removeAll()
         zmLog.info("Mediasoup::dispose")
         self.device = nil
     }
@@ -528,10 +527,10 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         case ("audio", .consumerPaused):
             consumer.pause()
             self.membersManagerDelegate.setMemberAudio(true, mid: peer.peerId)
-        case ("audio", .consumerClosed):
-            peer.removeConsumer(consumerId)
+        case ("audio", .consumerClosed):break
+            //peer.removeConsumer(consumerId)
         case ("video", .consumerClosed):
-            peer.removeConsumer(consumerId)
+            //peer.removeConsumer(consumerId)
             if consumer.getKind() == "video" {
                 self.mediaStateManagerDelegate.removeVideoTrack(with: peer.peerId)
                 self.membersManagerDelegate.setMemberVideo(.stopped, mid: peer.peerId)
