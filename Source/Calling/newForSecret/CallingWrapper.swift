@@ -11,7 +11,7 @@ import SwiftyJSON
 
 private let zmLog = ZMSLog(tag: "calling")
 
-//目前单聊采用webrtc,打洞失败才走mediasoup,群语音则采用mediasoup
+//目前单聊采用webrtc,打洞失败才走mediasoup,群语音和会议则采用mediasoup
 public class CallingWrapper: AVSWrapperType {
     
     private let userId: UUID
@@ -174,7 +174,7 @@ struct CallingModel {
         self.cid = callEvent.conversationId
         self.userId = callEvent.userId
         self.clientId = callEvent.clientId
-        self.callDate = callEvent.currentTimestamp
+        self.callDate = callEvent.serverTimestamp
         
         let json = JSON(parseJSON: String(data: callEvent.data, encoding: .utf8)!)
         
@@ -220,6 +220,8 @@ struct CallingModel {
     }
 }
 
+let doNotDealCallingEventTimeInterval: TimeInterval = 90
+
 ///receive--CallingAction
 extension CallingWrapper {
     
@@ -243,13 +245,12 @@ extension CallingWrapper {
         zmLog.info("mediasoup::sendCallingAction---action:\(action)--cid:\(cid)--uid:\(self.userId)--clientId:\(self.clientId)\n")
         self.sendMessage(with: cid, data: json.description.data(using: .utf8)!)
     }
-    
+
     func receiveCallingAction(with model: CallingModel) {
-        if model.callDate.compare(Date(timeIntervalSinceNow: -60)) == .orderedAscending {
-            ///信令发送时间小于当前时间60s前，则认为该信令无效
-            if model.callAction == .start {
-                self.callCenter?.handleMissedCall(conversationId: model.cid, messageTime: model.callDate, userId: model.userId, isVideoCall: model.mediaState?.needSendVideo ?? false)
-            }
+        if model.callDate.compare(Date(timeIntervalSinceNow: -doNotDealCallingEventTimeInterval)) == .orderedAscending && model.callAction == .start {
+            zmLog.info("mediasoup::receiveInvalidStartCallingAction---action:\(model.callAction)--callDate:\(model.callDate)")
+            ///开始信令发送时间小于当前时间90s前，则认为该信令无效
+            self.callCenter?.handleMissedCall(conversationId: model.cid, messageTime: model.callDate, userId: model.userId, isVideoCall: model.mediaState?.needSendVideo ?? false)
             return
         }
         
@@ -257,8 +258,7 @@ extension CallingWrapper {
             zmLog.info("mediasoup::receiveIgnoreCallingAction---action:\(model.callAction)--cid:\(model.cid)--uid:\(model.userId)--clientId:\(model.clientId)\n")
             return
         }
-        
-        zmLog.info("mediasoup::receiveCallingAction---action:\(model.callAction)--cid:\(model.cid)--uid:\(model.userId)--clientId:\(model.clientId)\n")
+        zmLog.info("mediasoup::receiveCallingAction---action:\(model.callAction)--cid:\(model.cid)--uid:\(model.userId)--clientId:\(model.clientId)--callDate:\(model.callDate)")
         switch model.callAction {
         case .start:
             self.callStateManager.observer = self
