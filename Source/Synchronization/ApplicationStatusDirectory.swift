@@ -109,8 +109,14 @@ public final class ApplicationStatusDirectory : NSObject, ApplicationStatus {
     }
     
     public var notificationFetchStatus: BackgroundNotificationFetchStatus {
-        if case .done = pushNotificationStatus.status,
-            case .done = pushHugeNotificationStatus.status {
+        if case .done = pushNotificationStatus.status {
+            return .done
+        }
+        return syncStatus.isSlowSyncing ? .done : .inProgress
+    }
+    
+    public var notificationHugeFetchStatus: BackgroundNotificationFetchStatus {
+        if case .done = pushHugeNotificationStatus.status {
             return .done
         }
         return syncStatus.isSlowSyncing ? .done : .inProgress

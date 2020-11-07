@@ -96,7 +96,7 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
 
 - (BOOL)isFetchingStreamForAPNS
 {
-    return self.applicationStatus.notificationFetchStatus == BackgroundNotificationFetchStatusInProgress;
+    return self.applicationStatus.notificationHugeFetchStatus == BackgroundNotificationFetchStatusInProgress;
 }
 
 - (BOOL)isFetchingStreamInBackground

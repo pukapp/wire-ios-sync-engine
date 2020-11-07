@@ -375,6 +375,7 @@
 		A093F02D2553B42700DC9823 /* ZMMissingHugeUpdateEventsTranscoder.h in Headers */ = {isa = PBXBuildFile; fileRef = A093F02B2553B42700DC9823 /* ZMMissingHugeUpdateEventsTranscoder.h */; };
 		A093F0312553B4BC00DC9823 /* ZMMissingHugeUpdateEventsTranscoder+Internal.h in Headers */ = {isa = PBXBuildFile; fileRef = A093F0302553B4BC00DC9823 /* ZMMissingHugeUpdateEventsTranscoder+Internal.h */; };
 		A093F03B2554F15B00DC9823 /* ZMSyncStrategy+HugeEventProcessing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A093F03A2554F15B00DC9823 /* ZMSyncStrategy+HugeEventProcessing.swift */; };
+		A093F03E2555A2C200DC9823 /* ZMConnectionTranscoder.h in Headers */ = {isa = PBXBuildFile; fileRef = 54F8D6DD19AB535700146664 /* ZMConnectionTranscoder.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		A0AC16D724EA337A0027C4A2 /* ApnsPushTokenStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0AC16D624EA337A0027C4A2 /* ApnsPushTokenStrategy.swift */; };
 		A0CA818324E5405200074AE6 /* ZMLocalNotification+Notification.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0CA818224E5405200074AE6 /* ZMLocalNotification+Notification.swift */; };
 		A0DA4ADC2514BB9400B3E17F /* ZMLocalNotification+NSEMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0DA4ADB2514BB9400B3E17F /* ZMLocalNotification+NSEMessages.swift */; };
@@ -988,7 +989,6 @@
 		A093F02A2553B42700DC9823 /* ZMMissingHugeUpdateEventsTranscoder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ZMMissingHugeUpdateEventsTranscoder.m; sourceTree = "<group>"; };
 		A093F02B2553B42700DC9823 /* ZMMissingHugeUpdateEventsTranscoder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ZMMissingHugeUpdateEventsTranscoder.h; sourceTree = "<group>"; };
 		A093F0302553B4BC00DC9823 /* ZMMissingHugeUpdateEventsTranscoder+Internal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "ZMMissingHugeUpdateEventsTranscoder+Internal.h"; sourceTree = "<group>"; };
-		A093F0362553BDD100DC9823 /* WireDataModel.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = WireDataModel.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A093F03A2554F15B00DC9823 /* ZMSyncStrategy+HugeEventProcessing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZMSyncStrategy+HugeEventProcessing.swift"; sourceTree = "<group>"; };
 		A0AC16D624EA337A0027C4A2 /* ApnsPushTokenStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApnsPushTokenStrategy.swift; sourceTree = "<group>"; };
 		A0CA818224E5405200074AE6 /* ZMLocalNotification+Notification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZMLocalNotification+Notification.swift"; sourceTree = "<group>"; };
@@ -2361,6 +2361,7 @@
 				F9F631431DE3534F00416938 /* ZMTyping.h in Headers */,
 				544BA1231A433DE400D3B852 /* ZMUserSession.h in Headers */,
 				16DCAD671B0F9447008C1DD9 /* NSURL+LaunchOptions.h in Headers */,
+				A093F03E2555A2C200DC9823 /* ZMConnectionTranscoder.h in Headers */,
 				544BA1241A433DE400D3B852 /* ZMUserSession+Background.h in Headers */,
 				09531F161AE960E300B8556A /* ZMLoginCodeRequestTranscoder.h in Headers */,
 				872A2F002004B9EF00900B22 /* ZMUpdateEventsBuffer.h in Headers */,
