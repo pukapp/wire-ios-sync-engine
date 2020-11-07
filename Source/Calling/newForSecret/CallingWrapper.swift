@@ -47,7 +47,7 @@ public class CallingWrapper: AVSWrapperType {
     }
     
     public func endCall(conversationId: UUID, reason: CallClosedReason) {
-        zmLog.info("Mediasoup::Wrapper-endCall--\(reason)")
+        zmLog.info("wrapper:endCall--\(reason)")
         callStateManager.endCall(cid: conversationId, reason: reason)
     }
     
@@ -60,7 +60,7 @@ public class CallingWrapper: AVSWrapperType {
     }
     
     public func received(callEvent: CallEvent) -> CallError? {
-        guard let callModel = CallingModel(callEvent: callEvent) else {
+        guard let callModel = CallingEventModel(callEvent: callEvent) else {
             return CallError.unknownProtocol
         }
 
@@ -137,14 +137,6 @@ extension CallingWrapper: ConvsCallingStateObserve {
     
 }
 
-extension CallingWrapper {
-    
-    func sendMessage(with cid: UUID, data: Data) {
-        let token = Unmanaged.passUnretained(self).toOpaque()
-        self.callCenter?.handleCallMessageRequest(token: token, conversationId: cid, senderUserId: self.userId, senderClientId: self.clientId, data: data)
-    }
-}
-
 enum CallingAction: Int {
     case start = 0
     case answer = 1
@@ -155,74 +147,65 @@ enum CallingAction: Int {
     case busy = 6
 }
 
-struct CallingModel {
-
-    let callAction: CallingAction
-    let to: CallStarter? ///消息接受者,当为nil时代表所有人都需要接收
-    let memberCount: Int? ///用来记录群聊时剩余的通话人数，当为0 则所有人的状态改变 有stillgoingOn -> end
-    let convType:  AVSConversationType?
-    let mediaState:  AVSCallMediaState?
+struct CallingEventModel {
+    
+    struct CallingInfo {
+        let callAction: CallingAction
+        var to: CallStarter? ///消息接受者,当为nil时代表所有人都需要接收
+        var memberCount: Int? ///用来记录群聊时剩余的通话人数，当为0 则所有人的状态改变 有stillgoingOn -> end
+        var convType:  AVSConversationType?
+        var mediaState:  AVSCallMediaState?
+        var data: Data?
+        
+        init?(json: JSON) {
+            guard let callActionValue = json["call_state"].int,
+                let callAction = CallingAction(rawValue: callActionValue) else {
+                return nil
+            }
+            self.callAction = callAction
+            
+            if let to = json["to"].dictionary, let userId = to["user_id"]?.string, let clientId =  to["client_id"]?.string {
+                self.to = (UUID(uuidString: userId)!, clientId)
+            }
+            if let memberCount = json["member_count"].int {
+                self.memberCount = memberCount
+            }
+            if let convTypeValue = json["conv_type"].int,
+                let convType = AVSConversationType(rawValue: Int32(convTypeValue)) {
+                self.convType = convType
+            }
+            if let callTypeValue = json["call_type"].int,
+                let mediaState = AVSCallMediaState(rawValue: callTypeValue) {
+                self.mediaState = mediaState
+            }
+            if let data = try? json["data"].rawData() {
+                self.data = data
+            }
+        }
+    }
     
     let cid: UUID
     let userId: UUID
     let clientId:  String
     let callDate: Date
-    
-    var data: Data?
+
+    let info: CallingInfo
     
     init?(callEvent: CallEvent) {
+        let json = JSON(parseJSON: String(data: callEvent.data, encoding: .utf8)!)
+        guard let info = CallingInfo(json: json) else {
+            return nil
+        }
+        self.info = info
+        
         self.cid = callEvent.conversationId
         self.userId = callEvent.userId
         self.clientId = callEvent.clientId
         self.callDate = callEvent.serverTimestamp
-        
-        let json = JSON(parseJSON: String(data: callEvent.data, encoding: .utf8)!)
-        
-        if let to = json["to"].dictionary {
-            if to["user_id"] == nil {
-                self.to = nil
-            } else {
-                self.to = (UUID(uuidString: to["user_id"]!.stringValue)!, to["client_id"]!.stringValue)
-            }
-        } else {
-            self.to = nil
-        }
-        
-        if let memberCount = json["member_count"].int {
-            self.memberCount = memberCount
-        } else {
-            self.memberCount = nil
-        }
-        
-        guard let callActionValue = json["call_state"].int,
-            let callAction = CallingAction(rawValue: callActionValue) else {
-            return nil
-        }
-        self.callAction = callAction
-        
-        if let convTypeValue = json["conv_type"].int,
-            let convType = AVSConversationType(rawValue: Int32(convTypeValue)) {
-            self.convType = convType
-        } else {
-            self.convType = nil
-        }
-        
-        if let callTypeValue = json["call_type"].int,
-            let mediaState = AVSCallMediaState(rawValue: callTypeValue) {
-            self.mediaState = mediaState
-        } else {
-            self.mediaState = nil
-        }
-        
-        if let data = try? json["data"].rawData() {
-            self.data = data
-        }
     }
 }
 
-let doNotDealCallingEventTimeInterval: TimeInterval = 90
-
-///receive--CallingAction
+///SendCallingAction
 extension CallingWrapper {
     
     fileprivate func sendCallingAction(with action: CallingAction, cid: UUID, convType: AVSConversationType? = nil, mediaState: AVSCallMediaState? = nil, to: CallStarter? = nil, memberCount: Int? = nil, data: Data? = nil) {
@@ -242,28 +225,48 @@ extension CallingWrapper {
         if let data = data {
             json["data"] = JSON(data)
         }
-        zmLog.info("mediasoup::sendCallingAction---action:\(action)--cid:\(cid)--uid:\(self.userId)--clientId:\(self.clientId)\n")
+        zmLog.info("wrapper:sendCallingAction---json:\(json)")
         self.sendMessage(with: cid, data: json.description.data(using: .utf8)!)
     }
+    
+    func sendMessage(with cid: UUID, data: Data) {
+        let token = Unmanaged.passUnretained(self).toOpaque()
+        self.callCenter?.handleCallMessageRequest(token: token, conversationId: cid, senderUserId: self.userId, senderClientId: self.clientId, data: data)
+    }
+    
+}
 
-    func receiveCallingAction(with model: CallingModel) {
-        if model.callDate.compare(Date(timeIntervalSinceNow: -doNotDealCallingEventTimeInterval)) == .orderedAscending && model.callAction == .start {
-            zmLog.info("mediasoup::receiveInvalidStartCallingAction---action:\(model.callAction)--callDate:\(model.callDate)")
-            ///开始信令发送时间小于当前时间90s前，则认为该信令无效
-            self.callCenter?.handleMissedCall(conversationId: model.cid, messageTime: model.callDate, userId: model.userId, isVideoCall: model.mediaState?.needSendVideo ?? false)
+
+let doNotDealCallingEventTimeInterval: TimeInterval = 90
+
+///ReceiveCallingAction
+extension CallingWrapper {
+
+    func receiveCallingAction(with model: CallingEventModel) {
+        zmLog.info("wrapper:receiveCallingAction--action:\(model.info.callAction),cid:\(model.cid),uid:\(model.userId),callDate:\(model.callDate)")
+        
+       ///开始信令发送时间小于当前时间90s前，则认为该信令无效
+        if model.callDate.compare(Date(timeIntervalSinceNow: -doNotDealCallingEventTimeInterval)) == .orderedAscending && model.info.callAction == .start {
+            self.callCenter?.handleMissedCall(conversationId: model.cid, messageTime: model.callDate, userId: model.userId, isVideoCall: model.info.mediaState?.needSendVideo ?? false)
+            return
+        }
+        //当前正在通话时，接收到了别人的电话邀请，则返回busy，并且显示一条miss的电话消息
+        if self.callStateManager.isCalling && model.info.callAction == .start {
+            self.sendCallingAction(with: .busy, cid: model.cid)
+            self.callCenter?.handleMissedCall(conversationId: model.cid, messageTime: model.callDate, userId: model.userId, isVideoCall: model.info.mediaState?.needSendVideo ?? false)
             return
         }
         
-        if let toUser = model.to?.userId, toUser != self.userId {
-            zmLog.info("mediasoup::receiveIgnoreCallingAction---action:\(model.callAction)--cid:\(model.cid)--uid:\(model.userId)--clientId:\(model.clientId)\n")
+        //如果消息是发给某个人的，则不是发给自己的就不接受
+        if let toUser = model.info.to?.userId, toUser != self.userId {
             return
         }
-        zmLog.info("mediasoup::receiveCallingAction---action:\(model.callAction)--cid:\(model.cid)--uid:\(model.userId)--clientId:\(model.clientId)--callDate:\(model.callDate)")
-        switch model.callAction {
+        
+        switch model.info.callAction {
         case .start:
             self.callStateManager.observer = self
             let peer = AVSCallMember.init(userId: model.userId, callParticipantState: .connecting, isMute: false, videoState: .stopped)
-            callStateManager.recvStartCall(cid: model.cid, mediaState: model.mediaState!, conversationType: model.convType!, userId: model.userId, clientId: model.clientId, members: [peer])
+            callStateManager.recvStartCall(cid: model.cid, mediaState: model.info.mediaState!, conversationType: model.info.convType!, userId: model.userId, clientId: model.clientId, members: [peer])
         case .answer:
             if model.userId == self.userId, model.clientId != self.clientId {
                 ///自己的另外一个设备发送的answer消息，则此设备结束
@@ -273,7 +276,7 @@ extension CallingWrapper {
         case .reject:
             callStateManager.recvRejectCall(cid: model.cid, userID: model.userId)
         case .end:
-            callStateManager.recvEndCall(cid: model.cid, userID: model.userId, reason: .normal, leftMemberCount: model.memberCount)
+            callStateManager.recvEndCall(cid: model.cid, userID: model.userId, reason: .normal, leftMemberCount: model.info.memberCount)
         case .cancel:
             callStateManager.recvCancelCall(cid: model.cid, userID: model.userId)
         case .noResponse:
@@ -282,5 +285,5 @@ extension CallingWrapper {
             callStateManager.recvBusyCall(cid: model.cid, userID: model.userId)
         }
     }
-    
+
 }

@@ -30,9 +30,13 @@ class ConvsCallingStateManager {
     private let selfClientID: String
     private var convsCallingState: [ConversationCallingInfo]
     let roomManager: CallingRoomManager = CallingRoomManager.shareInstance
-    var currentCid: UUID?
     var observer: ConvsCallingStateObserve?
  
+    //判断当前是否正在通话中
+    var isCalling: Bool {
+        return self.convsCallingState.contains(where: { return $0.isInCalling })
+    }
+    
     init(selfUserID: UUID, selfClientID: String) {
         self.selfUserID = selfUserID
         self.selfClientID = selfClientID
@@ -52,7 +56,7 @@ class ConvsCallingStateManager {
             zmLog.info("ConvsCallingStateManager-error-startCall-already exist convInfo")
             return false
         }
-        if self.convsCallingState.contains(where: { return $0.isInCalling }) {
+        if isCalling {
             ///说明当前正在通话中
             zmLog.info("ConvsCallingStateManager-error-startCall-already calling")
             return false
@@ -214,12 +218,6 @@ extension ConvsCallingStateManager {
     
     ///return : 当前正在通话中 则返回false, 错误则返回nil，正常就返回true
     func recvStartCall(cid: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, userId: UUID, clientId: String, members: [CallMemberProtocol]) {
-        if self.convsCallingState.contains(where: { return $0.isInCalling }) {
-            ///说明当前正在通话中
-            zmLog.info("ConvsCallingStateManager-error-recvStartCall-already calling")
-            self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .busy, convType: nil, mediaState: nil, to: nil, memberCount: nil)
-            return
-        }
         if let conv = self.convsCallingState.first(where: { return $0.cid == cid }), conv.state != .terminating(reason: .stillOngoing) {
             zmLog.info("ConvsCallingStateManager-error-recvStartCall-already exist convInfo")
             return
