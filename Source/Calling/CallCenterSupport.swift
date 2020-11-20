@@ -28,8 +28,9 @@ public typealias WireCallMessageToken = UnsafeMutableRawPointer
 @objc public enum AVSCallMediaState: Int {
     case none = 0
     case audioOnly = 1
-    case videoOnly = 2
-    case bothAudioAndVideo = 3
+    case bothAudioAndVideo = 2
+    case forceAudio = 3 //强制音频-目前暂时用不到，只是为了适配之前的avs
+    case videoOnly = 4
     
     public var isMute: Bool {
         return self == .none || self == .videoOnly
@@ -40,9 +41,16 @@ public typealias WireCallMessageToken = UnsafeMutableRawPointer
     }
     
     public static func getState(isMute: Bool, video: Bool) -> AVSCallMediaState {
-        let audioValue: Int = isMute ? 0 : 1
-        let videoValue: Int = video ? 2 : 0
-        return AVSCallMediaState.init(rawValue: audioValue + videoValue)!
+        switch (isMute, video) {
+        case (true, true):
+            return .videoOnly
+        case (true, false):
+            return .none
+        case (false, true):
+            return .bothAudioAndVideo
+        case (false, false):
+            return .audioOnly
+        }
     }
     
     public mutating func videoStateChanged(_ videoState: VideoState) {
