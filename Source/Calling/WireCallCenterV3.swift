@@ -606,6 +606,10 @@ extension WireCallCenterV3 {
                     if userId == self.selfUserId.transportString() {
                         meeting.notificationState = .hide
                     }
+                case .watchUser(let userId):
+                    meeting.watchUserId = userId
+                case .screenShareUser(let userId):
+                    meeting.screenShareUserId = userId
                 case .terminateMeet:
                     meeting.state = .off
                 default:break

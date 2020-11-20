@@ -18,8 +18,8 @@ public enum MeetingProperty {
     case lockmMeeting(Bool) //是否锁定会议
     case setInternal(Bool) //是否开启内部会议
     case onlyHosterCanShareScreen(Bool) //是否允许开启屏幕共享
-    case screenShareUser(String) //设置屏幕共享用户
-    case watchUser(String) //全员看他
+    case screenShareUser(String?) //设置屏幕共享用户-为空 说明用户取消了共享或者当前无人屏幕共享
+    case watchUser(String?) //全员看他 -为空逻辑同上
     case holder(String) //主持人
     case speaker(String) //主讲人
     case removeUser(String) //移除用户
@@ -116,11 +116,9 @@ extension MediasoupClientManager {
                 }
                 property = .holder(userId)
             case .watchUser:
-                guard let userId = info["roomProperties"]["watch_user"]["user_id"].string,
-                    self.membersManagerDelegate.containUser(with: userId) else {
-                    return
-                }
-                property = .watchUser(userId)
+                property = .watchUser(info["roomProperties"]["watch_user"]["user_id"].string)
+            case .screenShareUser:
+                property = .screenShareUser(info["roomProperties"]["screen_share_user"]["user_id"].string)
             }
         case .changeUserProperty:
             let userProperty = info["property"]

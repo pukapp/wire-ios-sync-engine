@@ -138,6 +138,7 @@ class CallingMembersManager: CallingMembersManagerProtocol {
             zmLog.info("CallingMembersManager--no peer to setMemberVideo")
             return
         }
+        zmLog.info("CallingMembersManager--setMemberVideo:\(mid)-\(state)")
         member.videoState = state
         self.members.replaceMember(with: member)
         self.membersChanged()

@@ -38,6 +38,7 @@ enum MeetingSignalAction {
             case cancelSpeaker      = "cancelSpeaker"       //取消主讲人身份
             case newHolder          = "holder"           //新的主持人
             case watchUser          = "watch_user"          //全员看TA
+            case screenShareUser    = "screen_share_user"   //当前正在屏幕分享的用户
         }
         
         case changeUserProperty = "changeUserProperty" //改变成员属性
