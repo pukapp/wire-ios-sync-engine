@@ -74,14 +74,18 @@ final class MediaOutputManager: NSObject {
     private static let MEDIA_STREAM_ID: String = "ARDAMS"
     private static let VIDEO_TRACK_ID: String = "ARDAMSv0"
     private static let AUDIO_TRACK_ID: String = "ARDAMSa0"
-    private static let SCREEN_TRACK_ID: String = "ARDAMSv1"
     
     private let peerConnectionFactory: RTCPeerConnectionFactory
-
-    private var videoCapturer: RTCCameraVideoCapturer?
-    private var videoSource: RTCVideoSource?
-    private var currentOutputFormat: VideoOutputFormat?
-        
+    private var videoSource: RTCVideoSource!
+    private var videoCapturer: RTCCameraVideoCapturer!
+    
+    //默认为中等质量
+    private var currentOutputFormat: VideoOutputFormat = .medium {
+        didSet {
+            self.videoSource.adaptOutputFormat(toWidth: currentOutputFormat.width, height: currentOutputFormat.height, fps: Int32(MEDIA_VIDEO_FPS))
+        }
+    }
+    
     private var captureType: CaptureDevice = .front
     private var frontCapture: AVCaptureDevice?
     private var backCapture: AVCaptureDevice?
@@ -94,13 +98,13 @@ final class MediaOutputManager: NSObject {
     private var mediaSoupVideoTrack: RTCVideoTrack?
     private var mediaSoupAudioTrack: RTCAudioTrack?
     
-    /// 远端输出屏幕共享的流，本地继续播放摄像头的内容，所以这里重新创建videoSource，videoTrack，不干扰本地摄像头的工作
-    private var recordSource: RTCVideoSource?
-    private var mediaSoupScreenTrack: RTCVideoTrack?
+    private var isScreenShare: Bool = false
     
     override init() {
         self.peerConnectionFactory = RTCPeerConnectionFactory();
-
+        super.init()
+        self.videoSource = self.peerConnectionFactory.videoSource()
+        self.videoCapturer = RTCCameraVideoCapturer(delegate: self)
         self.frontCapture = AVCaptureDevice.DiscoverySession.init(deviceTypes: [.builtInWideAngleCamera], mediaType: .video, position: .front).devices.first;
         self.backCapture = AVCaptureDevice.DiscoverySession.init(deviceTypes: [.builtInWideAngleCamera], mediaType: .video, position: .back).devices.first;
     }
@@ -126,7 +130,6 @@ final class MediaOutputManager: NSObject {
         if self.currentOutputFormat != format {
             zmLog.info("MediaOutputManager-changeVideoOutputFormat:\(format)")
             self.currentOutputFormat = format
-            self.videoSource?.adaptOutputFormat(toWidth: format.width, height: format.height, fps: Int32(MEDIA_VIDEO_FPS))
         }
     }
     
@@ -138,19 +141,11 @@ final class MediaOutputManager: NSObject {
             return track
         }
         zmLog.info("MediaOutputManager-getVideoTrack:\(format)")
-        
         self.currentOutputFormat = format
-        
-        self.videoSource = self.peerConnectionFactory.videoSource();
-        self.videoSource!.adaptOutputFormat(toWidth: format.width, height: format.height, fps: Int32(MEDIA_VIDEO_FPS));
-        
-        self.videoCapturer = RTCCameraVideoCapturer(delegate: self)
-        self.videoCapturer?.startCapture(with: self.currentCapture!, format: self.currentCapture!.activeFormat, fps: MEDIA_VIDEO_FPS)
-        let videoTrack: RTCVideoTrack = self.peerConnectionFactory.videoTrack(with: self.videoSource!, trackId: MediaOutputManager.VIDEO_TRACK_ID)
-        videoTrack.isEnabled = true
-        
+
+        self.videoCapturer.startCapture(with: self.currentCapture!, format: self.currentCapture!.activeFormat, fps: MEDIA_VIDEO_FPS)
+        let videoTrack: RTCVideoTrack = self.peerConnectionFactory.videoTrack(with: self.videoSource, trackId: MediaOutputManager.VIDEO_TRACK_ID)
         self.mediaSoupVideoTrack = videoTrack
-        
         getVideoTracklock.unlock()
         return videoTrack
     }
@@ -170,7 +165,9 @@ final class MediaOutputManager: NSObject {
     func clear() {
         self.releaseAudioTrack()
         self.releaseVideoTrack()
-        self.releaseScreenTrack()
+        
+        self.videoSource = nil
+        self.videoCapturer = nil
     }
     
     func releaseAudioTrack() {
@@ -185,25 +182,16 @@ final class MediaOutputManager: NSObject {
             self.videoCapturer?.stopCapture()
             videoTrack.isEnabled = false
             self.mediaSoupVideoTrack = nil
-            self.videoCapturer = nil
-            self.videoSource = nil
-        }
-    }
-    
-    func releaseScreenTrack() {
-        if let videoTrack = self.mediaSoupScreenTrack {
-            videoTrack.isEnabled = false
-            self.mediaSoupScreenTrack  = nil
-            self.recordSource = nil
         }
     }
     
 }
 
-extension MediaOutputManager : RTCVideoCapturerDelegate {
-    public func capturer(_ capturer: RTCVideoCapturer, didCapture frame: RTCVideoFrame) {
-        DispatchQueue.main.async {
-            self.videoSource?.capturer(capturer, didCapture: frame)
+extension MediaOutputManager: RTCVideoCapturerDelegate {
+    func capturer(_ capturer: RTCVideoCapturer, didCapture frame: RTCVideoFrame) {
+        if !isScreenShare {
+            //当前正在屏幕分享的话就不传递摄像头的数据
+            self.videoSource.capturer(capturer, didCapture: frame)
         }
     }
 }
@@ -211,33 +199,28 @@ extension MediaOutputManager : RTCVideoCapturerDelegate {
 // Deal ScreenRecording CMSampleBufferGetImageBuffer
 extension MediaOutputManager: DataWormholeDataTransportDelegate {
     
-    func startRecording() -> RTCVideoTrack {
+    func startRecording() {
+        zmLog.info("MediaOutputManager-startRecording")
         DataWormholeServerManager.sharedManager.setupSocket(with: self)
-        //重新创建videoSource，videoTrack，不干扰本地摄像头的工作
-        self.recordSource = self.peerConnectionFactory.videoSource()
-        self.recordSource!.adaptOutputFormat(toWidth: 640, height: 640*16/9, fps: Int32(MEDIA_VIDEO_FPS));
-        self.mediaSoupScreenTrack = self.peerConnectionFactory.videoTrack(with: self.recordSource!, trackId: MediaOutputManager.SCREEN_TRACK_ID)
-        
-        return self.mediaSoupScreenTrack!
+        isScreenShare = true
     }
     
     func onRecvData(data: Data) {
-        guard let helper = CVPixelBufferConvertDataHelper.init(data: data), let pixelBuffer = helper.pixelBuffer else {
+        guard isScreenShare, let helper = CVPixelBufferConvertDataHelper.init(data: data), let pixelBuffer = helper.pixelBuffer else {
             zmLog.info("DataWormholeDataTransportDelegate-获取pixelBuffer出错")
             return
         }
-        
-        let buffer: RTCCVPixelBuffer = RTCCVPixelBuffer.init(pixelBuffer: pixelBuffer)
-        // create the RTCVideoFrame
+        let buffer: RTCCVPixelBuffer = RTCCVPixelBuffer(pixelBuffer: pixelBuffer)
+
         let videoFrame = RTCVideoFrame(buffer: buffer, rotation: RTCVideoRotation._0, timeStampNs: helper.timeStampNs)
-        
-        // connect the video frames to the WebRTC
-        self.recordSource?.capturer(self.videoCapturer!, didCapture: videoFrame)
+        //传递当前屏幕实时数据
+        self.videoSource.capturer(self.videoCapturer, didCapture: videoFrame)
     }
     
     func stopRecording() {
+        zmLog.info("MediaOutputManager-stopRecording")
+        isScreenShare = false
         DataWormholeServerManager.sharedManager.stopSocket()
-        self.releaseScreenTrack()
     }
     
 }

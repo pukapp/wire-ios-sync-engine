@@ -47,7 +47,6 @@ extension MediasoupClientManager {
 enum MediasoupProduceKind {
     case audio
     case video
-    case screen
 }
 struct MediasoupProducer {
     
@@ -122,9 +121,6 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     ///判断是否正在produce视频
     private var producingVideo: Bool {
         return self.producers.contains(where: { return $0.kind == .video })
-    }
-    private var screenShare: Bool {
-        return self.producers.contains(where: { return $0.kind == .screen })
     }
     private var connectStep: MediasoupConnectStep
     
@@ -341,16 +337,6 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         self.createProducer(kind: .video, track: videoTrack, codecOptions: nil, encodings: nil)
     }
     
-    func produceScreenShare() {
-        guard self.sendTransport != nil, !self.screenShare else {
-                zmLog.info("MediasoupClientManager-can not produceScreenShare")
-                return
-        }
-        let videoTrack = self.mediaManager.startRecording()
-        videoTrack.isEnabled = true
-        self.createProducer(kind: .screen, track: videoTrack, codecOptions: nil, encodings: nil)
-    }
-    
     private func createProducer(kind: MediasoupProduceKind, track: RTCMediaStreamTrack, codecOptions: String?, encodings: Array<RTCRtpEncodingParameters>?) {
         /** 需要注意：sendTransport!.produce 这个方法最好在一个线程里面同步的去执行,并且需要和关闭peerConnection在同一线程之内
          *  webRTC 里面 peerConnection 的 各种状态设置不是线程安全的，并且当传入了错误的状态会报错，从而引起应用崩溃，所以这里一个一个的去创建produce
@@ -417,20 +403,17 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     func setScreenShare(isStart: Bool) {
         zmLog.info("MediasoupClientManager-setScreenShare--\(isStart)")
         if isStart {
-            if self.producingVideo {
+            self.mediaManager.startRecording()
+            if !self.producingVideo {
+                //还没有创建视频track的话，得先创建视频track
+                self.produceVideo()
+            }
+        } else {
+            if !self.mediaState.needSendVideo {
                 self.setLocalVideo(state: .stopped)
             }
-            self.produceScreenShare()
-        } else {
             self.mediaManager.stopRecording()
-            if let screenProduce = self.producers.first(where: { return $0.kind == .screen }) {
-                screenProduce.close()
-                self.signalManager.closeProduce(with: screenProduce.id)
-                self.producers = self.producers.filter({ return $0.kind != .screen })
-            }
-            if self.mediaState.needSendVideo {
-                self.setLocalVideo(state: .started)
-            }
+            
         }
     }
     
