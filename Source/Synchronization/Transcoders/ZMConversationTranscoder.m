@@ -698,7 +698,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if (!hugeConversation.remoteIdentifier.transportString) {
         return;
     }
-    [self appendSystemMessageForUpdateEvent:event inConversation:hugeConversation];
+    
+    [ZMSystemMessage createOrUpdateMessageFromUpdateEvent:event inManagedObjectContext:self.managedObjectContext];
     
     [self assignMembersCountWithEvent:event forConversation:hugeConversation];
 }
@@ -766,9 +767,9 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             conversation.membersCount = membersCountNumber.integerValue;
         }
     }
-//    else {
-//        conversation.membersCount = (NSInteger)conversation.activeParticipants.count;
-//    }
+    else {
+        conversation.membersCount = (NSInteger)conversation.activeParticipants.count;
+    }
 }
 
 - (void)shouldDeleteConversation: (ZMConversation *)conversation ifSelfUserLeftWithEvent: (ZMUpdateEvent *)event {

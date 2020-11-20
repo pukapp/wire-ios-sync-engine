@@ -27,7 +27,7 @@
     case done
     
     var isLastSlowSyncPhase : Bool {
-        return self == .fetchingSelfUser
+        return self == .fetchingUsers
     }
     
     var isSyncing : Bool {
