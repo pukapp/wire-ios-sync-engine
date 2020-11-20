@@ -109,10 +109,11 @@ public struct MeetingParticipant: CallMemberProtocol {
     public var isTop: Bool = false
     //排序状态，排序由多种属性决定
     public var sortLevel: Int {
+        let establishedSortValue: Int = audioEstablished ? 10000 : 0
         let selfSortValue: Int = isSelf ? 1000 : 0
         let topSortValue: Int = isTop ? 100 : 0
         let hasVideoSortValue: Int = (videoState == .started) ? 10 : 0
-        return selfSortValue + topSortValue + hasVideoSortValue + state.sortValue
+        return establishedSortValue + selfSortValue + topSortValue + hasVideoSortValue + state.sortValue
     }
     
     //服务器返回状态
