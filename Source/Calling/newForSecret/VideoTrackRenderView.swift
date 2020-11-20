@@ -15,7 +15,7 @@ private let zmLog = ZMSLog(tag: "calling")
  此界面仅用于MeetingStartViewController中使用
  因为内存泄漏的问题，MediaOutputManager不可能做为单例类来使用，所以在还没有进行通话时，只能单独初始化一个outputManager
  */
-public class SelfVideoRenderView : RTCEAGLVideoView {
+public class SelfVideoRenderView : RTCMTLVideoView {
     
     private var outputManager: MediaOutputManager = MediaOutputManager()
     private var attached: Bool = false
@@ -79,28 +79,22 @@ public enum VideoRenderMode: Equatable {
     }
 }
 
-public class VideoRenderView : RTCEAGLVideoView {
+public class VideoRenderView : RTCMTLVideoView {
     
     deinit {
         self.removeAddedTrack()
         zmLog.info("aaaa---VideoRenderView--deinit")
     }
     
-    //由于项目中有用到collectionView展示成员视频，所以mode这个参数需要为可变的
-    private var mode: VideoRenderMode = .none
-    
     //MARK: 这个方法为必须调用的方法,必须给mode设置一个值
-    public func updateMode(_ mode: VideoRenderMode) {
-        self.isHidden = (mode == .none)
-        guard self.mode != mode else { return }
-        zmLog.info("aaaa---VideoRenderView--updateMode--old:\(String(describing: self.mode)),new:\(mode)")
-        self.mode = mode
-        self.renderView()
+    public func updateMode(_ newMode: VideoRenderMode) {
+        self.renderView(newMode)
     }
     
-    private func renderView() {
+    private func renderView(_ newMode: VideoRenderMode) {
+        self.isHidden = (newMode == .none)
         guard TARGET_OS_SIMULATOR != 1 else { return }
-        switch mode {
+        switch newMode {
         case .none:
             self.removeAddedTrack()
         case .renderSelf:
@@ -112,7 +106,8 @@ public class VideoRenderView : RTCEAGLVideoView {
             }
             self.videoTrack = roomMembersManager.getVideoTrack(with: uid)
         }
-        self.updateTransform(needFixMirror: mode == .renderSelf)
+        self.updateTransform(needFixMirror: newMode == .renderSelf)
+        self.contentMode = .scaleAspectFill
     }
     
     //当为自己的时候需要修复镜像的问题，他人的则不需要
