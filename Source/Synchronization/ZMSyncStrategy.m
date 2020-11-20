@@ -203,7 +203,9 @@ ZM_EMPTY_ASSERTING_INIT()
                 [[MissingClientsRequestStrategy alloc] initWithManagedObjectContext:self.msgMOC applicationStatus: self.applicationMsgStatusDirectory],
                 [[FetchingClientRequestStrategy alloc] initWithManagedObjectContext:self.msgMOC applicationStatus: self.applicationMsgStatusDirectory],
                 [[AssetV3UploadRequestStrategy alloc] initWithManagedObjectContext:self.msgMOC applicationStatus: self.applicationMsgStatusDirectory],
-                [[AssetClientMessageRequestStrategy alloc] initWithManagedObjectContext:self.msgMOC applicationStatus: self.applicationMsgStatusDirectory]
+                [[AssetClientMessageRequestStrategy alloc] initWithManagedObjectContext:self.msgMOC applicationStatus: self.applicationMsgStatusDirectory],
+                [[LinkPreviewUploadRequestStrategy alloc] initWithManagedObjectContext:self.msgMOC applicationStatus: self.applicationMsgStatusDirectory],
+                [LinkPreviewAssetUploadRequestStrategy createWithManagedObjectContext:self.msgMOC applicationStatus: self.applicationMsgStatusDirectory]
             ];
         }];
         
