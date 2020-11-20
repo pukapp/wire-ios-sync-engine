@@ -11,6 +11,8 @@ import WireUtilities
 
 extension ZMSyncStrategy {
     
+    static var evevdHugeIds = Set<String>()
+    
     @objc(processHugeUpdateEvents:ignoreBuffer:)
     public func processHuge(updateEvents: [ZMUpdateEvent], ignoreBuffer: Bool) {
         if ignoreBuffer || isReadyToProcessEvents {
@@ -31,6 +33,15 @@ extension ZMSyncStrategy {
         
         for event in updateEvents {
             let date1 = Date()
+            guard let uuid = event.uuid?.transportString() else {continue}
+            if ZMSyncStrategy.evevdHugeIds.contains(uuid) {
+                ZMSyncStrategy.evevdHugeIds.remove(uuid)
+                continue
+            }
+            if event.senderClientID() == ZMUser.selfUser(in: moc).selfClient()?.remoteIdentifier {
+                continue
+            }
+            ZMSyncStrategy.evevdHugeIds.insert(uuid)
             for eventConsumer in self.eventConsumers {
                 eventConsumer.processEvents([event], liveEvents: true, prefetchResult: prefetchResult)
             }
