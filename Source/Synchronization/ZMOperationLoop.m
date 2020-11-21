@@ -397,5 +397,11 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
     [self executeMsgNextOperation];
 }
 
+- (void)newExtensionSingleRequestsAvailable {}
+
+
+- (void)newExtensionStreamRequestsAvailable {}
+
+
 
 @end
