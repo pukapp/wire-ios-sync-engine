@@ -248,6 +248,7 @@ extension CallingRoomManager {
     func setScreenShare(isStart: Bool) {
         roomWorkQueue.async {
             self.clientConnectManager?.setScreenShare(isStart: isStart)
+            self.roomMembersManager?.setScreenShare(self.userId!.transportString(), isShare: isStart)
         }
     }
 }

@@ -152,6 +152,14 @@ class CallingMembersManager: CallingMembersManagerProtocol {
         self.membersChanged()
     }
     
+    func setScreenShare(_ userId: String, isShare: Bool) {
+        guard var member = self.members.first(where: { return $0.remoteId == UUID(uuidString: userId) }) as? MeetingParticipant,
+             member.isScreenShare != isShare else { return }
+        member.isScreenShare = isShare
+        self.members.replaceMember(with: member)
+        self.membersChanged()
+    }
+    
     func containUser(with uid: UUID) -> Bool {
         return self.user(with: uid) != nil
     }

@@ -115,6 +115,7 @@ public struct MeetingParticipant: CallMemberProtocol {
         let hasVideoSortValue: Int = (videoState == .started) ? 10 : 0
         return establishedSortValue + selfSortValue + topSortValue + hasVideoSortValue + state.sortValue
     }
+    public var isScreenShare: Bool = false//当前正在屏幕分享
     
     //服务器返回状态
     public let userId: String
