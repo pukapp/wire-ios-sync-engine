@@ -13,7 +13,13 @@ public class NSEMessageNotificationBuilder: MessageNotificationBuilder  {
     override func shouldCreateNotification() -> Bool {
         let silenced = { [weak self] () -> Bool  in
             
-            guard let self = self else {return true}
+            guard let self = self else {
+                return true
+            }
+            
+            if self.message is ZMSystemMessage {
+                return false
+            }
             
             guard let sender = self.message.sender, !sender.isSelfUser else {
                 return true

@@ -28,6 +28,12 @@ extension ZMLocalNotification {
                   let conversation = array.lastObject as? ZMConversation else { return nil }
             builder = NSEMessageNotificationBuilder(message: message, conversation: conversation)
             
+        case .conversationAppMessageAdd:
+            guard let systemMessage = ZMSystemMessage.createOrUpdate(from: event, in: moc, prefetchResult: nil) else {
+                return nil
+            }
+            builder = NSEMessageNotificationBuilder(message: systemMessage)
+            
         case .conversationCreate:
             builder = ConversationCreateEventNotificationBuilder(event: event, conversation: conversation, managedObjectContext: moc)
             

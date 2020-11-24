@@ -40,7 +40,7 @@ public class MessageNotificationBuilder: NotificationBuilder {
     
     init?(message: ZMMessage, conversation: ZMConversation? = nil) {
         guard let sender = message.sender,
-              let conv = conversation,
+              let conversation = (conversation ?? message.conversation),
               let managedObjectContext = message.managedObjectContext,
               let contentType = LocalNotificationContentType.typeForMessage(message) else {
             
@@ -49,7 +49,7 @@ public class MessageNotificationBuilder: NotificationBuilder {
         }
         
         self.sender = sender
-        self.conversation = conv
+        self.conversation = conversation
         self.message = message
         self.contentType = contentType
         self.managedObjectContext = managedObjectContext
