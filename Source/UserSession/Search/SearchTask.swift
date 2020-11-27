@@ -208,13 +208,13 @@ extension SearchTask {
 //    }
     
     func connectedUsers(matchingQuery query: String) -> [ZMUser] {
-        let fetchRequest = ZMUser.sortedFetchRequest(with: ZMUser.predicateForConnectedUsers(withSearch: query))
+        guard let fetchRequest = ZMUser.sortedFetchRequest(with: ZMUser.predicateForConnectedUsers(withSearch: query)) else { return [] }
         return context.executeFetchRequestOrAssert(fetchRequest) as? [ZMUser] ?? []
     }
     
     func conversations(matchingQuery query: String) -> [ZMConversation] {
-        let fetchRequest = ZMConversation.sortedFetchRequest(with: ZMConversation.predicate(forSearchQuery: query))
-        fetchRequest?.sortDescriptors = [NSSortDescriptor(key: ZMNormalizedUserDefinedNameKey, ascending: true)]
+        guard let fetchRequest = ZMConversation.sortedFetchRequest(with: ZMConversation.predicate(forSearchQuery: query)) else { return [] }
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: ZMNormalizedUserDefinedNameKey, ascending: true)]
         var conversations = context.executeFetchRequestOrAssert(fetchRequest) as? [ZMConversation] ?? []
         
         if query.hasPrefix("@") {
