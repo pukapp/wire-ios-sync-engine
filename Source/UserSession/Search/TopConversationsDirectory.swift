@@ -66,7 +66,7 @@ private let topConversationsObjectIDKey = "WireTopConversationsObjectIDKey"
     }
 
     private func fetchOneOnOneConversations() -> [ZMConversation] {
-        let request = ZMConversation.sortedFetchRequest(with: ZMConversation.predicateForActiveOneOnOneConversations)
+        guard let request = ZMConversation.sortedFetchRequest(with: ZMConversation.predicateForActiveOneOnOneConversations) else { return [] }
         return syncMOC.executeFetchRequestOrAssert(request) as! [ZMConversation]
     }
 
