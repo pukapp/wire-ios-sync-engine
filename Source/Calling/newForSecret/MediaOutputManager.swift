@@ -144,6 +144,7 @@ final class MediaOutputManager: NSObject {
         self.currentOutputFormat = format
 
         self.videoCapturer.startCapture(with: self.currentCapture!, format: self.currentCapture!.activeFormat, fps: MEDIA_VIDEO_FPS)
+        self.videoSource.adaptOutputFormat(toWidth: VideoOutputFormat.high.height, height: VideoOutputFormat.high.width, fps: Int32(MEDIA_VIDEO_FPS))
         let videoTrack: RTCVideoTrack = self.peerConnectionFactory.videoTrack(with: self.videoSource, trackId: MediaOutputManager.VIDEO_TRACK_ID)
         self.mediaSoupVideoTrack = videoTrack
         getVideoTracklock.unlock()
@@ -165,6 +166,9 @@ final class MediaOutputManager: NSObject {
     func clear() {
         self.releaseAudioTrack()
         self.releaseVideoTrack()
+        if self.isScreenShare {
+            self.stopRecording()
+        }
         
         self.videoSource = nil
         self.videoCapturer = nil
@@ -200,13 +204,19 @@ extension MediaOutputManager: RTCVideoCapturerDelegate {
 extension MediaOutputManager: DataWormholeDataTransportDelegate {
     
     func startRecording() {
+        guard !isScreenShare else {
+            return
+        }
         zmLog.info("MediaOutputManager-startRecording")
         DataWormholeServerManager.sharedManager.setupSocket(with: self)
+        let screenScale = UIScreen.main.bounds.height/UIScreen.main.bounds.width
+        let scaleHeight = Int32(CGFloat(self.currentOutputFormat.width)*screenScale)
+        self.videoSource.adaptOutputFormat(toWidth: self.currentOutputFormat.width, height: scaleHeight, fps: Int32(MEDIA_VIDEO_FPS))
         isScreenShare = true
     }
     
     func onRecvData(data: Data) {
-        guard isScreenShare, let helper = CVPixelBufferConvertDataHelper.init(data: data), let pixelBuffer = helper.pixelBuffer else {
+        guard isScreenShare, self.videoSource != nil, let helper = CVPixelBufferConvertDataHelper.init(data: data), let pixelBuffer = helper.pixelBuffer else {
             zmLog.info("DataWormholeDataTransportDelegate-获取pixelBuffer出错")
             return
         }
