@@ -136,8 +136,6 @@ class AVSSound: NSObject, AVSMedia {
         } else {
             self.delegate?.didStartPlayingMedia(media: self)
         }
-        
-        zmLog.info("MediaEventManager--AVSSound: \(self.name) playing=\(self.player!.isPlaying)")
     }
     
     func stop() {
