@@ -27,6 +27,8 @@ extern NSString * _Nullable const ConversationServiceMessageAdd;
 extern NSString * _Nullable const ConversationOtrMessageAdd;
 extern NSString * _Nullable const ConversationUserConnection;
 
+extern NSString * _Nullable const ConversationApplyToTestNotification;
+
 @protocol ZMObjectStrategyDirectory;
 
 @class ZMAuthenticationStatus;

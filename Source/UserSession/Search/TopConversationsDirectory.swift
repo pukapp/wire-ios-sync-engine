@@ -41,7 +41,7 @@ import WireDataModel
 
 // MARK: - Top conversation
 @objc extension TopConversationsDirectory {
-
+    
 //    public func refreshTopConversations() {
 //        syncMOC.performGroupedBlock {
 //            let conversations = self.fetchOneOnOneConversations()
