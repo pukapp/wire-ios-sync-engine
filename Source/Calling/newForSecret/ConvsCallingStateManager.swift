@@ -263,7 +263,6 @@ extension ConvsCallingStateManager {
             zmLog.info("ConvsCallingStateManager-error-recvEndCall-no exist convInfo")
             return
         }
-        roomManager.removePeer(with: userID)
         
         let privious = convInfo.state
         if convInfo.convType == .oneToOne {
