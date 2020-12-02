@@ -455,7 +455,6 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     for (ZMUpdateEvent *event in events) {
 
         if (event.type == ZMUpdateEventTypeConversationServiceMessageAdd) {
-            [[NSNotificationCenter defaultCenter] postNotificationName:ConversationServiceMessageAdd object:nil userInfo:@{@"payload":event.payload, @"id":event.uuid.transportString}];
             [self createConversationAndJoinMemberFromEvent:event];
             continue;
         }
@@ -474,11 +473,6 @@ static NSString *const ConversationTeamManagedKey = @"managed";
             continue;
         }
         
-        if (event.type == ZMUpdateEventTypeUserConnection) {
-            [[NSNotificationCenter defaultCenter] postNotificationName:ConversationUserConnection object:nil userInfo:nil];
-        }
-        
-        
         if (![self shouldProcessUpdateEvent:event]) {
             continue;
         }
@@ -493,15 +487,6 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         
         NSDate * const currentLastTimestamp = conversation.lastServerTimeStamp;
         [conversation updateWithUpdateEvent:event];
-        
-        if (event.type == ZMUpdateEventTypeConversationOtrMessageAdd ||
-            event.type == ZMUpdateEventTypeConversationOtrAssetAdd ||
-            event.type == ZMUpdateEventTypeConversationBgpMessageAdd ||
-            event.type == ZMUpdateEventTypeConversationJsonMessageAdd ) {
-            [[NSNotificationCenter defaultCenter] postNotificationName:ConversationOtrMessageAdd object:nil userInfo:nil];
-        }
-        
-        
         
         if (liveEvents) {
             [self processUpdateEvent:event forConversation:conversation previousLastServerTimestamp:currentLastTimestamp];
