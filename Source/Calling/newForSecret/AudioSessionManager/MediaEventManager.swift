@@ -284,7 +284,7 @@ private enum AudioSessionCategory {
         case .playNotificationSounds:
             return [.mixWithOthers, .duckOthers]
         case .record, .calling:
-            return [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
+            return [.allowBluetooth, .allowBluetoothA2DP]
         case .playVoice(let raisedToEar):
             return raisedToEar ? [.mixWithOthers, .allowBluetooth, .allowBluetoothA2DP] : [.mixWithOthers]
         }
