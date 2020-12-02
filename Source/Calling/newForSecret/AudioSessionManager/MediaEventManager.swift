@@ -67,6 +67,19 @@ class MediaEventManager {
     var isPlayingAudioMessage: Bool = false //播放语音消息
     var isPlayingNotifitionMusic: Bool = false //播放提示音乐
     
+    //当前使用了耳机
+    var isUseHeadphones: Bool {
+        return AVAudioSession.sharedInstance().currentRoute.outputs.contains(where: { return ($0.portType == .headphones || $0.portType == .bluetoothA2DP) })
+    }
+    //是否监听距离感应器
+    var needObserverProximityChange: Bool = false {
+        didSet {
+            guard needObserverProximityChange != oldValue else { return }
+            //目前仅当播放语音消息时需要监听
+            guard self.isPlayingAudioMessage else { return }
+            needObserverProximityChange ? self.startListening() : self.stopListening()
+        }
+    }
     
     var interrupted: Bool = false
     
@@ -84,7 +97,6 @@ class MediaEventManager {
     }
     
     func handlerEvent(event: MediaEvent, data: Any?) {
-        
         switch event {
         case .playSound:
             guard let sound = data as? AVSSound else { return }
@@ -166,7 +178,8 @@ fileprivate extension MediaEventManager {
         guard !self.isCalling else { return }
         self.isPlayingAudioMessage = true
         self.setAudioSessionActive(isActive: true)
-        self.setAudioSessionCategory(with: .playVoice)
+        //默认是playback模式，从扬声器播放声音
+        self.setAudioSessionCategory(with: .playVoice(raisedToEar: false))
     }
     
     func stopAudioMessage() {
@@ -205,11 +218,11 @@ fileprivate extension MediaEventManager {
     }
     
     func stopSound(with sound: AVSSound) {
-        setAudioSessionActive(isActive: false)
         sound.stop()
         if let index = playingAudio.firstIndex(of: sound) {
             playingAudio.remove(at: index)
         }
+        setAudioSessionActive(isActive: false)
     }
     
 }
@@ -252,7 +265,7 @@ private enum AudioSessionCategory {
     case playNotificationSounds //播放提示音，需要响应用户的静音操作，压低其他app的背景音乐
     case record //录音
     case calling //电话
-    case playVoice //播放语音或者音乐，当程序置于后台时应当也能播放
+    case playVoice(raisedToEar: Bool) //播放语音或者音乐，当程序置于后台时应当也能播放
     
     var category: AVAudioSession.Category {
         switch self {
@@ -260,8 +273,8 @@ private enum AudioSessionCategory {
             return .ambient
         case .record, .calling:
             return .playAndRecord
-        case .playVoice:
-            return .playback
+        case .playVoice(let raisedToEar):
+            return raisedToEar ? .playAndRecord : .playback//由于听筒模式只能用于playAndRecord模式下
         }
     }
     
@@ -272,8 +285,8 @@ private enum AudioSessionCategory {
             return [.mixWithOthers, .duckOthers]
         case .record, .calling:
             return [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
-        case .playVoice:
-            return [.mixWithOthers]
+        case .playVoice(let raisedToEar):
+            return raisedToEar ? [.mixWithOthers, .allowBluetooth, .allowBluetoothA2DP] : [.mixWithOthers]
         }
     }
 }
@@ -289,6 +302,7 @@ fileprivate extension MediaEventManager {
                 return
             }
         }
+        self.needObserverProximityChange = isActive
         do {
             try AVAudioSession.sharedInstance().setActive(isActive, options: .notifyOthersOnDeactivation)
             zmLog.info("MediaEventManager--setAudioSessionActive: \(isActive ? 1 : 0)")
@@ -317,6 +331,7 @@ fileprivate extension MediaEventManager {
     }
     
     func enableSpeake(isEnable: Bool) {
+        guard !isUseHeadphones else { return }
         do {
             try AVAudioSession.sharedInstance().overrideOutputAudioPort(isEnable ? .speaker : .none)
             zmLog.info("MediaEventManager--enableSpeake isEnable:\(isEnable)")
@@ -328,4 +343,34 @@ fileprivate extension MediaEventManager {
     func microphoneMuted(isMute: Bool) {
         zmLog.info("MediaEventManager--microphoneMuted isMute:\(isMute)")
     }
+}
+
+// MARK: ListeningProximityChange
+extension MediaEventManager {
+    
+    func startListening() {
+        //带了耳机就不用开启距离感应器
+        guard !self.isUseHeadphones else { return }
+        DispatchQueue.main.async {
+            UIDevice.current.isProximityMonitoringEnabled = true
+            NotificationCenter.default.addObserver(self,
+                                                   selector: #selector(self.handleProximityChange),
+                                                   name: UIDevice.proximityStateDidChangeNotification,
+                                                   object: nil)
+        }
+    }
+    
+    func stopListening() {
+        DispatchQueue.main.async {
+            UIDevice.current.isProximityMonitoringEnabled = false
+            NotificationCenter.default.removeObserver(self)
+        }
+    }
+    
+    @objc func handleProximityChange() {
+        if self.isPlayingAudioMessage {
+            self.setAudioSessionCategory(with: .playVoice(raisedToEar: UIDevice.current.proximityState))
+        }
+    }
+    
 }
