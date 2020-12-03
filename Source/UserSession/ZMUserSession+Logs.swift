@@ -27,6 +27,7 @@ public enum ContextType : String {
     case Sync = "Sync"
     case Search = "Search"
     case Other = "Other"
+    case Msg = "Msg"
 }
 
 extension NSManagedObjectContext {
@@ -40,6 +41,9 @@ extension NSManagedObjectContext {
         }
         if self.zm_isSearchContext {
             return .Search
+        }
+        if self.zm_isMsgContext {
+            return .Msg
         }
         return .Other
     }

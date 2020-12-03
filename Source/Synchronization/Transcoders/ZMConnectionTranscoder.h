@@ -25,8 +25,8 @@
 
 @interface ZMConnectionTranscoder : ZMAbstractRequestStrategy <ZMObjectStrategy>
 
-- (instancetype)initWithManagedObjectContext:(NSManagedObjectContext *)moc applicationStatus:(id<ZMApplicationStatus>)applicationStatus NS_UNAVAILABLE;
+- (instancetype _Nonnull )initWithManagedObjectContext:(NSManagedObjectContext * _Nullable)moc applicationStatus:(id<ZMApplicationStatus> _Nullable)applicationStatus NS_UNAVAILABLE;
 
-- (instancetype)initWithManagedObjectContext:(NSManagedObjectContext *)moc applicationStatus:(id<ZMApplicationStatus>)applicationStatus syncStatus:(SyncStatus *)syncStatus;
+- (instancetype _Nonnull )initWithManagedObjectContext:(NSManagedObjectContext *_Nullable)moc applicationStatus:(id<ZMApplicationStatus> _Nullable)applicationStatus syncStatus:(SyncStatus * _Nullable)syncStatus;
 
 @end

@@ -39,7 +39,8 @@ extern NSString * const ZMPushChannelIsOpenKey;
                             syncStrategy:(ZMSyncStrategy *)syncStrategy
               applicationStatusDirectory:(ApplicationStatusDirectory *)applicationStatusDirectory
                                    uiMOC:(NSManagedObjectContext *)uiMOC
-                                 syncMOC:(NSManagedObjectContext *)syncMOC;
+                                 syncMOC:(NSManagedObjectContext *)syncMOC
+                                 msgMOC:(NSManagedObjectContext *)msgMOC;
 
 - (void)tearDown;
 

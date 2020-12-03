@@ -55,6 +55,7 @@
                    localNotificationsDispatcher:(LocalNotificationDispatcher * _Nonnull)localNotificationsDispatcher
                         notificationsDispatcher:(NotificationDispatcher * _Nonnull)notificationsDispatcher
                      applicationStatusDirectory:(ApplicationStatusDirectory * _Nonnull)applicationStatusDirectory
+                    msgApplicationStatusDirectory:(ApplicationStatusDirectory * _Nonnull)msgApplicationStatusDirectory
                                     application:(id<ZMApplication> _Nonnull)application;
 
 - (void)didInterruptUpdateEventsStream;
@@ -62,16 +63,19 @@
 - (void)didFinishSync;
 
 - (ZMTransportRequest *_Nullable)nextRequest;
+- (ZMTransportRequest *_Nullable)messagNextRequest;
 
 - (void)tearDown;
 
-- (void) startTrack;
+- (void) saveHugeConversationMuteInfo;
 
 @property (nonatomic, readonly, nonnull) NSManagedObjectContext *syncMOC;
+@property (nonatomic, readonly, nonnull) NSManagedObjectContext *msgMOC;
 @property (nonatomic, weak, readonly, nullable) ApplicationStatusDirectory *applicationStatusDirectory;
 @property (nonatomic, readonly, nonnull) CallingRequestStrategy *callingRequestStrategy;
 @property (nonatomic, readonly, nonnull) EventDecoder *eventDecoder;
 @property (nonatomic, readonly, nonnull) ZMUpdateEventsBuffer *eventsBuffer;
+@property (nonatomic, readonly, nonnull) ZMUpdateEventsBuffer *hugeEventsBuffer;
 @property (nonatomic, readonly, nonnull) NSArray<id<ZMEventConsumer>> *eventConsumers;
 @property (nonatomic, weak, readonly, nullable) LocalNotificationDispatcher *localNotificationDispatcher;
 @property (nonatomic, readonly) BOOL isReadyToProcessEvents;

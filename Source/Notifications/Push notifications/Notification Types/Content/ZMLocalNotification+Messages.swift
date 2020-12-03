@@ -55,6 +55,10 @@ public class MessageNotificationBuilder: NotificationBuilder {
         self.managedObjectContext = managedObjectContext
     }
     
+    deinit {
+        print("MessageNotificationBuilder deinit")
+    }
+    
     var notificationType: LocalNotificationType {
         if LocalNotificationDispatcher.shouldHideNotificationContent(moc: managedObjectContext), !message.isEphemeral {
             return LocalNotificationType.message(.hidden)

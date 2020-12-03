@@ -30,7 +30,7 @@ import UIKit
     var applicationIconBadgeNumber : Int { get set }
     
     /// To determine if notification settings should be registered
-    @objc optional var shouldRegisterUserNotificationSettings : Bool { get }
+//    @objc optional var shouldRegisterUserNotificationSettings : Bool { get }
     
     /// Register for remote notification
     func registerForRemoteNotifications()

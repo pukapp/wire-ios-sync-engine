@@ -63,9 +63,11 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
               applicationStatusDirectory:(ApplicationStatusDirectory *)applicationStatusDirectory
                                    uiMOC:(NSManagedObjectContext *)uiMOC
                                  syncMOC:(NSManagedObjectContext *)syncMOC
+                                  msgMOC:(NSManagedObjectContext *)msgMOC
 {
     Check(uiMOC != nil);
     Check(syncMOC != nil);
+    Check(msgMOC != nil);
     
     self = [super init];
     if (self) {
@@ -73,6 +75,7 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
         self.transportSession = transportSession;
         self.syncStrategy = syncStrategy;
         self.syncMOC = syncMOC;
+        self.msgMOC = msgMOC;
         self.shouldStopEnqueueing = NO;
         applicationStatusDirectory.operationStatus.delegate = self;
 
@@ -89,7 +92,16 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
                                                        object:syncMOC];
         }
         
+        if (msgMOC != nil) {
+            [[NSNotificationCenter defaultCenter] addObserver:self
+                                                     selector:@selector(msgContextDidSave:)
+                                                         name:NSManagedObjectContextDidSaveNotification
+                                                       object:msgMOC];
+        }
+        
         [ZMRequestAvailableNotification addObserver:self];
+        
+        [ZMRequestAvailableNotification addMsgObserver:self];
         
         NSManagedObjectContext *moc = self.syncMOC;
         // this is needed to avoid loading from syncMOC on the main queue
@@ -117,6 +129,15 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
                   "Must call be called on the main queue.");
     __block BOOL didStop = NO;
     [self.syncMOC.dispatchGroup notifyOnQueue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0) block:^{
+        didStop = YES;
+    }];
+    while (!didStop) {
+        if (! [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.002]]) {
+            [NSThread sleepForTimeInterval:0.002];
+        }
+    }
+    
+    [self.msgMOC.dispatchGroup notifyOnQueue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0) block:^{
         didStop = YES;
     }];
     while (!didStop) {
@@ -168,20 +189,53 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
 
 - (void)userInterfaceContextDidSave:(NSNotification *)note
 {
-    NSSet *insertedObjectsIDs = [ZMOperationLoop objectIDsetFromObject:note.userInfo[NSInsertedObjectsKey]];
-    NSSet *updatedObjectsIDs = [ZMOperationLoop objectIDsetFromObject:note.userInfo[NSUpdatedObjectsKey]];
-    
     // We need to proceed even if those to sets are empty because the metadata might have been updated.
-    
+    // 所有ui更改对象
     ZM_WEAK(self);
+    NSSet *uiInsertedObjects = note.userInfo[NSInsertedObjectsKey];
+    NSSet *uiUpdatedObjects = note.userInfo[NSUpdatedObjectsKey];
+    // 过滤出ui插入消息对象
+    NSSet *messageInsertObjects = [uiInsertedObjects filteredSetUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id  _Nullable evaluatedObject, NSDictionary<NSString *,id> * _Nullable bindings) {
+        return [evaluatedObject isKindOfClass:[ZMClientMessage class]] ||
+                [evaluatedObject isKindOfClass:[ZMAssetClientMessage class]] || [evaluatedObject isKindOfClass:[ZMGenericMessageData class]];
+    }]];
+    // 过滤出ui更新的消息对象
+    NSSet *messageUpdateObjects = [uiUpdatedObjects filteredSetUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id  _Nullable evaluatedObject, NSDictionary<NSString *,id> * _Nullable bindings) {
+        return [evaluatedObject isKindOfClass:[ZMClientMessage class]] ||
+        [evaluatedObject isKindOfClass:[ZMAssetClientMessage class]] || [evaluatedObject isKindOfClass:[ZMGenericMessageData class]];
+    }]];
+    // 处理消息发送 使用msgMoc
+    if (messageInsertObjects.count > 0 || messageUpdateObjects.count > 0) {
+        NSSet *messageInsertObjectsIds = [ZMOperationLoop objectIDsetFromObject: messageInsertObjects];
+        NSSet *messageUpdateObjectsIds = [ZMOperationLoop objectIDsetFromObject: messageUpdateObjects];
+        [self.msgMOC performGroupedBlock:^{
+            ZM_STRONG(self);
+            NSSet *msgMessageInsertedObjects = [ZMOperationLoop objectSetFromObjectIDs:messageInsertObjectsIds inContext:self.syncStrategy.msgMOC];
+            NSSet *msgMessageUpdatedObjects = [ZMOperationLoop objectSetFromObjectIDs:messageUpdateObjectsIds inContext:self.syncStrategy.msgMOC];
+            [self.syncStrategy processSaveWithMessageInsertedObjects:msgMessageInsertedObjects updateObjects:msgMessageUpdatedObjects];
+            [ZMRequestAvailableNotification msgNotifyNewRequestsAvailable:self];
+        }];
+    }
+    // 其他非消息对象 使用syncMoc
+    NSMutableSet *muUIInsertObject = [NSMutableSet setWithSet:uiInsertedObjects];
+    [muUIInsertObject minusSet: messageInsertObjects];
+    NSMutableSet *muUIUpdateObject = [NSMutableSet setWithSet:uiUpdatedObjects];
+    [muUIUpdateObject minusSet: messageUpdateObjects];
+    NSSet *remainInsertObjectsIDs = [ZMOperationLoop objectIDsetFromObject: muUIInsertObject];
+    NSSet *remainUpdateObjectsIDs = [ZMOperationLoop objectIDsetFromObject: muUIUpdateObject];
+
+    if (remainInsertObjectsIDs.count == 0 && remainUpdateObjectsIDs.count == 0) {
+        return;
+    }
     [self.syncMOC performGroupedBlock:^{
         ZM_STRONG(self);
-        NSSet *syncInsertedObjects = [ZMOperationLoop objectSetFromObjectIDs:insertedObjectsIDs inContext:self.syncStrategy.syncMOC];
-        NSSet *syncUpdatedObjects = [ZMOperationLoop objectSetFromObjectIDs:updatedObjectsIDs inContext:self.syncStrategy.syncMOC];
-        
+        NSSet *syncInsertedObjects = [ZMOperationLoop objectSetFromObjectIDs:remainInsertObjectsIDs inContext:self.syncStrategy.syncMOC];
+        NSSet *syncUpdatedObjects = [ZMOperationLoop objectSetFromObjectIDs:remainUpdateObjectsIDs inContext:self.syncStrategy.syncMOC];
         [self.syncStrategy processSaveWithInsertedObjects:syncInsertedObjects updateObjects:syncUpdatedObjects];
         [ZMRequestAvailableNotification notifyNewRequestsAvailable:self];
     }];
+    
+    
 }
 
 - (void)syncContextDidSave:(NSNotification *)note
@@ -201,6 +255,23 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
     [ZMRequestAvailableNotification notifyNewRequestsAvailable:self];
 }
 
+- (void)msgContextDidSave:(NSNotification *)note
+{
+    //
+    // N.B.: We don't need to do any context / queue switching here, since we're on the sync context's queue.
+    //
+    
+    NSSet *msgInsertedObjects = note.userInfo[NSInsertedObjectsKey];
+    NSSet *msgUpdatedObjects = note.userInfo[NSUpdatedObjectsKey];
+    
+    if (msgInsertedObjects.count == 0 && msgUpdatedObjects.count == 0) {
+        return;
+    }
+    
+    [self.syncStrategy processSaveWithMessageInsertedObjects:msgInsertedObjects updateObjects:msgUpdatedObjects];
+    [ZMRequestAvailableNotification msgNotifyNewRequestsAvailable:self];
+}
+
 - (ZMTransportRequestGenerator)requestGenerator {
     
     ZM_WEAK(self);
@@ -217,6 +288,26 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
             
             // Check if there is something to do now and when the save completes
             [ZMRequestAvailableNotification notifyNewRequestsAvailable:self];
+        }]];
+        
+        return request;
+    };
+    
+}
+
+- (ZMTransportRequestGenerator)msgRequestGenerator {
+    ZM_WEAK(self);
+    return ^ZMTransportRequest *(void) {
+        ZM_STRONG(self);
+        if (self == nil) {
+            return nil;
+        }
+        ZMTransportRequest *request = [self.syncStrategy messagNextRequest];
+        [request addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:self.msgMOC block:^(ZMTransportResponse *response) {
+            ZM_STRONG(self);
+            [self.syncStrategy.msgMOC enqueueDelayedSaveWithGroup:response.dispatchGroup];
+            // Check if there is something to do now and when the save completes
+            [ZMRequestAvailableNotification msgNotifyNewRequestsAvailable:self];
         }]];
         
         return request;
@@ -251,9 +342,41 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
     }];
 }
 
+- (void)executeMsgNextOperation
+{
+    if (self.shouldStopEnqueueing) {
+        return;
+    }
+    
+    // this generates the request
+    ZMTransportRequestGenerator generator = [self msgRequestGenerator];
+    
+    BackgroundActivity *enqueueActivity = [BackgroundActivityFactory.sharedFactory startBackgroundActivityWithName:@"executeNextOperation"];
+
+    if (!enqueueActivity) {
+        return;
+    }
+
+    ZM_WEAK(self);
+    [self.msgMOC performGroupedBlock:^{
+        ZM_STRONG(self);
+        BOOL enqueueMore = YES;
+        while (self && enqueueMore && !self.shouldStopEnqueueing) {
+            ZMTransportEnqueueResult *result = [self.transportSession attemptToEnqueueSyncRequestWithGenerator:generator];
+            enqueueMore = result.didGenerateNonNullRequest && result.didHaveLessRequestThanMax;
+        }
+        [BackgroundActivityFactory.sharedFactory endBackgroundActivity:enqueueActivity];
+    }];
+}
+
 - (PushNotificationStatus *)pushNotificationStatus
 {
     return self.applicationStatusDirectory.pushNotificationStatus;
+}
+
+- (PushHugeNotificationStatus *)pushHugeNotificationStatus
+{
+    return self.applicationStatusDirectory.pushHugeNotificationStatus;
 }
 
 - (CallEventStatus *)callEventStatus {
@@ -269,5 +392,16 @@ static char* const ZMLogTag ZM_UNUSED = "OperationLoop";
 {
     [self executeNextOperation];
 }
+
+- (void)newMsgRequestsAvailable {
+    [self executeMsgNextOperation];
+}
+
+- (void)newExtensionSingleRequestsAvailable {}
+
+
+- (void)newExtensionStreamRequestsAvailable {}
+
+
 
 @end

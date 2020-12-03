@@ -30,6 +30,7 @@ public final class ApplicationStatusDirectory : NSObject, ApplicationStatus {
     public let clientRegistrationStatus : ZMClientRegistrationStatus
     public let clientUpdateStatus : ClientUpdateStatus
     public let pushNotificationStatus : PushNotificationStatus
+    public let pushHugeNotificationStatus : PushHugeNotificationStatus
     public let accountStatus : AccountStatus
     public let proxiedRequestStatus : ProxiedRequestsStatus
     public let syncStatus : SyncStatus
@@ -42,7 +43,8 @@ public final class ApplicationStatusDirectory : NSObject, ApplicationStatus {
     
     fileprivate var callInProgressObserverToken : Any? = nil
     
-    public init(withManagedObjectContext managedObjectContext : NSManagedObjectContext, cookieStorage : ZMPersistentCookieStorage, requestCancellation: ZMRequestCancellation, application : ZMApplication, syncStateDelegate: ZMSyncStateDelegate, analytics: AnalyticsType? = nil) {
+    public init(withManagedObjectContext managedObjectContext : NSManagedObjectContext,
+                cookieStorage : ZMPersistentCookieStorage, requestCancellation: ZMRequestCancellation, application : ZMApplication, syncStateDelegate: ZMSyncStateDelegate, analytics: AnalyticsType? = nil) {
         self.requestCancellation = requestCancellation
         self.apnsConfirmationStatus = BackgroundAPNSConfirmationStatus(application: application, managedObjectContext: managedObjectContext)
         self.operationStatus = OperationStatus()
@@ -58,6 +60,7 @@ public final class ApplicationStatusDirectory : NSObject, ApplicationStatus {
                                                                    registrationStatusDelegate: syncStateDelegate)
         self.accountStatus = AccountStatus(managedObjectContext: managedObjectContext)
         self.pushNotificationStatus = PushNotificationStatus(managedObjectContext: managedObjectContext)
+        self.pushHugeNotificationStatus = PushHugeNotificationStatus(managedObjectContext: managedObjectContext)
         self.proxiedRequestStatus = ProxiedRequestsStatus(requestCancellation: requestCancellation)
         self.userProfileImageUpdateStatus = UserProfileImageUpdateStatus(managedObjectContext: managedObjectContext)
         self.assetDeletionStatus = AssetDeletionStatus(provider: managedObjectContext, queue: managedObjectContext)
@@ -106,12 +109,17 @@ public final class ApplicationStatusDirectory : NSObject, ApplicationStatus {
     }
     
     public var notificationFetchStatus: BackgroundNotificationFetchStatus {
-        switch pushNotificationStatus.status {
-        case .done:
+        if case .done = pushNotificationStatus.status {
             return .done
-        case .inProgress:
-            return syncStatus.isSlowSyncing ? .done : .inProgress
         }
+        return syncStatus.isSlowSyncing ? .done : .inProgress
+    }
+    
+    public var notificationHugeFetchStatus: BackgroundNotificationFetchStatus {
+        if case .done = pushHugeNotificationStatus.status {
+            return .done
+        }
+        return syncStatus.isSlowSyncing ? .done : .inProgress
     }
     
     public func requestSlowSync() {

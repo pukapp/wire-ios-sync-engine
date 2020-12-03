@@ -30,10 +30,10 @@ enum UserClientRequestError: Error {
 
 public final class UserClientRequestFactory {
     
-    unowned var keyStore : UserClientKeysStore
+    unowned var keyStore : UserClientKeysStore?
     public let keyCount : UInt16
     
-    public init(keysCount: UInt16 = 100, keysStore: UserClientKeysStore) {
+    public init(keysCount: UInt16 = 100, keysStore: UserClientKeysStore?) {
         self.keyCount = keysCount
         self.keyStore = keysStore
     }
@@ -93,14 +93,14 @@ public final class UserClientRequestFactory {
     internal func payloadForPreKeys(_ client: UserClient, startIndex: UInt16 = 0) throws -> (payload: [[String: Any]], maxRange: UInt16) {
         //we don't want to generate new prekeys if we already have them
         do {
-            let preKeys = try keyStore.generateMoreKeys(keyCount, start: startIndex)
-            guard preKeys.count > 0 else {
+            let preKeys = try keyStore?.generateMoreKeys(keyCount, start: startIndex)
+            guard preKeys?.count > 0 else {
                 throw UserClientRequestError.noPreKeys
             }
-            let preKeysPayloadData : [[String : Any]] = preKeys.map {
+            let preKeysPayloadData : [[String : Any]] = preKeys!.map {
                 ["key": $0.prekey, "id": NSNumber(value:$0.id)]
             }
-            return (preKeysPayloadData, preKeys.last!.id)
+            return (preKeysPayloadData, preKeys!.last!.id)
         }
         catch {
             throw UserClientRequestError.noPreKeys
@@ -109,7 +109,7 @@ public final class UserClientRequestFactory {
     
     internal func payloadForLastPreKey(_ client: UserClient) throws -> [String: Any] {
         do {
-            let lastKey = try keyStore.lastPreKey()
+            let lastKey = try keyStore?.lastPreKey()
             let lastPreKeyString = lastKey
             let lastPreKeyPayloadData : [String: Any] = [
                 "key": lastPreKeyString,

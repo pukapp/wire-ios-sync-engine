@@ -70,7 +70,13 @@ extension UnauthenticatedOperationLoop: RequestAvailableObserver {
             }
         }
     }
-
+    
+    func newMsgRequestsAvailable() {}
+    
+    func newExtensionSingleRequestsAvailable() {}
+    
+    func newExtensionStreamRequestsAvailable() {}
+    
     private var generator: ZMTransportRequestGenerator {
         return { [weak self] in
             guard let `self` = self else { return nil }

@@ -178,6 +178,26 @@ static NSString *ZMLogTag ZM_UNUSED = @"Authentication";
     return ZMClientRegistrationPhaseUnregistered;
 }
 
+- (BOOL)isLogin:(NSManagedObjectContext *)context {
+    if (self.isWaitingForLogin) {
+        return NO;
+    }
+    ZMUser *selfUser = [ZMUser selfUserInContext:context];
+    if (selfUser.remoteIdentifier == nil) {
+        return NO;
+    }
+    if (self.needsToCheckCredentials && self.emailCredentials == nil) {
+        return NO;
+    }
+    if (self.isWaitingForUserClients) {
+        return NO;
+    }
+    if (![[self class] needsToRegisterClientInContext: context]) {
+        return YES;
+    }
+    return NO;
+}
+
 - (BOOL)isWaitingForLogin
 {
     return self.cookieStorage.authenticationCookieData == nil;

@@ -25,6 +25,7 @@
 @class ZMSelfStrategy;
 @class ZMConversationTranscoder;
 @class ZMMissingUpdateEventsTranscoder;
+@class ZMMissingHugeUpdateEventsTranscoder;
 @class ZMRegistrationTranscoder;
 @class ZMLastUpdateEventIDTranscoder;
 @class ZMPhoneNumberVerificationTranscoder;
@@ -41,6 +42,7 @@
 @property (nonatomic, readonly) ZMConversationTranscoder *conversationTranscoder;
 @property (nonatomic, readonly) ClientMessageTranscoder *clientMessageTranscoder;
 @property (nonatomic, readonly) ZMMissingUpdateEventsTranscoder *missingUpdateEventsTranscoder;
+@property (nonatomic, readonly) ZMMissingHugeUpdateEventsTranscoder *missingHugeUpdateEventsTranscoder;
 @property (nonatomic, readonly) ZMLastUpdateEventIDTranscoder *lastUpdateEventIDTranscoder;
 @property (nonatomic, readonly) NSManagedObjectContext *moc;
 

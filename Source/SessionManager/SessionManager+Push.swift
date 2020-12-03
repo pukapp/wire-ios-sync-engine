@@ -221,7 +221,7 @@ extension SessionManager: PKPushRegistryDelegate {
     
     private func pushNotificationToAccount(conversation cid: UUID, needBeNoticedAccount: @escaping (Account) -> Void) {
         accountManager.accounts.forEach { account in
-            if HugeConversationSetting.muteHugeConversationInBackground(with: cid, in: account) {
+            if HugeConversationSetting.muteHugeConversationInBackground(with: cid, userId: account.userIdentifier.transportString()) {
                 return
             }
             
@@ -264,7 +264,7 @@ extension SessionManager: PKPushRegistryDelegate {
     // MARK: Helpers
     
     @objc public func configureUserNotifications() {
-        guard application.shouldRegisterUserNotificationSettings ?? true else { return }
+//        guard application.shouldRegisterUserNotificationSettings ?? true else { return }
         notificationCenter.setNotificationCategories(PushNotificationCategory.allCategories)
         notificationCenter.requestAuthorization(options: [.alert, .badge, .sound], completionHandler: { _, _ in })
         notificationCenter.delegate = self

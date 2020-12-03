@@ -24,6 +24,7 @@
 #import "ZMOperationLoop+Private.h"
 #import "ZMSyncStrategy.h"
 #import "ZMMissingUpdateEventsTranscoder.h"
+#import "ZMMissingHugeUpdateEventsTranscoder.h"
 #import <WireSyncEngine/WireSyncEngine-Swift.h>
 
 static NSString *ZMLogTag = @"Push";
@@ -59,6 +60,7 @@ performFetchWithCompletionHandler:(void (^)(UIBackgroundFetchResult result))comp
     [BackgroundActivityFactory.sharedFactory resume];
     [self.syncManagedObjectContext performGroupedBlock:^{
         [self.operationLoop.syncStrategy.missingUpdateEventsTranscoder startDownloadingMissingNotifications];
+        [self.operationLoop.syncStrategy.missingHugeUpdateEventsTranscoder startDownloadingMissingNotifications];
         [self.operationStatus startBackgroundFetchWithCompletionHandler:completionHandler];
     }];
 }

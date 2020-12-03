@@ -421,7 +421,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
                                                                   inContext:self.managedObjectContext];
     
     ZMConnection *connection = [ZMConnection connectionWithUserUUID:userId
-                                                          inContext:self.managedObjectContext.zm_syncContext];
+                                                          inContext:self.managedObjectContext];
     
     conversation.conversationType = ZMConversationTypeOneOnOne;
     conversation.connection = connection;
@@ -503,6 +503,10 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
 
 - (void)markConversationForDownloadIfNeeded:(ZMConversation *)conversation afterEvent:(ZMUpdateEvent *)event {
+    
+    if (conversation.conversationType == ZMConversationTypeHugeGroup) {
+        return;
+    }
     
     if (event.type == ZMUpdateEventTypeConversationMemberLeave) {
         NSDictionary *data = [event.payload dictionaryForKey:@"data"];
@@ -689,7 +693,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
     if (!hugeConversation.remoteIdentifier.transportString) {
         return;
     }
-    [self appendSystemMessageForUpdateEvent:event inConversation:hugeConversation];
+    
+    [ZMSystemMessage createOrUpdateMessageFromUpdateEvent:event inManagedObjectContext:self.managedObjectContext];
     
     [self assignMembersCountWithEvent:event forConversation:hugeConversation];
 }
@@ -756,7 +761,8 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         if (membersCountNumber != nil) {
             conversation.membersCount = membersCountNumber.integerValue;
         }
-    } else {
+    }
+    else {
         conversation.membersCount = (NSInteger)conversation.activeParticipants.count;
     }
 }
@@ -971,15 +977,6 @@ static NSString *const ConversationTeamManagedKey = @"managed";
         }
     }
     
-}
-
-- (void)fetchImageData:(NSString *)key complete:(void(^)(NSData *)) complete {
-    NSString *path = [NSString pathWithComponents:@[V3Assetspath, key]];
-    ZMTransportRequest *request = [[ZMTransportRequest alloc]initWithPath:path method:ZMMethodGET payload:nil authentication:ZMTransportRequestAuthNeedsAccess];
-    [request addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:self.managedObjectContext block:^(ZMTransportResponse * response) {
-        complete(response.rawData);
-    }]];
-    [((SessionManager *)[(NSObject *)UIApplication.sharedApplication.delegate valueForKeyPath:@"rootViewController.sessionManager"]).activeUserSession.transportSession enqueueOneTimeRequest:request];
 }
 
 - (void)processMemberUpdateEvent:(ZMUpdateEvent *)event forConversation:(ZMConversation *)conversation previousLastServerTimeStamp:(NSDate *)previousLastServerTimestamp

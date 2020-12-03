@@ -57,6 +57,7 @@ static NSString * const AppstoreURL = @"https://itunes.apple.com/us/app/zeta-cli
 @property (nonatomic) LocalNotificationDispatcher *localNotificationDispatcher;
 @property (nonatomic) NSMutableArray* observersToken;
 @property (nonatomic) ApplicationStatusDirectory *applicationStatusDirectory;
+@property (nonatomic) ApplicationStatusDirectory *applicationMsgStatusDirectory;
 
 @property (nonatomic) TopConversationsDirectory *topConversationsDirectory;
 @property (nonatomic) BOOL hasCompletedInitialSync;
@@ -160,6 +161,10 @@ ZM_EMPTY_ASSERTING_INIT()
         
         [self.syncManagedObjectContext performBlockAndWait:^{
             self.syncManagedObjectContext.zm_userInterfaceContext = self.managedObjectContext;
+            self.syncManagedObjectContext.zm_msgContext = self.msgManagedObjectContext;
+        }];
+        [self.msgManagedObjectContext performBlockAndWait:^{
+            self.msgManagedObjectContext.zm_userInterfaceContext = self.managedObjectContext;
         }];
         self.managedObjectContext.zm_syncContext = self.syncManagedObjectContext;
         
@@ -180,7 +185,7 @@ ZM_EMPTY_ASSERTING_INIT()
         
         self.notificationDispatcher = [[NotificationDispatcher alloc] initWithManagedObjectContext:self.managedObjectContext];
         
-        [self.syncManagedObjectContext performBlockAndWait:^{
+        [self.syncManagedObjectContext performGroupedBlockAndWait:^{
             self.applicationStatusDirectory = [[ApplicationStatusDirectory alloc] initWithManagedObjectContext:self.syncManagedObjectContext
                                                                                                    cookieStorage:transportSession.cookieStorage
                                                                                              requestCancellation:transportSession
@@ -202,6 +207,18 @@ ZM_EMPTY_ASSERTING_INIT()
             self.mediaManager = mediaManager;
             self.hasCompletedInitialSync = !self.applicationStatusDirectory.syncStatus.isSlowSyncing;
         }];
+        
+        [self.msgManagedObjectContext performGroupedBlockAndWait:^{
+            self.msgManagedObjectContext.zm_userImageCache = userImageCache;
+            self.msgManagedObjectContext.zm_conversationAvatarCache = conversationAvatarCache;
+            self.msgManagedObjectContext.zm_fileAssetCache = fileAssetCache;
+            self.applicationMsgStatusDirectory = [[ApplicationStatusDirectory alloc] initWithManagedObjectContext:self.msgManagedObjectContext
+                  cookieStorage:transportSession.cookieStorage
+            requestCancellation:transportSession
+                    application:application
+              syncStateDelegate:self
+                      analytics:analytics];
+        }];
 
         _application = application;
         self.topConversationsDirectory = [[TopConversationsDirectory alloc] initWithManagedObjectContext:self.managedObjectContext];
@@ -214,13 +231,15 @@ ZM_EMPTY_ASSERTING_INIT()
                                                  localNotificationsDispatcher:self.localNotificationDispatcher
                                                       notificationsDispatcher:self.notificationDispatcher
                                                    applicationStatusDirectory:self.applicationStatusDirectory
+                                                msgApplicationStatusDirectory:self.applicationMsgStatusDirectory
                                                                   application:application];
             
             self.operationLoop = operationLoop ?: [[ZMOperationLoop alloc] initWithTransportSession:transportSession
                                                                                        syncStrategy:self.syncStrategy
                                                                          applicationStatusDirectory:self.applicationStatusDirectory
                                                                                               uiMOC:self.managedObjectContext
-                                                                                            syncMOC:self.syncManagedObjectContext];
+                                                                                            syncMOC:self.syncManagedObjectContext
+                                                                                             msgMOC:self.msgManagedObjectContext];
             
             __weak id weakSelf = self;
             [transportSession setAccessTokenRenewalFailureHandler:^(ZMTransportResponse * _Nonnull response) {
@@ -242,7 +261,7 @@ ZM_EMPTY_ASSERTING_INIT()
         [self observeChangesOnShareExtension];
         
         
-        [self.syncManagedObjectContext performBlockAndWait:^{
+        [self.syncManagedObjectContext performGroupedBlockAndWait:^{
             if (self.clientRegistrationStatus.currentPhase != ZMClientRegistrationPhaseRegistered) {
                 [self.clientRegistrationStatus prepareForClientRegistration];
             }
@@ -253,15 +272,13 @@ ZM_EMPTY_ASSERTING_INIT()
         self.userExpirationObserver = [[UserExpirationObserver alloc] initWithManagedObjectContext:self.managedObjectContext];
         
         [ZMRequestAvailableNotification notifyNewRequestsAvailable:self];
+        [ZMRequestAvailableNotification msgNotifyNewRequestsAvailable:self];
     }
     return self;
 }
 
 - (void)tearDown
 {
-    ///userSession被删除时，保存一下万人群数据
-    [self saveHugeGroup];
-    
     [self.observersToken removeAllObjects];
     [self.application unregisterObserverForStateChange:self];
     self.mediaManager = nil;
@@ -326,7 +343,7 @@ ZM_EMPTY_ASSERTING_INIT()
 - (BOOL)isLoggedIn
 {
     return self.authenticationStatus.isAuthenticated &&
-           self.clientRegistrationStatus.currentPhase == ZMClientRegistrationPhaseRegistered;
+    [self.clientRegistrationStatus isLogin: self.msgManagedObjectContext];
 }
 
 - (void)registerForBackgroundNotifications;
@@ -343,6 +360,11 @@ ZM_EMPTY_ASSERTING_INIT()
 - (NSManagedObjectContext *)syncManagedObjectContext
 {
     return self.storeProvider.contextDirectory.syncContext;
+}
+
+- (NSManagedObjectContext *)msgManagedObjectContext
+{
+    return self.storeProvider.contextDirectory.msgContext;
 }
 
 - (NSManagedObjectContext *)searchManagedObjectContext
@@ -456,6 +478,7 @@ ZM_EMPTY_ASSERTING_INIT()
         [self.thirdPartyServicesDelegate userSessionIsReadyToUploadServicesData:self];
     }
 }
+
 //群昵称数据迁移
 - (void)migrateOldAliasname {
     [UserAliasname migrateOldAliasnameWith:self.syncManagedObjectContext];
@@ -464,6 +487,11 @@ ZM_EMPTY_ASSERTING_INIT()
 - (OperationStatus *)operationStatus
 {
     return self.applicationStatusDirectory.operationStatus;
+}
+
+- (void)uiFinished {
+    self.notificationDispatcher.isDisabled = NO;
+    [self.syncStrategy saveHugeConversationMuteInfo];
 }
 
 @end
@@ -547,7 +575,6 @@ ZM_EMPTY_ASSERTING_INIT()
     [self.managedObjectContext performGroupedBlock:^{
         ZM_STRONG(self);
         self.isPerformingSync = YES;
-        self.notificationDispatcher.isDisabled = YES;
         [self changeNetworkStateAndNotify];
         [self migrateOldAliasname];
     }];
@@ -559,7 +586,6 @@ ZM_EMPTY_ASSERTING_INIT()
     [self.managedObjectContext performGroupedBlock:^{
         ZM_STRONG(self);
         self.hasCompletedInitialSync = YES;
-        self.notificationDispatcher.isDisabled = NO;
         [ZMUserSession notifyInitialSyncCompletedWithContext:self.managedObjectContext];
     }];
 }

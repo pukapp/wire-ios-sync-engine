@@ -33,7 +33,7 @@ public let FifthElementChanged = Notification.Name("Show5thElementNotification")
 
 // Register new client, update it with new keys, deletes clients.
 @objcMembers
-public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStrategy, ZMUpstreamTranscoder, ZMSingleRequestTranscoder {
+public class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStrategy, ZMUpstreamTranscoder, ZMSingleRequestTranscoder {
     
     weak var clientRegistrationStatus: ZMClientRegistrationStatus?
     weak var clientUpdateStatus: ClientUpdateStatus?
@@ -43,9 +43,9 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
     fileprivate(set) var insertSync: ZMUpstreamInsertedObjectSync! = nil
     fileprivate(set) var fetchAllClientsSync: ZMSingleRequestSync! = nil
     fileprivate var didRetryRegisteringSignalingKeys : Bool = false
-    fileprivate let userKeysStore: UserClientKeysStore
+    fileprivate let userKeysStore: UserClientKeysStore?
     
-    public var requestsFactory: UserClientRequestFactory
+    public var requestsFactory: UserClientRequestFactory?
     public var minNumberOfRemainingKeys: UInt = 20
     
     fileprivate var insertSyncFilter: NSPredicate {
@@ -55,10 +55,10 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
         }
     }
     
-    public init(clientRegistrationStatus:ZMClientRegistrationStatus,
-                clientUpdateStatus:ClientUpdateStatus,
+    public init(clientRegistrationStatus:ZMClientRegistrationStatus?,
+                clientUpdateStatus:ClientUpdateStatus?,
                 context: NSManagedObjectContext,
-                userKeysStore: UserClientKeysStore)
+                userKeysStore: UserClientKeysStore?)
     {
         self.clientRegistrationStatus = clientRegistrationStatus
         self.clientUpdateStatus = clientUpdateStatus
@@ -136,7 +136,7 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
     }
         
     public func request(for sync: ZMSingleRequestSync) -> ZMTransportRequest? {
-        return requestsFactory.fetchClientsRequest()
+        return requestsFactory?.fetchClientsRequest()
     }
     
     public func request(forUpdating managedObject: ZMManagedObject, forKeys keys: Set<String>) -> ZMUpstreamRequest? {
@@ -148,20 +148,20 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
             switch keys {
             case _ where keys.contains(ZMUserClientNumberOfKeysRemainingKey):
                 do {
-                    try request = requestsFactory.updateClientPreKeysRequest(managedObject)
+                    try request = requestsFactory?.updateClientPreKeysRequest(managedObject)
                 } catch let e {
                     fatal("Couldn't create request for new pre keys: \(e)")
                 }
             case _ where keys.contains(ZMUserClientMarkedToDeleteKey):
                 if clientUpdateStatus.currentPhase == ClientUpdatePhase.deletingClients {
-                    request = requestsFactory.deleteClientRequest(managedObject, credentials: clientUpdateStatus.credentials)
+                    request = requestsFactory?.deleteClientRequest(managedObject, credentials: clientUpdateStatus.credentials)
                 }
                 else {
                     fatal("No email credentials in memory")
                 }
             case _ where keys.contains(ZMUserClientNeedsToUpdateSignalingKeysKey):
                 do {
-                    try request = requestsFactory.updateClientSignalingKeysRequest(managedObject)
+                    try request = requestsFactory?.updateClientSignalingKeysRequest(managedObject)
                 } catch let e {
                     fatal("Couldn't create request for new signaling keys: \(e)")
                 }
@@ -177,7 +177,7 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
     
     public func request(forInserting managedObject: ZMManagedObject, forKeys keys: Set<String>?) -> ZMUpstreamRequest? {
         guard let client = managedObject as? UserClient else { fatal("Called requestForInsertingObject() on \(managedObject.safeForLoggingDescription)") }
-        return try? requestsFactory.registerClientRequest(
+        return try? requestsFactory?.registerClientRequest(
                 client,
                 credentials: clientRegistrationStatus?.emailCredentials,
                 cookieLabel: CookieLabel.current.value
@@ -236,7 +236,7 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
             }
             
             client.remoteIdentifier = remoteIdentifier
-            client.numberOfKeysRemaining = Int32(requestsFactory.keyCount)
+            client.numberOfKeysRemaining = Int32(requestsFactory?.keyCount ?? 0)
             guard let moc = self.managedObjectContext else { return }
             _ = UserClient.createOrUpdateSelfUserClient(payload, context: moc)
             clientRegistrationStatus?.didRegister(client)
@@ -350,7 +350,7 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
             return processResponseForDeletingClients(managedObject, requestUserInfo: requestUserInfo, responsePayload: response.payload)
         }
         else if keysToParse.contains(ZMUserClientNumberOfKeysRemainingKey) {
-            (managedObject as! UserClient).numberOfKeysRemaining += Int32(requestsFactory.keyCount)
+            (managedObject as! UserClient).numberOfKeysRemaining += Int32(requestsFactory?.keyCount ?? 0)
         }
         else if keysToParse.contains(ZMUserClientNeedsToUpdateSignalingKeysKey) {
             didRetryRegisteringSignalingKeys = false
@@ -411,7 +411,7 @@ public final class UserClientRequestStrategy: ZMObjectSyncStrategy, ZMObjectStra
         case .userClientAdd:
             if let client = UserClient.createOrUpdateSelfUserClient(clientInfo, context: moc) {
                 selfUser.selfClient()?.addNewClientToIgnored(client)
-                NotificationCenter.default.post(name: NewClientAddChange, object: nil); selfUser.selfClient()?.updateSecurityLevelAfterDiscovering(Set(arrayLiteral: client))
+                NotificationCenter.default.post(name: NewClientAddChange, object: nil);
             }
         case .userClientRemove:
             let selfClientId = selfUser.selfClient()?.remoteIdentifier

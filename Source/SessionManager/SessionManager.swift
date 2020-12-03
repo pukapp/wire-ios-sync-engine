@@ -432,6 +432,8 @@ public protocol ForegroundNotificationResponder: class {
         postLoginAuthenticationToken = PostLoginAuthenticationNotification.addObserver(self, queue: self.groupQueue)
         callCenterObserverToken = WireCallCenterV3.addGlobalCallStateObserver(observer: self)
         
+        NotificationCenter.default.addObserver(self, selector: #selector(saveNoMuteHugeConversations), name: NSNotification.Name(SaveHugeNoMuteConversationsNotificationName), object: nil)
+        
         checkJailbreakIfNeeded()
     }
     
@@ -659,7 +661,6 @@ public protocol ForegroundNotificationResponder: class {
     fileprivate func registerObservers(account: Account, session: ZMUserSession) {
         
         let selfUser = ZMUser.selfUser(inUserSession: session)
-        let teamObserver = TeamChangeInfo.add(observer: self, for: nil, managedObjectContext: session.managedObjectContext)
         let selfObserver = UserChangeInfo.add(observer: self, for: selfUser, managedObjectContext: session.managedObjectContext)
         let conversationListObserver = ConversationListChangeInfo.add(observer: self, for: ZMConversationList.conversations(inUserSession: session), userSession: session)
         let connectionRequestObserver = ConversationListChangeInfo.add(observer: self, for: ZMConversationList.pendingConnectionConversations(inUserSession: session), userSession: session)
@@ -669,8 +670,7 @@ public protocol ForegroundNotificationResponder: class {
             guard let account = note.context as? Account else { return }
             self?.accountManager.addOrUpdate(account)
         }
-        accountTokens[account.userIdentifier] = [teamObserver,
-                                                 selfObserver!,
+        accountTokens[account.userIdentifier] = [selfObserver!,
                                                  conversationListObserver,
                                                  connectionRequestObserver,
                                                  unreadCountObserver
@@ -1066,13 +1066,6 @@ extension SessionManager {
     }
     
     @objc fileprivate func applicationWillResignActive(_ note: Notification) {
-        ///应用进入后台，保存一下万人群信息
-        for (_, session) in backgroundUserSessions {
-            if session.isAuthenticated() {
-                session.saveHugeGroup()
-            }
-        }
-        
         updateAllUnreadCounts()
     }
     

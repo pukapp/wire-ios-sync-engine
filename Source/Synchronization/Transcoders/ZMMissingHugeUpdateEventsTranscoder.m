@@ -20,41 +20,39 @@
 @import WireUtilities;
 @import WireTransport;
 @import WireRequestStrategy;
+@import WireDataModel;
 
-#import "ZMMissingUpdateEventsTranscoder+Internal.h"
+#import "ZMMissingHugeUpdateEventsTranscoder+Internal.h"
 #import <WireSyncEngine/WireSyncEngine-Swift.h>
 #import "WireSyncEngineLogs.h"
 
 
-static NSString * const LastUpdateEventIDStoreKey = @"LastUpdateEventID";
+static NSString * const LastHugeUpdateEventIDStoreKey = @"LastHugeUpdateEventID";
 static NSString * const NotificationsKey = @"notifications";
-static NSString * const NotificationsPath = @"/notifications/user";
+static NSString * const NotificationsPath = @"/notifications/bgps";
 static NSString * const StartKey = @"since";
 
-NSUInteger const ZMMissingUpdateEventsTranscoderListPageSize = 500;
+NSUInteger const ZMMissingHugeUpdateEventsTranscoderListPageSize = 500;
 
-@interface ZMMissingUpdateEventsTranscoder ()
+@interface ZMMissingHugeUpdateEventsTranscoder ()
 
 @property (nonatomic, readonly, weak) ZMSyncStrategy *syncStrategy;
 @property (nonatomic, weak) id<PreviouslyReceivedEventIDsCollection> previouslyReceivedEventIDsCollection;
 @property (nonatomic, weak) id <ZMApplication> application;
-@property (nonatomic) PushNotificationStatus *pushNotificationStatus;
+@property (nonatomic) PushHugeNotificationStatus *pushHugeNotificationStatus;
 @property (nonatomic, weak) SyncStatus* syncStatus;
 @property (nonatomic, weak) OperationStatus* operationStatus;
 @property (nonatomic, weak) id<ClientRegistrationDelegate> clientRegistrationDelegate;
 @property (nonatomic) NotificationsTracker *notificationsTracker;
 
-
-- (void)appendPotentialGapSystemMessageIfNeededWithResponse:(ZMTransportResponse *)response;
-
 @end
 
 
-@interface ZMMissingUpdateEventsTranscoder (Pagination) <ZMSimpleListRequestPaginatorSync>
+@interface ZMMissingHugeUpdateEventsTranscoder (Pagination) <ZMSimpleListRequestPaginatorSync>
 @end
 
 
-@implementation ZMMissingUpdateEventsTranscoder
+@implementation ZMMissingHugeUpdateEventsTranscoder
 
 
 - (instancetype)initWithSyncStrategy:(ZMSyncStrategy *)strategy
@@ -70,12 +68,12 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
         }
         self.application = application;
         self.previouslyReceivedEventIDsCollection = eventIDsCollection;
-        self.pushNotificationStatus = applicationStatus.pushNotificationStatus;
+        self.pushHugeNotificationStatus = applicationStatus.pushHugeNotificationStatus;
         self.syncStatus = applicationStatus.syncStatus;
         self.operationStatus = applicationStatus.operationStatus;
         self.listPaginator = [[ZMSimpleListRequestPaginator alloc] initWithBasePath:NotificationsPath
                                                                            startKey:StartKey
-                                                                           pageSize:ZMMissingUpdateEventsTranscoderListPageSize
+                                                                           pageSize:ZMMissingHugeUpdateEventsTranscoderListPageSize
                                                                 managedObjectContext:self.managedObjectContext
                                                                     includeClientID:YES
                                                                          transcoder:self];
@@ -98,7 +96,7 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
 
 - (BOOL)isFetchingStreamForAPNS
 {
-    return self.applicationStatus.notificationFetchStatus == BackgroundNotificationFetchStatusInProgress;
+    return self.applicationStatus.notificationHugeFetchStatus == BackgroundNotificationFetchStatusInProgress;
 }
 
 - (BOOL)isFetchingStreamInBackground
@@ -108,43 +106,12 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
 
 - (NSUUID *)lastUpdateEventID
 {
-    return self.managedObjectContext.zm_lastNotificationID;
+    return self.managedObjectContext.zm_lastHugeNotificationID;
 }
 
 - (void)setLastUpdateEventID:(NSUUID *)lastUpdateEventID
 {
-    self.managedObjectContext.zm_lastNotificationID = lastUpdateEventID;
-}
-
-- (void)appendPotentialGapSystemMessageIfNeededWithResponse:(ZMTransportResponse *)response
-{
-    // A 404 by the BE means we can't get all notifications as they are not stored anymore
-    // and we want to issue a system message. We still might have a payload with notifications that are newer
-    // than the commissioning time, the system message should be inserted between the old messages and the potentional
-    // newly received ones in the payload.
-    if (response.HTTPStatus == 404) {
-        NSDate *timestamp = nil;
-        const NSTimeInterval offset = 0.1f;
-        
-        NSArray *eventsDictionaries = [ZMMissingUpdateEventsTranscoder eventDictionariesFromPayload:response.payload];
-        if (nil != eventsDictionaries && nil != eventsDictionaries.firstObject) {
-            ZMUpdateEvent *event = [ZMUpdateEvent eventsArrayFromPushChannelData:eventsDictionaries.firstObject].firstObject;
-            // In case we receive a payload together with the 404 we set the timestamp of the system message
-            // to be 1/10th of a second older than the oldest received notification for it to appear above it.
-            timestamp = [event.timeStamp dateByAddingTimeInterval:-offset];
-        }
-        
-        NSArray <ZMConversation *> *conversations = [self.syncStrategy.syncMOC executeFetchRequestOrAssert:[ZMConversation sortedFetchRequest]];
-        for (ZMConversation *conversation in conversations) {
-            if (nil == timestamp) {
-                // In case we did not receive a payload we will add 1/10th to the last modified date of
-                // the conversation to make sure it appears below the last message
-                timestamp = [conversation.lastModifiedDate dateByAddingTimeInterval:offset] ?: [NSDate date];
-            }
-            [conversation appendNewPotentialGapSystemMessageWithUsers:conversation.activeParticipants
-                                                            timestamp:timestamp];
-        }
-    }
+    self.managedObjectContext.zm_lastHugeNotificationID = lastUpdateEventID;
 }
 
 - (void)updateServerTimeDeltaWithTimestamp:(NSString *)timestamp {
@@ -183,8 +150,8 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
     
     ZMLogWithLevelAndTag(ZMLogLevelInfo, ZMTAG_EVENT_PROCESSING, @"Downloaded %lu event(s)", (unsigned long)parsedEvents.count);
     
-    [syncStrategy processUpdateEvents:parsedEvents ignoreBuffer:YES];
-    [self.pushNotificationStatus didFetchEventIds:eventIds lastEventId:latestEventId finished:!self.listPaginator.hasMoreToFetch];
+    [syncStrategy processHugeUpdateEvents:parsedEvents ignoreBuffer:YES];
+    [self.pushHugeNotificationStatus didFetchEventIds:eventIds lastEventId:latestEventId finished:!self.listPaginator.hasMoreToFetch];
     
     [tp warnIfLongerThanInterval];
     return latestEventId;
@@ -235,7 +202,7 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
     }
     
     for (ZMUpdateEvent *event in events) {
-        if (event.uuid != nil && !event.isTransient && !event.isHuge) {
+        if (event.uuid != nil && ! event.isTransient && event.isHuge) {
             self.lastUpdateEventID = event.uuid;
         }
     }
@@ -252,21 +219,17 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
     // We want to create a new request if we are either currently fetching the paginated stream
     // or if we have a new notification ID that requires a pingback.
     if (self.isFetchingStreamForAPNS || self.isFetchingStreamInBackground || self.isSyncing) {
-        
-        NSLog(@"isFetchingStreamForAPNS: %d  isFetchingStreamInBackground %d  isSyncing: %d",self.isFetchingStreamForAPNS, self.isFetchingStreamInBackground, self.isSyncing);
-        
         // We only reset the paginator if it is neither in progress nor has more pages to fetch.
-        if (self.listPaginator.status != ZMSingleRequestInProgress && !self.listPaginator.hasMoreToFetch &&
-            !self.listPaginator.inProgress) {
+        NSLog(@"Huge isFetchingStreamForAPNS: %d  isFetchingStreamInBackground %d  isSyncing: %d",self.isFetchingStreamForAPNS, self.isFetchingStreamInBackground, self.isSyncing);
+        
+        if (self.listPaginator.status != ZMSingleRequestInProgress && !self.listPaginator.hasMoreToFetch && !self.listPaginator.inProgress) {
             [self.listPaginator resetFetching];
         }
 
         ZMTransportRequest *request = [self.listPaginator nextRequest];
 
         if (self.isFetchingStreamForAPNS && nil != request) {
-            [self.notificationsTracker registerStartStreamFetching];
             [request addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:self.managedObjectContext block:^(__unused ZMTransportResponse * _Nonnull response) {
-                [self.notificationsTracker registerFinishStreamFetching];
             }]];
         }
 
@@ -278,7 +241,7 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
 
 - (SyncPhase)expectedSyncPhase
 {
-    return SyncPhaseFetchingMissedEvents;
+    return SyncPhaseFetchingHugeMissedEvents;
 }
 
 - (BOOL)isSyncing
@@ -289,7 +252,7 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
 @end
 
 
-@implementation ZMMissingUpdateEventsTranscoder (Pagination)
+@implementation ZMMissingHugeUpdateEventsTranscoder (Pagination)
 
 - (NSUUID *)nextUUIDFromResponse:(ZMTransportResponse *)response forListPaginator:(ZMSimpleListRequestPaginator *)paginator
 {
@@ -315,7 +278,7 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
         if (response.HTTPStatus == 404 && self.isSyncing) {
             // If we fail during quick sync we need to re-enter slow sync and should not store the lastUpdateEventID until after the slowSync has been completed
             // Otherwise, if the device crashes or is restarted during slow sync, we lose the information that we need to perform a slow sync
-            [syncStatus updateLastUpdateEventIDWithEventID:latestEventId];
+            [syncStatus updateLastHugeUpdateEventIDWithEventID:latestEventId];
             // TODO Sabine: What happens when we receive a 404 when we are fetching the notification for a push notification? In theory we would have to enter slow sync as well or at least not store the lastUpdateEventID until the next proper sync in the foreground
         }
         else {
@@ -326,9 +289,7 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
     if (!self.listPaginator.hasMoreToFetch) {
         [self.previouslyReceivedEventIDsCollection discardListOfAlreadyReceivedPushEventIDs];
     }
-    
-    [self appendPotentialGapSystemMessageIfNeededWithResponse:response];
-    
+        
     if (response.result == ZMTransportResponseStatusPermanentError && self.isSyncing){
         [syncStatus failCurrentSyncPhaseWithPhase:self.expectedSyncPhase];
     }
@@ -352,7 +313,7 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
 
 - (BOOL)shouldParseErrorForResponse:(ZMTransportResponse *)response
 {
-    [self.pushNotificationStatus didFailToFetchEvents];
+    [self.pushHugeNotificationStatus didFailToFetchEvents];
     
     if (response.HTTPStatus == 404) {
         return YES;
@@ -360,24 +321,5 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
     
     return NO;
 }
-
-//- (NSArray<NSURLQueryItem *> *)hugeConversationQueryItems {
-//    NSArray <ZMConversation *> *hugeConversations = [self.syncStrategy.syncMOC executeFetchRequestOrAssert:[ZMConversation sortedFetchRequestWithPredicate:ZMConversation.predicateForHugeGroupConversations]];
-//    if (hugeConversations.count <= 0) {
-//        return @[];
-//    }
-//    
-//    NSMutableArray<NSString *> *ids = [NSMutableArray array];
-//    for (ZMConversation *conversation in hugeConversations) {
-//        if (conversation.remoteIdentifier.transportString != nil) {
-//            [ids addObject: conversation.remoteIdentifier.transportString];
-//        }
-//    }
-//    
-//    if (ids.count > 0) {
-//        return @[[NSURLQueryItem queryItemWithName: @"ids" value: [ids componentsJoinedByString: @","]]];
-//    }
-//    return @[];
-//}
 
 @end
