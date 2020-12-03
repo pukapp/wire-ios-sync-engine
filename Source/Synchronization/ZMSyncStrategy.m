@@ -429,6 +429,8 @@ ZM_EMPTY_ASSERTING_INIT()
         if (!self.didFetchMessageObjects) {
             self.didFetchMessageObjects = YES;
             [self.messageChangeTrackerBootStrap fetchObjectsForChangeTrackers];
+            [ZMConversation deleteOlderNeedlessMessagesWithMoc: self.msgMOC];
+            [ZMConversation lookMessagesWithMoc:self.msgMOC];
         }
     }];
     
