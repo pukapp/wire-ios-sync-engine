@@ -26,10 +26,12 @@ extension ZMSyncStrategy {
     @objc(consumeHugeUpdateEvents:)
     public func consumeHuge(updateEvents: [ZMUpdateEvent]) {
         let date = Date()
-        let fetchRequest = prefetchRequest(updateEvents: updateEvents)
+        let fetchRequest = prefetchHugeRequest(updateEvents: updateEvents)
         let prefetchResult = syncMOC.executeFetchRequestBatchOrAssert(fetchRequest)
         
         Logging.eventProcessing.info("Consuming: [\n\(updateEvents.map({ "\tevent: \(ZMUpdateEvent.eventTypeString(for: $0.type) ?? "Unknown")" }).joined(separator: "\n"))\n]")
+        
+        let selfClientIdentifier = ZMUser.selfUser(in: moc).selfClient()?.remoteIdentifier
         
         for event in updateEvents {
             let date1 = Date()
@@ -38,7 +40,7 @@ extension ZMSyncStrategy {
                 ZMSyncStrategy.evevdHugeIds.remove(uuid)
                 continue
             }
-            if event.senderClientID() == ZMUser.selfUser(in: moc).selfClient()?.remoteIdentifier {
+            if event.senderClientID() == selfClientIdentifier {
                 continue
             }
             ZMSyncStrategy.evevdHugeIds.insert(uuid)
@@ -63,17 +65,6 @@ extension ZMSyncStrategy {
         let date1 = Date()
         localNotificationDispatcher?.processEvents(updateEvents, liveEvents: true, prefetchResult: nil)
         Logging.eventProcessing.debug("localNotificationDispatcher?.processEvents in \(-date1.timeIntervalSinceNow)")
-        
-        let date2 = Date()
-        if let messages = fetchRequest.noncesToFetch as? Set<UUID>,
-            messages.count > 0,
-            let conversations = fetchRequest.remoteIdentifiersToFetch as? Set<UUID> {
-            let confirmationMessages = ZMConversation.confirmDeliveredMessages(messages, in: conversations, with: syncMOC)
-            for message in confirmationMessages {
-                self.applicationStatusDirectory?.deliveryConfirmation.needsToConfirmMessage(message.nonce!)
-            }
-            Logging.eventProcessing.debug("ConfirmMessage:\(confirmationMessages.count) in \(-date2.timeIntervalSinceNow)")
-        }
         
         syncMOC.saveOrRollback()
         Logging.eventProcessing.debug("syncMOC.saveOrRollback()")

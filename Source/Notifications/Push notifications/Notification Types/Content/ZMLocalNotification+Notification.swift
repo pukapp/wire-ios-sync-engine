@@ -23,10 +23,10 @@ extension ZMLocalNotification {
              .conversationServiceMessageAdd,
              .conversationJsonMessageAdd,
              .conversationBgpMessageAdd:
-            let array = ZMOTRMessage.createNotificationMessage(from: event, in: moc)
-            guard let message = array.firstObject as? ZMMessage,
-                  let conversation = array.lastObject as? ZMConversation else { return nil }
-            builder = NSEMessageNotificationBuilder(message: message, conversation: conversation)
+            let message = ZMOTRMessage.createOrUpdate(from: event, in: moc, prefetchResult: nil)
+            guard let msg = message else {return nil}
+            builder = NSEMessageNotificationBuilder(message: msg)
+            msg.markAsSent()
             
         case .conversationAppMessageAdd:
             guard let systemMessage = ZMSystemMessage.createOrUpdate(from: event, in: moc, prefetchResult: nil) else {
@@ -49,6 +49,8 @@ extension ZMLocalNotification {
         default:
             builder = nil
         }
+        
+        moc.saveOrRollback()
         
         if let builder = builder {
             self.init(conversation: conversation, builder: builder)

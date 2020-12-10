@@ -125,6 +125,21 @@ extension ZMSyncStrategy: ZMUpdateEventConsumer {
         return fetchRequest
     }
     
+    @objc(prefetchHugeRequestForUpdateEvents:)
+    public func prefetchHugeRequest(updateEvents: [ZMUpdateEvent]) -> ZMFetchRequestBatch {
+        var conversationNounces: Set<UUID> = Set()
+        
+        for eventConsumer in eventConsumers {
+            if let conversationRemoteIdentifiersToPrefetch = eventConsumer.conversationRemoteIdentifiersToPrefetch?(toProcessEvents: updateEvents) {
+                conversationNounces.formUnion(conversationRemoteIdentifiersToPrefetch)
+            }
+        }
+        
+        let fetchRequest = ZMFetchRequestBatch()
+        fetchRequest.addConversationRemoteIdentifiers(toPrefetchConversations: conversationNounces)
+        return fetchRequest
+    }
+    
 
 }
 

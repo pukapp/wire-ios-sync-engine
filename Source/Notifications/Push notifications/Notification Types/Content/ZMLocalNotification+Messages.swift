@@ -38,9 +38,9 @@ public class MessageNotificationBuilder: NotificationBuilder {
     let sender: ZMUser
     let conversation: ZMConversation
     
-    init?(message: ZMMessage, conversation: ZMConversation? = nil) {
+    init?(message: ZMMessage) {
         guard let sender = message.sender,
-              let conversation = (conversation ?? message.conversation),
+              let conversation = message.conversation,
               let managedObjectContext = message.managedObjectContext,
               let contentType = LocalNotificationContentType.typeForMessage(message) else {
             
