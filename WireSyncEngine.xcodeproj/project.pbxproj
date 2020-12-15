@@ -330,7 +330,6 @@
 		7369402E2390C222001A6C44 /* BGPMemberImageStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */; };
 		738D96AC2508B8C10070C73E /* WireCallCenterV3+Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738D96AB2508B8C10070C73E /* WireCallCenterV3+Meeting.swift */; };
 		738D96AE2508B9050070C73E /* MeetingClientManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738D96AD2508B9050070C73E /* MeetingClientManager.swift */; };
-		738D96B02508B91A0070C73E /* MeetingWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738D96AF2508B91A0070C73E /* MeetingWrapper.swift */; };
 		7399918E247CC0340039BCF5 /* ConversationCallingInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */; };
 		7399F57123A10556002DA207 /* ConversationAvatarUpdateStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */; };
 		7399F57323A1E1F9002DA207 /* ConversationAvatarUpdateStategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */; };
@@ -985,7 +984,6 @@
 		7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BGPMemberImageStrategy.swift; sourceTree = "<group>"; };
 		738D96AB2508B8C10070C73E /* WireCallCenterV3+Meeting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireCallCenterV3+Meeting.swift"; sourceTree = "<group>"; };
 		738D96AD2508B9050070C73E /* MeetingClientManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingClientManager.swift; sourceTree = "<group>"; };
-		738D96AF2508B91A0070C73E /* MeetingWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingWrapper.swift; sourceTree = "<group>"; };
 		7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationCallingInfo.swift; sourceTree = "<group>"; };
 		7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStatus.swift; sourceTree = "<group>"; };
 		7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStategy.swift; sourceTree = "<group>"; };
@@ -2110,7 +2108,6 @@
 				738D96AB2508B8C10070C73E /* WireCallCenterV3+Meeting.swift */,
 				73B11566251865DD006A173F /* CallingSignalManager+Meeting.swift */,
 				738D96AD2508B9050070C73E /* MeetingClientManager.swift */,
-				738D96AF2508B91A0070C73E /* MeetingWrapper.swift */,
 			);
 			path = Meeting;
 			sourceTree = "<group>";
@@ -2653,7 +2650,7 @@
 				DefaultBuildSystemTypeForWorkspace = Latest;
 				LastSwiftMigration = 0710;
 				LastSwiftUpdateCheck = 0700;
-				LastUpgradeCheck = 0930;
+				LastUpgradeCheck = 1160;
 				ORGANIZATIONNAME = "Zeta Project Gmbh";
 				TargetAttributes = {
 					3E186087191A56F6000FE027 = {
@@ -3170,7 +3167,6 @@
 				F1C51FE71FB49660009C2269 /* RegistrationStatus.swift in Sources */,
 				5E8EE1FA20FDC7D700DB1F9B /* Pasteboard.swift in Sources */,
 				73C7D9EB24CA9D91009B24DB /* MediasoupConsumer+Member.swift in Sources */,
-				738D96B02508B91A0070C73E /* MeetingWrapper.swift in Sources */,
 				874A16922052BEC5001C6760 /* UserExpirationObserver.swift in Sources */,
 				8751DA061F66BFA6000D308B /* ZMUserSession+Push.swift in Sources */,
 				EEEA75FA1F8A6142006D1070 /* ZMLocalNotification+Messages.swift in Sources */,
@@ -3518,7 +3514,7 @@
 			baseConfigurationReference = 0994E1F01B835C4900A51721 /* WireSyncEngine.xcconfig */;
 			buildSettings = {
 				"ARCHS[sdk=iphoneos*]" = arm64;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = K7PT8BFN3J;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/Source/WireSyncEngine-iOS.pch";
@@ -3534,6 +3530,7 @@
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Carthage/Build/iOS\"";
 				SWIFT_OBJC_BRIDGING_HEADER = "";
+				"VALID_ARCHS[sdk=iphonesimulator*]" = x86_64;
 			};
 			name = Debug;
 		};
@@ -3542,7 +3539,7 @@
 			baseConfigurationReference = 0994E1F01B835C4900A51721 /* WireSyncEngine.xcconfig */;
 			buildSettings = {
 				"ARCHS[sdk=iphoneos*]" = arm64;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = K7PT8BFN3J;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/Source/WireSyncEngine-iOS.pch";
@@ -3558,6 +3555,7 @@
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Carthage/Build/iOS\"";
 				SWIFT_OBJC_BRIDGING_HEADER = "";
+				"VALID_ARCHS[sdk=iphonesimulator*]" = x86_64;
 			};
 			name = Release;
 		};

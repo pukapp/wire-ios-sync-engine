@@ -43,15 +43,19 @@ extension WireCallCenterV3 {
 }
 
 public enum MeetingParticipantInviteState: String {
+    case notJoined     = "not_joined"
     case noResponse    = "no_response"
     case accepted      = "accepted"
     case reject        = "reject"
     case calling       = "calling"
     case callLimit     = "call_limit"
-    case left         = "left"
+    case left          = "left"
+    case kickOut       = "kick_out" //被踢出
     
     public var description: String {
         switch self {
+        case .notJoined:
+            return "未加入"
         case .noResponse:
             return "无响应"
         case .accepted:
@@ -64,6 +68,8 @@ public enum MeetingParticipantInviteState: String {
             return "呼叫受限"
         case .left:
             return "已离开"
+        case .kickOut:
+            return "被踢出"
         }
     }
 }
@@ -73,16 +79,20 @@ extension MeetingParticipantInviteState {
     var sortValue: Int {
         switch self {
         case .accepted:
-            return 6
+            return 8
         case .calling:
-            return 5
+            return 7
         case .left:
-            return 4
+            return 6
+        case .notJoined:
+            return 5
         case .noResponse:
-            return 3
+            return 4
         case .callLimit:
-            return 2
+            return 3
         case .reject:
+            return 2
+        case .kickOut:
             return 1
         }
     }
@@ -113,14 +123,13 @@ public struct MeetingParticipant: CallMemberProtocol {
         let selfSortValue: Int = isSelf ? 1000 : 0
         let topSortValue: Int = isTop ? 100 : 0
         let hasVideoSortValue: Int = (videoState == .started) ? 10 : 0
-        return establishedSortValue + selfSortValue + topSortValue + hasVideoSortValue + state.sortValue
+        return establishedSortValue + selfSortValue + topSortValue + hasVideoSortValue + inviteState.sortValue
     }
     public var isScreenShare: Bool = false//当前正在屏幕分享
     
     //服务器返回状态
     public let userId: String
-    public let inviteLink: String
-    public var state: MeetingParticipantInviteState
+    public var inviteState: MeetingParticipantInviteState
     public var isMute: Bool
     public var nickName: String
     public var avatar: String
@@ -130,24 +139,23 @@ public struct MeetingParticipant: CallMemberProtocol {
     public init(json: JSON, isSelf: Bool) {
         self.isSelf = isSelf
         userId = json["user_id"].stringValue
-        inviteLink = json["invite_link"].stringValue
-        state = MeetingParticipantInviteState(rawValue: json["state"].stringValue)!
-        isMute = json["is_mute"].intValue == 1
+        inviteState = MeetingParticipantInviteState(rawValue: json["state"].stringValue)!
+        isMute = json["is_mute"].stringValue == "on"
         nickName = json["nickname"].stringValue
         avatar = json["avatar"].stringValue
         
         if isSelf {
             callParticipantState = .connected
         } else {
-            callParticipantState = (state == .accepted) ? .connecting : .unconnected
+            callParticipantState = (inviteState == .accepted) ? .connecting : .unconnected
         }
         networkQuality = .normal
     }
     
     mutating func update(with json: JSON) {
         if let stateValue = json["state"].string,
-            let state = MeetingParticipantInviteState(rawValue: stateValue) {
-            self.state = state
+            let inviteState = MeetingParticipantInviteState(rawValue: stateValue) {
+            self.inviteState = inviteState
         }
         if let nickName = json["nickname"].string {
             self.nickName = nickName
