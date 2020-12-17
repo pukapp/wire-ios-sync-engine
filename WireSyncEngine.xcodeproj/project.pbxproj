@@ -2650,7 +2650,7 @@
 				DefaultBuildSystemTypeForWorkspace = Latest;
 				LastSwiftMigration = 0710;
 				LastSwiftUpdateCheck = 0700;
-				LastUpgradeCheck = 1160;
+				LastUpgradeCheck = 1230;
 				ORGANIZATIONNAME = "Zeta Project Gmbh";
 				TargetAttributes = {
 					3E186087191A56F6000FE027 = {
@@ -3431,6 +3431,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Tests/iOS Test Host/Test-Host-Prefix.pch";
 				INFOPLIST_FILE = "Tests/iOS Test Host/Test-Host-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -3448,6 +3449,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Tests/iOS Test Host/Test-Host-Prefix.pch";
 				INFOPLIST_FILE = "Tests/iOS Test Host/Test-Host-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -3461,6 +3463,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				INFOPLIST_FILE = "$(SRCROOT)/Tests/Resources/Tests-ios-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.WireSyncEngine-Test-Host";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/Tests/Source/Test-Bridging-Header.h";
@@ -3475,6 +3478,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				INFOPLIST_FILE = "$(SRCROOT)/Tests/Resources/Tests-ios-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.WireSyncEngine-Test-Host";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/Tests/Source/Test-Bridging-Header.h";
@@ -3487,11 +3491,13 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 0994E1E31B835C4900A51721 /* project-debug.xcconfig */;
 			buildSettings = {
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(SDKROOT)/usr/include/libxml2",
 					"$(inherited)",
 					"$(PROJECT_DIR)/Carthage/Build/iOS/mediasoup_client_ios",
 				);
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
 			};
 			name = Debug;
@@ -3501,10 +3507,12 @@
 			baseConfigurationReference = 0994E1E41B835C4900A51721 /* project.xcconfig */;
 			buildSettings = {
 				"ARCHS[sdk=iphoneos*]" = "$(ARCHS_STANDARD)";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/Carthage/Build/iOS/mediasoup_client_ios",
 					"$(SDKROOT)/usr/include/libxml2",
 				);
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
 			};
 			name = Release;
@@ -3514,6 +3522,7 @@
 			baseConfigurationReference = 0994E1F01B835C4900A51721 /* WireSyncEngine.xcconfig */;
 			buildSettings = {
 				"ARCHS[sdk=iphoneos*]" = arm64;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = K7PT8BFN3J;
@@ -3525,6 +3534,7 @@
 				GCC_WARN_UNUSED_VALUE = NO;
 				GCC_WARN_UNUSED_VARIABLE = NO;
 				INFOPLIST_FILE = "$(SRCROOT)/Resources/WireSyncEngine-ios-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				MOMC_NO_INVERSE_RELATIONSHIP_WARNINGS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.$(PRODUCT_NAME:rfc1034identifier)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -3539,6 +3549,7 @@
 			baseConfigurationReference = 0994E1F01B835C4900A51721 /* WireSyncEngine.xcconfig */;
 			buildSettings = {
 				"ARCHS[sdk=iphoneos*]" = arm64;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = K7PT8BFN3J;
@@ -3550,6 +3561,7 @@
 				GCC_WARN_UNUSED_VALUE = NO;
 				GCC_WARN_UNUSED_VARIABLE = NO;
 				INFOPLIST_FILE = "$(SRCROOT)/Resources/WireSyncEngine-ios-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				MOMC_NO_INVERSE_RELATIONSHIP_WARNINGS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.wire.$(PRODUCT_NAME:rfc1034identifier)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
