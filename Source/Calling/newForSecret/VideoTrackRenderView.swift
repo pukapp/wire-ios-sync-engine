@@ -11,11 +11,18 @@ import Mediasoupclient
 
 private let zmLog = ZMSLog(tag: "calling")
 
+//由于RTCMTLVideoView不适用与模拟器，所以此处进行条件编译
+#if arch(x86_64)
+public typealias RTCRenderView = RTCEAGLVideoView
+#else
+public typealias RTCRenderView = RTCMTLVideoView
+#endif
+
 /*
  此界面仅用于MeetingStartViewController中使用
  因为内存泄漏的问题，MediaOutputManager不可能做为单例类来使用，所以在还没有进行通话时，只能单独初始化一个outputManager
  */
-public class SelfVideoRenderView : RTCMTLVideoView {
+public class SelfVideoRenderView : RTCRenderView {
     
     private var outputManager: MediaOutputManager = MediaOutputManager()
     private var attached: Bool = false
@@ -79,7 +86,7 @@ public enum VideoRenderMode: Equatable {
     }
 }
 
-public class VideoRenderView : RTCMTLVideoView {
+public class VideoRenderView : RTCRenderView {
     
     deinit {
         self.removeAddedTrack()
