@@ -45,15 +45,16 @@ extension ZMSyncStrategy: ZMUpdateEventConsumer {
             Logging.eventProcessing.info("Consuming: [\n\(decryptedUpdateEvents.map({ "\tevent: \(ZMUpdateEvent.eventTypeString(for: $0.type) ?? "Unknown")" }).joined(separator: "\n"))\n]")
         
             for event in decryptedUpdateEvents {
-                guard let uuid = event.uuid?.transportString() else {continue}
-                if ZMSyncStrategy.evevdIds.contains(uuid) {
-                    ZMSyncStrategy.evevdIds.remove(uuid)
-                    continue
+                if let uuid = event.uuid?.transportString() {
+                    if ZMSyncStrategy.evevdIds.contains(uuid) {
+                        ZMSyncStrategy.evevdIds.remove(uuid)
+                        continue
+                    }  
+                    ZMSyncStrategy.evevdIds.insert(uuid)
                 }
                 if event.senderClientID() == ZMUser.selfUser(in: moc).selfClient()?.remoteIdentifier {
                     continue
                 }
-                ZMSyncStrategy.evevdIds.insert(uuid)
                 let date1 = Date()
                 for eventConsumer in self.eventConsumers {
                     eventConsumer.processEvents([event], liveEvents: true, prefetchResult: prefetchResult)
