@@ -81,6 +81,10 @@ public final class AccountStatus : NSObject, ZMInitialSyncCompletionObserver {
         
         super.init()
         
+        guard managedObjectContext.zm_isSyncContext else {
+            return
+        }
+        
         self.initialSyncToken = ZMUserSession.addInitialSyncCompletionObserver(self, context: managedObjectContext)
         self.authenticationToken = PostLoginAuthenticationNotification.addObserver(self, context: managedObjectContext)
     }
