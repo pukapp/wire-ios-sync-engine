@@ -48,7 +48,7 @@ public enum URLAction: Equatable {
     case authLoginError(error: AuthLoginError)
     case thirdLoginError(errror: ThirdLoginError)
     
-    case h5Login(code: String)
+    case h5Login(code: String, url: String?)
     case h5LoginError(error: H5LoginError)
 
     case startCompanyLogin(code: UUID)
@@ -203,11 +203,24 @@ extension URLAction {
             self = .thirdLogin(fromid: fromid, email: email, userid: userid)
             
         case URL.Host.h5Login:
-            if let code = components.query(for: "code") {
-                self = .h5Login(code: code)
-            } else {
+
+            var code: String = ""
+            var callBackUrl: String?
+            
+            if components.query(for: "code") == nil {
                 self = .h5LoginError(error: .invalidUrl(url: url))
+                return
             }
+            
+            if let c = components.query(for: "code") {
+                code = c
+            }
+            
+            if let callback = components.query(for: "url") {
+                callBackUrl = callback
+            }
+            
+            self = .h5Login(code: code, url: callBackUrl)
             
         case URL.Host.accessBackend:
             guard let config = components.query(for: URLQueryItem.Key.AccessBackend.config), let url = URL(string: config) else {
