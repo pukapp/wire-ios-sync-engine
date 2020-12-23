@@ -248,6 +248,7 @@ ZM_EMPTY_ASSERTING_INIT()
     NOT_USED(note);
     BackgroundActivity *activity = [BackgroundActivityFactory.sharedFactory startBackgroundActivityWithName:@"enter background"];
     [self.notificationDispatcher applicationDidEnterBackground];
+    [EditMessageProcessRecorder.shared applicationDidEnterBackground];
     [self.syncMOC performGroupedBlock:^{
         self.applicationStatusDirectory.operationStatus.isInBackground = YES;
         [ZMRequestAvailableNotification notifyNewRequestsAvailable:self];
@@ -263,6 +264,7 @@ ZM_EMPTY_ASSERTING_INIT()
     NOT_USED(note);
     BackgroundActivity *activity = [BackgroundActivityFactory.sharedFactory startBackgroundActivityWithName:@"enter foreground"];
     [self.notificationDispatcher applicationWillEnterForeground];
+    [EditMessageProcessRecorder.shared applicationWillEnterForeground];
     [self.syncMOC performGroupedBlock:^{
         self.applicationStatusDirectory.operationStatus.isInBackground = NO;
         [ZMRequestAvailableNotification notifyNewRequestsAvailable:self];
