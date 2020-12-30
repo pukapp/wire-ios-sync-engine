@@ -114,46 +114,42 @@ extension ZMUserTranscoder {
     }
     
     private func processUserNoticeMessage(_ updateEvent: ZMUpdateEvent) {
-        guard updateEvent.type == .userNoticeMessage else { return }
-        if let data = updateEvent.payload["data"] as? [String: Any],
-            let time = updateEvent.payload["time"] as? String,
-            let msgType = data["msgType"] as? String, let noticeType = UserNoticeMessageType(rawValue: msgType),
-            let msgData = data["msgData"] as? [String: Any] {
-            if noticeType.isMeetingNotification {
-                processMeetingNotification(noticeType, payload: msgData, time: time)
-            }
-        }
-    }
-    
-    private func processMeetingNotification(_ noticeType: UserNoticeMessageType, payload: [String: Any], time: String) {
+        guard updateEvent.type == .userNoticeMessage,
+              let data = updateEvent.payload["data"] as? [String: Any],
+              let timeString = updateEvent.payload["time"] as? String,
+              let time = NSDate(transport: timeString) as Date?,
+              let msgType = data["msgType"] as? String,
+              let noticeType = UserNoticeMessageType(msgType: msgType) else { return }
+        
         switch noticeType {
-        case .meetingStateChange:
-            ZMMeeting.createOrUpdateMeeting(with: payload, context: managedObjectContext)
-        case .removeMember:
-            break
-        case .callMember:
-            let date = NSDate(transport: time)!
-            guard date.compare(Date(timeIntervalSinceNow: -90)) != .orderedAscending else {
-                //超过90s之后才接收到信令，就不弹框
-                return
-            }
-            if let meeting = ZMMeeting.createOrUpdateMeeting(with: payload, context: managedObjectContext) {
-                meeting.callingDate = date as Date
-            }
+        case .meetingNotice(let meetingNotice):
+            self.processMeetingNotification(with: meetingNotice, eventDate: data, eventTime: time)
         }
     }
 }
 
-enum UserNoticeMessageType: String {
-    case meetingStateChange = "40104" //会议状态通知
-    case removeMember = "40105"       //移除成员通知
-    case callMember = "40107"         //呼叫成员通知
+enum UserNoticeMessageType {
     
-    var isMeetingNotification: Bool {
-        switch self {
-        case .meetingStateChange, .removeMember, .callMember:
-            return true
-        default: return false
+    enum MeetingNotice: String {
+        case appointMeetStateChange = "40201" //预约会议状态改变
+        case appointMeetContentChange = "40202" //预约会议内容改变通知
+        case appointRemind = "40203" //预约会议提醒通知
+        case appointUserInviteStateChange = "40204" //用户邀请状态改变通知
+        case appointMeetRoomStateChange = "40205" //预约会议的会议室的状态改变通知
+        
+        case meetingRoomStateChange = "40101" //会议室状态改变通知（当用户直接进入会议室而不经过预约会议时，会有这个通知）
+        case meetingRoomCallingMember = "40102" //会议室中呼叫成员通知
+    }
+    
+    case meetingNotice(MeetingNotice)
+    
+    
+
+    init?(msgType: String) {
+        if let notice = MeetingNotice(rawValue: msgType) {
+            self = .meetingNotice(notice)
+        } else {
+            return nil
         }
     }
 }

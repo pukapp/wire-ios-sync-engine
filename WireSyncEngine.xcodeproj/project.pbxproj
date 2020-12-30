@@ -328,6 +328,7 @@
 		735E682E244559EF003E089C /* SwiftyJSON.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 735E682D244559EF003E089C /* SwiftyJSON.framework */; };
 		735E698E244856C4003E089C /* VideoTrackRenderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735E698D244856C4003E089C /* VideoTrackRenderView.swift */; };
 		7369402E2390C222001A6C44 /* BGPMemberImageStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */; };
+		7385504D2593013C007A458C /* MeetingNotificeMessageCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7385504C2593013C007A458C /* MeetingNotificeMessageCenter.swift */; };
 		738D96AC2508B8C10070C73E /* WireCallCenterV3+Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738D96AB2508B8C10070C73E /* WireCallCenterV3+Meeting.swift */; };
 		738D96AE2508B9050070C73E /* MeetingClientManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738D96AD2508B9050070C73E /* MeetingClientManager.swift */; };
 		7399918E247CC0340039BCF5 /* ConversationCallingInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */; };
@@ -982,6 +983,7 @@
 		735E682D244559EF003E089C /* SwiftyJSON.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftyJSON.framework; path = ../../Build/iOS/SwiftyJSON.framework; sourceTree = "<group>"; };
 		735E698D244856C4003E089C /* VideoTrackRenderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoTrackRenderView.swift; sourceTree = "<group>"; };
 		7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BGPMemberImageStrategy.swift; sourceTree = "<group>"; };
+		7385504C2593013C007A458C /* MeetingNotificeMessageCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingNotificeMessageCenter.swift; sourceTree = "<group>"; };
 		738D96AB2508B8C10070C73E /* WireCallCenterV3+Meeting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireCallCenterV3+Meeting.swift"; sourceTree = "<group>"; };
 		738D96AD2508B9050070C73E /* MeetingClientManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingClientManager.swift; sourceTree = "<group>"; };
 		7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationCallingInfo.swift; sourceTree = "<group>"; };
@@ -2108,6 +2110,7 @@
 				738D96AB2508B8C10070C73E /* WireCallCenterV3+Meeting.swift */,
 				73B11566251865DD006A173F /* CallingSignalManager+Meeting.swift */,
 				738D96AD2508B9050070C73E /* MeetingClientManager.swift */,
+				7385504C2593013C007A458C /* MeetingNotificeMessageCenter.swift */,
 			);
 			path = Meeting;
 			sourceTree = "<group>";
@@ -3157,6 +3160,7 @@
 				73568C63246D3F5D00DE68D5 /* ConvsCallingStateManager.swift in Sources */,
 				5E8BB89C2147CE1600EEA64B /* AVSCallMember.swift in Sources */,
 				166D18A4230EBFFA001288CD /* MediaManager.swift in Sources */,
+				7385504D2593013C007A458C /* MeetingNotificeMessageCenter.swift in Sources */,
 				874F142D1C16FD9700C15118 /* Device.swift in Sources */,
 				CEF2DE7F1DB778F300451642 /* RequestLoopAnalyticsTracker.swift in Sources */,
 				F19E55A422B3A740005C792D /* PKPushPayload+SafeLogging.swift in Sources */,
