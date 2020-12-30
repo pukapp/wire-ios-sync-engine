@@ -118,7 +118,8 @@ extension ZMUserTranscoder {
         conversation?.conversationType = .oneOnOne
         conversation?.updateLastModified(serverTimestamp)
         conversation?.updateServerModified(serverTimestamp)
-        conversation?.isServiceNotice = true
+        //不是公众号，只是专门用来处理会议通知的会话
+        conversation?.isServiceNotice = false
         
         conversation?.internalAddParticipants([from])
         from.connection?.conversation = conversation
