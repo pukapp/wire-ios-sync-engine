@@ -214,7 +214,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     
     func webSocketReceiveNewNotification(with noti: String, info: JSON) {
         guard noti != "producerScore", noti != "consumerScore" else { return }
-        if let action = MeetingSignalAction.Notification(rawValue: noti) {
+        if let action = MeetingSignalAction.Notification(rawValue: noti), mode == .conference {
             self.onReceiveMeetingNotification(with: action, info: info)
         } else if let action = MediasoupSignalAction.Notification(rawValue: noti) {
             zmLog.info("MediasoupClientManager-onNewNotification:action:\(noti)，info:\(info)")
