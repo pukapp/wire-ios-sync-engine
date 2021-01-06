@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import Starscream
 
 private let zmLog = ZMSLog(tag: "calling")
 
@@ -22,51 +21,54 @@ protocol SocketActionDelegate {
     func receive(action: SocketAction)
 }
 
+private let recvSocketSignalDispatchGroup: ZMSDispatchGroup = ZMSDispatchGroup(label: "MediasoupRecvSocketSignalDispatchGroup")
 private let recvSocketSignalQueue: DispatchQueue = DispatchQueue.init(label: "MediasoupRecvSocketSignalQueue")
 
-public class CallingSignalSocket {
+public class CallingSignalSocket: NSObject {
 
-    private var socket: WebSocket?
+    private var socket: ZMWebSocket?
     private var reConnectedTimes: Int = 0
     
     private let url: URL
     private let delegate: SocketActionDelegate
-
+    private var isClosed: Bool = false //是否关闭当前websocket
+    
     init(url: URL, delegate: SocketActionDelegate) {
         zmLog.info("CallingSignalSocket-init--url:\(url)")
         self.url = url
         self.delegate = delegate
-        self.createSocket()
+        super.init()
     }
     
     func createSocket() {
-        self.socket = WebSocket(url: url, protocols: ["secret-media"])//secret-media--protoo
-        self.socket!.disableSSLCertValidation = true
-        self.socket!.callbackQueue = recvSocketSignalQueue
-        self.socket!.delegate = self
+        self.socket = ZMWebSocket(consumer: self, queue: recvSocketSignalQueue, group: recvSocketSignalDispatchGroup, url: url, trustProvider: self, additionalHeaderFields: ["Sec-WebSocket-Protocol": "media--protoo"])
     }
 
     func connect() {
         zmLog.info("CallingSignalSocket-connect")
-        self.socket?.connect()
+        self.isClosed = false
+        self.createSocket()
     }
     
     func reConnect() {
         zmLog.info("CallingSignalSocket-reConnect")
-        self.socket?.connect()
+        self.socket = nil
+        self.createSocket()
     }
     
     func disConnect() {
         zmLog.info("CallingSignalSocket-disConnect")
-        self.socket?.disconnect()
+        self.isClosed = true
+        self.socket?.close()
+        self.socket = nil
     }
     
     func send(string: String) {
-        self.socket?.write(string: string)
+        self.socket?.sendTextFrame(with: string)
     }
     
     func send(data: Data) {
-        self.socket?.write(data: data)
+        self.socket?.sendBinaryFrame(with: data)
     }
     
     deinit {
@@ -74,20 +76,32 @@ public class CallingSignalSocket {
     }
 }
 
-extension CallingSignalSocket: WebSocketDelegate, WebSocketPongDelegate {
+extension CallingSignalSocket: ZMWebSocketConsumer, BackendTrustProvider {
     
-    public func websocketDidReceivePong(socket: WebSocketClient, data: Data?) {
-        zmLog.info("CallingSignalSocket-websocketDidReceivePong")
+    public func verifyServerTrust(trust: SecTrust, host: String?) -> Bool {
+        return true
     }
     
-    public func websocketDidConnect(socket: WebSocketClient) {
-        zmLog.info("CallingSignalSocket-websocketDidConnect")
+    public func webSocketDidCompleteHandshake(_ websocket: ZMWebSocket!, httpResponse response: HTTPURLResponse!) {
+        zmLog.info("CallingSignalSocket-webSocketDidCompleteHandshake")
+        self.isClosed = false
         self.delegate.receive(action: .connected)
-        self.reConnectedTimes = 0
     }
     
-    public func websocketDidDisconnect(socket: WebSocketClient, error: Error?) {
-        zmLog.info("CallingSignalSocket-websocketDidDisconnect")
+    public func webSocket(_ webSocket: ZMWebSocket!, didReceiveFrameWith data: Data!) {
+        self.delegate.receive(action: .data(data: data))
+    }
+    
+    public func webSocket(_ webSocket: ZMWebSocket!, didReceiveFrameWithText text: String!) {
+        self.delegate.receive(action: .text(text: text))
+    }
+    
+    public func webSocketDidClose(_ webSocket: ZMWebSocket!, httpResponse response: HTTPURLResponse!, error: Error!) {
+        zmLog.info("CallingSignalSocket-webSocketDidClose")
+        //如果不是手动关闭，则需要重新连接
+        guard !self.isClosed else {
+            return
+        }
         self.reConnectedTimes += 1
         if self.reConnectedTimes > 6 {
             self.delegate.receive(action: .disconnected(needDestory: true))
@@ -99,11 +113,4 @@ extension CallingSignalSocket: WebSocketDelegate, WebSocketPongDelegate {
         }
     }
     
-    public func websocketDidReceiveData(socket: WebSocketClient, data: Data) {
-        self.delegate.receive(action: .data(data: data))
-    }
-    
-    public func websocketDidReceiveMessage(socket: WebSocketClient, text: String) {
-        self.delegate.receive(action: .text(text: text))
-    }
 }
