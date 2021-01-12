@@ -748,6 +748,7 @@ static NSString *const ConversationTeamManagedKey = @"managed";
 
     for (ZMUser *user in users) {
         [conversation internalRemoveParticipants:@[user] sender:sender];
+        [UserDisableSendMsgStatus deleteWithManagedObjectContext: self.managedObjectContext conversationId:conversation.remoteIdentifier.transportString userId:user.remoteIdentifier.transportString];
     }
     
     [self assignMembersCountWithEvent:event forConversation:conversation];
