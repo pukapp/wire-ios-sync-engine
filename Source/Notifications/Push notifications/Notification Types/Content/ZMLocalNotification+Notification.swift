@@ -28,7 +28,9 @@ extension ZMLocalNotification {
             builder = NSEMessageNotificationBuilder(message: msg)
             msg.markAsSent()
             
-        case .conversationAppMessageAdd:
+        case .conversationAppMessageAdd,
+            .conversationMemberLeave,
+            .conversationMemberJoin:
             guard let systemMessage = ZMSystemMessage.createOrUpdate(from: event, in: moc, prefetchResult: nil) else {
                 return nil
             }
