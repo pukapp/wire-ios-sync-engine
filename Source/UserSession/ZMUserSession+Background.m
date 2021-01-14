@@ -130,7 +130,7 @@ performFetchWithCompletionHandler:(void (^)(UIBackgroundFetchResult result))comp
 - (void)enableBackgroundFetch;
 {
     // We enable background fetch by setting the minimum interval to something different from UIApplicationBackgroundFetchIntervalNever
-    [self.application setMinimumBackgroundFetchInterval:10. * 60. + arc4random_uniform(5 * 60)];
+    [self.application setMinimumBackgroundFetchInterval: UIApplicationBackgroundFetchIntervalMinimum];
 }
 
 @end
