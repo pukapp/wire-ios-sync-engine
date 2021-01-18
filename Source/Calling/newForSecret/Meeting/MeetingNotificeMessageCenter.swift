@@ -100,7 +100,6 @@ extension ZMUserTranscoder {
                 //别人预约了一个会议，并邀请了自己
                 ReceivedMeetingNotification(type: .receiveAppointInvited, dataString: JSON(meetingDate).description).postNotification()
             }
-            print("test-----processMeetingNotification:\(sysMessage.text)")
         case .appointRemind:
             //会议即将开始，发通知提醒自己
             ReceivedMeetingNotification(type: .receiveAppointRemind, dataString: JSON(payload).description).postNotification()

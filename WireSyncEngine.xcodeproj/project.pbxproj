@@ -324,7 +324,6 @@
 		734554CD24C157760079DCF4 /* MediaEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734554CC24C157760079DCF4 /* MediaEventManager.swift */; };
 		734554CF24C157C20079DCF4 /* AVSAudioEffectForNew.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734554CE24C157C20079DCF4 /* AVSAudioEffectForNew.swift */; };
 		73568C63246D3F5D00DE68D5 /* ConvsCallingStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73568C62246D3F5C00DE68D5 /* ConvsCallingStateManager.swift */; };
-		735E682824455670003E089C /* Starscream.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 735E68272445566F003E089C /* Starscream.framework */; };
 		735E682E244559EF003E089C /* SwiftyJSON.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 735E682D244559EF003E089C /* SwiftyJSON.framework */; };
 		735E698E244856C4003E089C /* VideoTrackRenderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735E698D244856C4003E089C /* VideoTrackRenderView.swift */; };
 		7369402E2390C222001A6C44 /* BGPMemberImageStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */; };
@@ -1358,7 +1357,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				735E682E244559EF003E089C /* SwiftyJSON.framework in Frameworks */,
-				735E682824455670003E089C /* Starscream.framework in Frameworks */,
 				73EA4D212441762000E63429 /* mediasoup_client_ios.framework in Frameworks */,
 				878B823820A1DCE7007455CA /* HTMLString.framework in Frameworks */,
 				D59F3A1020691A0F0023474F /* ZipArchive.framework in Frameworks */,
