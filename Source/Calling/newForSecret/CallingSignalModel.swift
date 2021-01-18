@@ -19,9 +19,6 @@ class CallingSignalRequest {
     let id: UInt32
     let data: JSON
     
-    var peerId: String?
-    var roomId: String?
-    
     init(method: String, data: JSON?) {
         self.request = true
         self.method = method
@@ -34,16 +31,13 @@ class CallingSignalRequest {
         self.method = json["method"].stringValue
         self.data = json["data"]
         self.id = json["id"].uInt32Value
-        
-        self.peerId = json["peerId"].string
-        self.roomId = json["roomId"].string
     }
     
     func jsonString() -> String {
         let json: JSON = ["request": request,
                           "method": method,
                           "id": id,
-                          "data": data
+                          "data": data,
         ]
         return json.description
     }
@@ -51,7 +45,8 @@ class CallingSignalRequest {
 }
 
 class CallingSignalForwardMessage: CallingSignalRequest {
-    let toId: String
+    //专门用于表示对某个人施加某种操作
+    let toId: String//操作接收者id
     
     init(toId: String, method: String, data: JSON?) {
         self.toId = toId
@@ -75,19 +70,11 @@ struct CallingSignalResponse {
     let id: UInt32
     let data: JSON?
     
-    var method: String?
-    var roomId: String?
-    var peerId: String?
-    
-    init(response: Bool, ok: Bool, id: UInt32, data: JSON?, method: String? = nil, roomId: String? = nil, peerId: String? = nil) {
+    init(response: Bool, ok: Bool, id: UInt32, data: JSON?) {
         self.response = response
         self.ok = ok
         self.id = id
         self.data = data
-        
-        self.roomId = roomId
-        self.method = method
-        self.peerId = peerId
     }
     
     init(json: JSON) {
@@ -95,20 +82,13 @@ struct CallingSignalResponse {
         self.ok = json["ok"].boolValue
         self.data = json["data"]
         self.id = json["id"].uInt32Value
-        
-        self.method = json["method"].string
-        self.roomId = json["roomId"].string
-        self.peerId = json["peerId"].string
     }
     
     func jsonString() -> String {
         let json: JSON = ["response": response,
                           "ok": ok,
                           "id": id,
-                          "data": "",
-                          "method": method ?? "",
-                          "roomId": roomId ?? "",
-                          "peerId": peerId ?? ""]
+                          "data": ""]
         return json.description
     }
 }

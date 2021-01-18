@@ -27,9 +27,19 @@ extension CallingConfigure {
     
 }
 
+private extension CallingMembersManager {
+    //由于成员已经提前被加入到CallingMembersManager中，所以可以直接强制取
+    var p2pMemberId: UUID {
+        return self.callMembers.first!.remoteId
+    }
+}
+
 class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     
-    private var peerId: UUID!
+    private var peerId: UUID {
+        return (self.membersManagerDelegate as! CallingMembersManager).p2pMemberId
+    }
+    
     var callingConfigure: CallingConfigure!
     
     private let signalManager: CallingSignalManager
@@ -39,7 +49,7 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     private let connectStateObserver: CallingClientConnectStateObserve
     
     private let connectRole: ConnectRole
-    var videoState: VideoState = .stopped
+    private let mediaState: AVSCallMediaState
     // The `RTCPeerConnectionFactory` is in charge of creating new RTCPeerConnection instances.
     // A new RTCPeerConnection should be created every new call, but the factory is shared.
     private static let factory: RTCPeerConnectionFactory = {
@@ -78,7 +88,13 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     private var timer: ZMTimer?
     private var getStatstimer: Timer?
     
-    required init(signalManager: CallingSignalManager, mediaManager: MediaOutputManager, membersManagerDelegate: CallingMembersManagerProtocol, mediaStateManagerDelegate: CallingMediaStateManagerProtocol, observe: CallingClientConnectStateObserve, isStarter: Bool, videoState: VideoState) {
+    required init(signalManager: CallingSignalManager,
+                  mediaManager: MediaOutputManager,
+                  membersManagerDelegate: CallingMembersManagerProtocol,
+                  mediaStateManagerDelegate: CallingMediaStateManagerProtocol,
+                  observe: CallingClientConnectStateObserve,
+                  isStarter: Bool,
+                  mediaState: AVSCallMediaState) {
         self.signalManager = signalManager
         self.mediaManager = mediaManager
         self.membersManagerDelegate = membersManagerDelegate
@@ -86,17 +102,12 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
         self.connectStateObserver = observe
         self.connectRole = isStarter ? .offer : .answer
         
-        self.videoState = videoState
+        self.mediaState = mediaState
         super.init()
     }
     
-    //获取群id，以及peerID
-    func setPeerInfo(peerId: UUID) {
-        self.peerId = peerId
-    }
-    
     deinit {
-        zmLog.info("WebRTCClientManager: deinit")
+        zmLog.info("WebRTCClientManager -- deinit")
     }
     
     func webSocketConnected() {
@@ -121,6 +132,15 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
         self.peerConnection?.close()
     }
     
+    func webSocketReceiveRequest(with method: String, info: JSON, completion: (Bool) -> Void) {
+        self.handleSocketForwardMessage(with: method, info: info)
+        completion(true)
+    }
+    
+    func webSocketReceiveNewNotification(with noti: String, info: JSON) {
+        self.handleSocketNewNotification(with: noti, info: info)
+    }
+    
     func createPeerConnection() {
         guard self.peerConnection == nil else { return }
         zmLog.info("WebRTCClientManager: createPeerConnection")
@@ -142,6 +162,9 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     }
     
     func produceVideo(isEnabled: Bool) {
+        if TARGET_OS_SIMULATOR == 1 {
+            return
+        }
         guard self.localVideoTrack == nil else { return }
         self.localVideoTrack = self.mediaManager.produceVideoTrack(with: .high)
         self.localVideoTrack?.isEnabled = isEnabled
@@ -164,6 +187,14 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
             break
         }
         self.forwardP2PMessage(.videoState(state))
+    }
+    
+    func setScreenShare(isStart: Bool) {
+        // no-op
+    }
+    
+    func muteOther(_ userId: String, isMute: Bool) {
+        // no-op
     }
     
     func dispose() {
@@ -248,19 +279,18 @@ extension WebRTCClientManager: ZMTimerClient {
             self.createPeerConnection()
             //由于双方交换sdp的时候就必须包含有是否开启音频或者视频，所以为了能从语音切换到视频，此处先创建视频的track，但是设置enable为false，当开关视频的时候，通过enable的设置
             self.produceAudio()
-            self.produceVideo(isEnabled: self.videoState == .started)
+            self.produceVideo(isEnabled: self.mediaState.needSendVideo)
         case .startICE:
             //打洞仅给30s时间，不成功则直接走mediasoup
             self.timer = ZMTimer(target: self)
             self.timer!.fire(afterTimeInterval: 30)
         case .connectd:
             self.invalidTimer()
-            self.membersManagerDelegate.memberConnected(with: self.peerId!)
+            self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId, state: .connected)
         case .disconnected:
-            self.membersManagerDelegate.memberConnecting(with: self.peerId!)
+            self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId, state: .connecting)
         case .faild:
-            if self.peerId == nil { return }
-            self.membersManagerDelegate.memberConnecting(with: self.peerId!)
+            self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId, state: .connecting)
             guard self.connectState != .disconnected else {
                 //只要connectState不是从disconnected变成failed，就认为该用户没有ice穿透的可能性，直接走失败处理方法
                 self.establishConnectionFailed()
@@ -289,7 +319,7 @@ extension WebRTCClientManager: ZMTimerClient {
         })
         self.forwardP2PMessage(.switchMode(.chat))
         //断开连接之后需要将视频重置
-        self.membersManagerDelegate.setMemberVideo(.stopped, mid: self.peerId!)
+        self.membersManagerDelegate.setMemberVideo(.stopped, mid: self.peerId)
         self.connectStateObserver.establishConnectionFailed()
     }
      
@@ -317,7 +347,7 @@ extension WebRTCClientManager: RTCPeerConnectionDelegate {
         zmLog.info("RTCPeerConnectionDelegate did add stream--\(stream)")
         if let remoteTrack = stream.videoTracks.first {
             zmLog.info("RTCPeerConnectionDelegate didReceiveVideoTrack--\(remoteTrack.isEnabled)")
-            self.mediaStateManagerDelegate.addVideoTrack(with: self.peerId!, videoTrack: remoteTrack)
+            self.mediaStateManagerDelegate.addVideoTrack(with: self.peerId, videoTrack: remoteTrack)
         }
     }
     
@@ -361,7 +391,7 @@ extension WebRTCClientManager: RTCPeerConnectionDelegate {
 }
 
 
-extension WebRTCClientManager: CallingSignalManagerDelegate {
+extension WebRTCClientManager {
     
     private func requestToSwitchToP2PMode(completion: @escaping (Bool) -> Void) {
         self.signalManager.requestToSwitchRoomMode(to: .p2p, completion: completion)
@@ -390,7 +420,7 @@ extension WebRTCClientManager: CallingSignalManagerDelegate {
         case .candidate(let candidate):
             self.set(remoteCandidate: candidate.rtcIceCandidate)
         case .videoState(let state):
-            self.membersManagerDelegate.setMemberVideo(state, mid: self.peerId!)
+            self.membersManagerDelegate.setMemberVideo(state, mid: self.peerId)
         case .switchMode:
             self.establishConnectionFailed()
         case .restart:
@@ -400,7 +430,7 @@ extension WebRTCClientManager: CallingSignalManagerDelegate {
         }
     }
     
-    func onReceiveRequest(with method: String, info: JSON) {
+    func handleSocketForwardMessage(with method: String, info: JSON) {
         guard let action = WebRTCP2PSignalAction.ReceiveRequest(rawValue: method) else { return }
         zmLog.info("WebRTCClientManager-onReceiveRequest:action:\(action)")
         switch action {
@@ -410,7 +440,7 @@ extension WebRTCClientManager: CallingSignalManagerDelegate {
         }
     }
     
-    func onNewNotification(with noti: String, info: JSON) {
+    func handleSocketNewNotification(with noti: String, info: JSON) {
         guard let action = WebRTCP2PSignalAction.Notification(rawValue: noti) else { return }
         zmLog.info("WebRTCClientManager-onNewNotification:action:\(action)")
         switch action {

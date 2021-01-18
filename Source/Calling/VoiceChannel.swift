@@ -33,9 +33,97 @@ public enum CaptureDevice : Int {
     }
 }
 
+public protocol CallRelyModel: NSObjectProtocol {
+    
+    var remoteIdentifier: UUID? { get }
+    
+    var managedObjectContext: NSManagedObjectContext? { get }
+    
+    var needCallKit: Bool { get }
+    
+    var activeParticipants: Set<ZMUser> { get }
+    
+    var callType: AVSConversationType { get }
+    
+    var peerId: UUID? { get }
+    
+    var initialMember: [CallMemberProtocol] { get }
+    
+    var callTitle: String? { get }
+    
+    //用来连接mediaServer
+    var token: String? { get }
+}
+
+extension ZMMeeting: CallRelyModel {
+    public var remoteIdentifier: UUID? {
+        return UUID(uuidString: self.meetingId)
+    }
+    
+    public var needCallKit: Bool {
+        return false
+    }
+    
+    public var activeParticipants: Set<ZMUser> {
+        return []
+    }
+    
+    public var callType: AVSConversationType {
+        return .conference
+    }
+    
+    public var peerId: UUID? {
+        return nil
+    }
+    
+    public var initialMember: [CallMemberProtocol] {
+        return self.memberList.array as! [CallMemberProtocol]
+    }
+    
+    public var callTitle: String? {
+        return self.title
+    }
+    
+    public var token: String? {
+        return self.mediaServerToken
+    }
+}
+
+extension ZMConversation: CallRelyModel {
+    
+    public var callType: AVSConversationType {
+        return self.conversationType == .group ? .group : .oneToOne
+    }
+    
+    public var needCallKit: Bool {
+        return true
+    }
+    
+    public var peerId: UUID? {
+        if self.conversationType == .oneOnOne {
+            return self.connectedUser!.remoteIdentifier
+        } else {
+            return nil
+        }
+    }
+    
+    public var initialMember: [CallMemberProtocol]  {
+        guard let user = self.connectedUser, self.conversationType == .oneOnOne else { return [] }
+        return [AVSCallMember(userId: user.remoteIdentifier, callParticipantState: .connecting, isMute: false, videoState: .stopped)]
+    }
+    
+    public var callTitle: String? {
+        return self.displayName
+    }
+    
+    public var token: String? {
+        return nil
+    }
+}
+
 public protocol VoiceChannel : class, CallProperties, CallActions, CallActionsInternal, CallObservers {
     
-    init(conversation: ZMConversation)
+    init(relyModel: CallRelyModel)
     
 }
 
@@ -43,9 +131,14 @@ public protocol CallProperties : NSObjectProtocol {
     
     var state: CallState { get }
     
-    var conversation: ZMConversation? { get }
+    var relyModel: CallRelyModel? { get }
+    
+    var callTitle: String? { get }
     
     /// The date and time of current call start
+    var callEstablishedDate: Date? { get }
+    
+    //开始时间
     var callStartDate: Date? { get }
     
     /// Voice channel participants. May be a subset of conversation participants.
@@ -58,24 +151,29 @@ public protocol CallProperties : NSObjectProtocol {
     var videoState: VideoState { get set }
     var networkQuality: NetworkQuality { get }
     
-    func state(forParticipant: ZMUser) -> CallParticipantState
-    func setVideoCaptureDevice(_ device: CaptureDevice) throws
+    func connectState(forParticipant: ZMUser) -> CallParticipantState
+    func videoState(forParticipant: ZMUser) -> VideoState
+    func setVideoCaptureDevice(_ device: CaptureDevice)
 }
 
 @objc
 public protocol CallActions : NSObjectProtocol {
     
-    func mute(_ muted: Bool, userSession: ZMUserSession)
-    func join(video: Bool, userSession: ZMUserSession) -> Bool
+    func muteSelf(_ isMute: Bool, userSession: ZMUserSession)
+    func join(mediaState: AVSCallMediaState, userSession: ZMUserSession) -> Bool
     func leave(userSession: ZMUserSession, completion: (() -> ())?)
     func continueByDecreasingConversationSecurity(userSession: ZMUserSession)
     func leaveAndDecreaseConversationSecurity(userSession: ZMUserSession)
+    
+    func muteOther(_ userId: String, isMute: Bool)
+    func topUser(_ userId: String)
+    func setScreenShare(isStart: Bool)
 }
 
 @objc
 public protocol CallActionsInternal : NSObjectProtocol {
     
-    func join(video: Bool) -> Bool
+    func join(mediaState: AVSCallMediaState) -> Bool
     func leave()
     
 }
@@ -99,4 +197,6 @@ public protocol CallObservers : NSObjectProtocol {
     
     /// Add observer of the state of all voice channels. Returns a token which needs to be retained as long as the observer should be active.
     static func addCallStateObserver(_ observer: WireCallCenterCallStateObserver, userSession: ZMUserSession) -> Any
+    
+    func addMeetingPropertyChangedObserver(_ observer: WireCallCenterrMeetingPropertyChangedObserver) -> Any
 }

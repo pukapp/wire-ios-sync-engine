@@ -18,18 +18,19 @@ typealias CallStarter = (userId: UUID, clientId:  String)
 class ConversationCallingInfo: ZMTimerClient {
     let cid: UUID
     let convType: AVSConversationType
-    let callType: AVSCallType
+    let mediaState: AVSCallMediaState
     let starter: CallStarter
     
-    var memberCount: Int = 0
-    var videoState: VideoState = .stopped
-    
+    var members: [CallMemberProtocol]
     private var callTimer: ZMTimer?
     private let delegate: CallingTimeoutDelegate
+    
+    var token: String? //会议模式连接websocket所需
     
     ///状态的变化中除了已连接和挂断，都需要开启一个定时器来判断是否连接超时
     var state: CallState = .none {
         didSet {
+            guard self.convType != .conference else { return }//会议模式不需要进行计时
             switch state {
             case .outgoing, .incoming, .answered, .reconnecting:
                 callTimer?.cancel()
@@ -51,12 +52,14 @@ class ConversationCallingInfo: ZMTimerClient {
         }
     }
     
-    init(cid: UUID, convType: AVSConversationType, callType: AVSCallType, starter: CallStarter, state: CallState, delegate: CallingTimeoutDelegate) {
+    init(cid: UUID, convType: AVSConversationType, mediaState: AVSCallMediaState, starter: CallStarter, members: [CallMemberProtocol], state: CallState, token: String?, delegate: CallingTimeoutDelegate) {
         self.cid = cid
         self.convType = convType
-        self.callType = callType
+        self.mediaState = mediaState
         self.starter = starter
         self.state = state
+        self.members = members
+        self.token = token
         self.delegate = delegate
     }
     

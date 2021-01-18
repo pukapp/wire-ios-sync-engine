@@ -1119,13 +1119,15 @@ extension SessionManager: ZMConversationListObserver {
 
 extension SessionManager : WireCallCenterCallStateObserver {
     
-    public func callCenterDidChange(callState: CallState, conversation: ZMConversation, caller: ZMUser, timestamp: Date?, previousCallState: CallState?) {
-        guard let moc = conversation.managedObjectContext else { return }
+    public func callCenterDidChange(callState: CallState, relyModel: CallRelyModel, caller: ZMUser, timestamp: Date?, previousCallState: CallState?) {
+        guard let moc = relyModel.managedObjectContext else { return }
     
         switch callState {
         case .answered, .outgoing:
             for (_, session) in backgroundUserSessions where session.managedObjectContext == moc && activeUserSession != session {
-                showConversation(conversation, at: nil, in: session)
+                if let conversation = relyModel as? ZMConversation {
+                    showConversation(conversation, at: nil, in: session)
+                }
             }
         default:
             return

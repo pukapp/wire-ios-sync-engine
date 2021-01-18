@@ -30,7 +30,7 @@ public enum CallParticipantState: Equatable, Hashable {
     /// Participant is in the process of connecting to the call
     case connecting
     /// Participant is connected to call and audio is flowing
-    case connected(videoState: VideoState)
+    case connected
 }
 
 /**

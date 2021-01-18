@@ -11,72 +11,135 @@ import Mediasoupclient
 
 private let zmLog = ZMSLog(tag: "calling")
 
-open class SelfVideoRenderView : RTCEAGLVideoView {
+//由于RTCMTLVideoView不适用与模拟器，所以此处进行条件编译
+#if arch(x86_64)
+public typealias RTCRenderView = RTCEAGLVideoView
+#else
+public typealias RTCRenderView = RTCMTLVideoView
+#endif
+
+/*
+ 此界面仅用于MeetingStartViewController中使用
+ 因为内存泄漏的问题，MediaOutputManager不可能做为单例类来使用，所以在还没有进行通话时，只能单独初始化一个outputManager
+ */
+public class SelfVideoRenderView : RTCRenderView {
     
+    private var outputManager: MediaOutputManager = MediaOutputManager()
     private var attached: Bool = false
     
+    deinit {
+        zmLog.info("SelfVideoRenderView--deinit")
+    }
     
     override open func didMoveToWindow() {
-        guard let videoTrack = CallingRoomManager.shareInstance.mediaOutputManager?.produceVideoTrack(with: .high) else {
-            zmLog.info("SelfVideoRenderView-videoTrack == nil  mediaOutputManager:\(CallingRoomManager.shareInstance.mediaOutputManager == nil)")
+        if TARGET_OS_SIMULATOR == 1 {
             return
         }
         
+        if self.transform != CGAffineTransform(scaleX: -1.0, y: 1.0) {
+            self.transform = CGAffineTransform(scaleX: -1.0, y: 1.0)
+        }
+        
+        let videoTrack = outputManager.produceVideoTrack(with: .high)
+        
         if self.window != nil && !attached {
-            zmLog.info("SelfVideoRenderView-addTrack")
+            zmLog.info("SelfVideoRenderView-addTrack-- \(videoTrack)")
             videoTrack.add(self)
         } else {
             zmLog.info("SelfVideoRenderView-removeTrack")
             videoTrack.remove(self)
             attached = false
+
         }
     }
     
-    open func startVideoCapture() {
-        CallingRoomManager.shareInstance.mediaOutputManager?.startVideoCapture()
+    public func startVideoCapture() {
+        outputManager.startVideoCapture()
     }
     
-    open func stopVideoCapture() {
-        CallingRoomManager.shareInstance.mediaOutputManager?.stopVideoCapture()
+    public func stopVideoCapture() {
+         outputManager.stopVideoCapture()
     }
     
-    deinit {
-        zmLog.info("SelfVideoRenderView-deinit")
+    public func switchCamera(capture: CaptureDevice) {
+        outputManager.flipCamera(capture: capture)
     }
-    
 }
 
-open class VideoRenderView : RTCEAGLVideoView {
+
+public enum VideoRenderMode: Equatable {
+    case none
+    case renderSelf
+    case renderOther(userId: String)
+    
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        switch (lhs, rhs) {
+        case (.none, .none):
+            return true
+        case (.renderSelf, .renderSelf):
+            return true
+        case (.renderOther(let l), .renderOther(let r)):
+            return l == r
+        default:
+            return false
+        }
+    }
+}
+
+public class VideoRenderView : RTCRenderView {
     
     deinit {
-        zmLog.info("VideoRenderView--deinit")
+        self.removeAddedTrack()
+        zmLog.info("aaaa---VideoRenderView--deinit")
     }
     
-    open var shouldFill: Bool = false
-    open var fillRatio: CGFloat = 0.0
-    open var videoSize: CGSize = CGSize(width: 100, height: 100)
-    open var userid: String? {
-        didSet {
-            zmLog.info("VideoRenderView--userid--newValue:\(String(describing: userid)),oldValue\(String(describing: oldValue))")
-            if let id = userid,
-                let uid = UUID(uuidString: id),
-                let track = CallingRoomManager.shareInstance.roomMembersManager?.getVideoTrack(with: uid)
-            {
-                self.videoTrack = track
+    //MARK: 这个方法为必须调用的方法,必须给mode设置一个值
+    public func updateMode(_ newMode: VideoRenderMode) {
+        self.renderView(newMode)
+    }
+    
+    private func renderView(_ newMode: VideoRenderMode) {
+        self.isHidden = (newMode == .none)
+        guard TARGET_OS_SIMULATOR != 1 else { return }
+        switch newMode {
+        case .none:
+            self.removeAddedTrack()
+        case .renderSelf:
+            self.videoTrack = CallingRoomManager.shareInstance.mediaOutputManager?.produceVideoTrack(with: .high)
+        case .renderOther(userId: let userId):
+            guard let uid = UUID(uuidString: userId),
+                let roomMembersManager = CallingRoomManager.shareInstance.roomMembersManager else {
+                return
             }
+            self.videoTrack = roomMembersManager.getVideoTrack(with: uid)
         }
+        self.updateTransform(needFixMirror: newMode == .renderSelf)
+        self.contentMode = .scaleAspectFill
+    }
+    
+    //当为自己的时候需要修复镜像的问题，他人的则不需要
+    private func updateTransform(needFixMirror : Bool) {
+        self.transform = CGAffineTransform(scaleX: needFixMirror ? -1 : 1, y: 1)
     }
     
     private var videoTrack: RTCVideoTrack? {
         didSet {
-            zmLog.info("VideoRenderView--videoTrack--newValue:\(String(describing: videoTrack)),oldValue\(String(describing: oldValue))")
+            guard videoTrack != oldValue else { return }
             oldValue?.remove(self)
             videoTrack?.add(self)
         }
     }
     
+    //当界面被移除时，也需要手动的移除track
+    override public func removeFromSuperview() {
+        zmLog.info("aaaa---VideoRenderView--removeFromSuperview")
+        super.removeFromSuperview()
+        self.removeAddedTrack()
+    }
     
-    @objc open func removeAddedTrack() {
+    //由于track持有自己的引用，所以当出现track不能被释放，但是view需要被释放时，就手动的移除track的引用
+    private func removeAddedTrack() {
+        self.videoTrack?.remove(self)
         self.videoTrack = nil
     }
 }

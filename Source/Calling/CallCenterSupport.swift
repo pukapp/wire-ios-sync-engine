@@ -25,10 +25,61 @@ public typealias WireCallMessageToken = UnsafeMutableRawPointer
  * The possible types of call.
  */
 
-public enum AVSCallType: Int32 {
-    case normal = 0
-    case video = 1
-    case audioOnly = 2
+@objc public enum AVSCallMediaState: Int {
+    case none = 0
+    case audioOnly = 1
+    case bothAudioAndVideo = 2
+    case forceAudio = 3 //强制音频-目前暂时用不到，只是为了适配之前的avs
+    case videoOnly = 4
+    
+    public var isMute: Bool {
+        return self == .none || self == .videoOnly
+    }
+    
+    public var needSendVideo: Bool {
+        return self == .videoOnly || self == .bothAudioAndVideo
+    }
+    
+    public static func getState(isMute: Bool, video: Bool) -> AVSCallMediaState {
+        switch (isMute, video) {
+        case (true, true):
+            return .videoOnly
+        case (true, false):
+            return .none
+        case (false, true):
+            return .bothAudioAndVideo
+        case (false, false):
+            return .audioOnly
+        }
+    }
+    
+    public mutating func videoStateChanged(_ videoState: VideoState) {
+        switch (self, videoState) {
+        case (.none, .started):
+            self = .videoOnly
+        case (.audioOnly, .started):
+            self = .bothAudioAndVideo
+        case (.videoOnly, .stopped):
+            self = .none
+        case (.bothAudioAndVideo, .stopped):
+            self = .audioOnly
+        default:break
+        }
+    }
+    
+    public mutating func audioMuted(_ isMute: Bool) {
+        switch (self, isMute) {
+        case (.none, !isMute):
+            self = .audioOnly
+        case (.audioOnly, isMute):
+            self = .none
+        case (.videoOnly, !isMute):
+            self = .bothAudioAndVideo
+        case (.bothAudioAndVideo, isMute):
+            self = .videoOnly
+        default:break
+        }
+    }
 }
 
 /**

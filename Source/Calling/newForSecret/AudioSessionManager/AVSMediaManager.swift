@@ -11,18 +11,6 @@ import AVFoundation
 
 private let zmLog = ZMSLog(tag: "calling")
 
-//enum AVSPlaybackMode: NSInteger {
-//    case unknown, on, off
-//}
-
-//enum AVSRecordingMode: NSInteger {
-//    case unknown, on, off
-//}
-
-//enum AVSRecordingRoute: NSInteger {
-//    case unknown, builtIn, headset
-//}
-
 ///判断音效通知的等级
 @objc public enum AVSIntensityLevel: UInt {
     case none = 0   //不通知
@@ -37,9 +25,6 @@ public enum AVSPlaybackRoute: NSInteger {
 @objc public class AVSMediaManager: NSObject {
     
     @objc public static let sharedInstance = AVSMediaManager()
-    
-    public var playbackRoute: AVSPlaybackRoute
-    let sysUpdated: Bool
     
     private var _intensity: AVSIntensityLevel
     private var _isMicrophoneMuted: Bool
@@ -62,50 +47,9 @@ public enum AVSPlaybackRoute: NSInteger {
         _intensity = .full
         _isMicrophoneMuted = false
         _isSpeakerEnabled = false
-        self.playbackRoute = .builtIn
-        self.sysUpdated = false
         ///启动MediaEventManager
         let _ = MediaEventManager.shareInstance
         super.init()
-        
-        NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: OperationQueue.main) { (noti) in
-            self.handleRouteChangeNotification(with: noti)
-        }
-    }
-    
-    
-    func handleRouteChangeNotification(with noti: Notification) {
-        guard let key = noti.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt, let reason = AVAudioSession.RouteChangeReason.init(rawValue: key) else {
-            fatal("aaaa")
-        }
-        zmLog.info("MediaEventManager--handleRouteChangeNotification: reason:\(reason.rawValue)")
-        let currCategory = AVAudioSession.sharedInstance().category
-        
-        switch reason {
-        case .newDeviceAvailable:
-            zmLog.info("MediaEventManager--handleRouteChangeNotification: reason:newDeviceAvailable")
-        case .oldDeviceUnavailable:
-            zmLog.info("MediaEventManager--handleRouteChangeNotification: reason:oldDeviceUnavailable")
-        case .categoryChange, .override:
-            ///播放音乐时，由于Category正在切换，所以直接播放的话会导致声音从大变小，所以这里参照原来avs的做法，在Category已经切换完毕后，根据当前状态，播放铃声
-            if currCategory == .playAndRecord && currCategory != oldCategory {
-                if self.callState == .calling {
-                    self.playSound("ringing_from_me")
-                }
-            }
-            oldCategory = currCategory
-            zmLog.info("MediaEventManager--handleRouteChangeNotification: categoryChange: new:\(currCategory) old:\(oldCategory)")
-        case .wakeFromSleep:
-            zmLog.info("MediaEventManager--handleRouteChangeNotification: reason:wakeFromSleep")
-        case .noSuitableRouteForCategory:
-            zmLog.info("MediaEventManager--handleRouteChangeNotification: reason:noSuitableRouteForCategory")
-        case .routeConfigurationChange:
-            zmLog.info("MediaEventManager--handleRouteChangeNotification: reason:routeConfigurationChange")
-        case .unknown:
-            zmLog.info("MediaEventManager--handleRouteChangeNotification: reason:unknown")
-        @unknown default:
-            fatal("aaaa")
-        }
     }
     
 }
@@ -154,6 +98,17 @@ public enum AVSPlaybackRoute: NSInteger {
         MediaEventNotification(event: .stopRecoding, data: nil).post()
     }
     
+}
+
+// MARK: Sound: 播放语音消息
+@objc public extension AVSMediaManager {
+    func playAudioMessage() {
+        MediaEventNotification(event: .playAudioMessage, data: nil).post()
+    }
+    
+    func stopAudioMessage() {
+        MediaEventNotification(event: .stopAudioMessage, data: nil).post()
+    }
 }
 
 // MARK: Sound: 播放声音

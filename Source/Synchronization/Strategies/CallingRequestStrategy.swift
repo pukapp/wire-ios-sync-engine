@@ -66,9 +66,10 @@ public final class CallingRequestStrategy : NSObject, RequestStrategy {
 
 
 extension CallingRequestStrategy : ZMSingleRequestTranscoder {
+    //之前avs那一套已经弃用，目前采用CallService获取流媒体服务器地址
     public func request(for sync: ZMSingleRequestSync) -> ZMTransportRequest? {
         zmLog.debug("Scheduling request to '/calls/config/v2'")
-        return ZMTransportRequest(path: "/calls/config/v2", method: .methodGET, binaryData: nil, type: "application/json", contentDisposition: nil, shouldCompress: true)
+        return nil//ZMTransportRequest(path: "/calls/config/v2", method: .methodGET, binaryData: nil, type: "application/json", contentDisposition: nil, shouldCompress: true)
     }
     
     public func didReceive(_ response: ZMTransportResponse, forSingleRequest sync: ZMSingleRequestSync) {

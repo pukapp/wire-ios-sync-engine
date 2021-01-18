@@ -43,7 +43,10 @@ public class DataWormholeClientManager: NSObject {
     }
     
     public func sendDataToHostApp(with data: Data) {
-        if self.socket == nil { return }
+        if self.socket == nil {
+            self.setUpSocket()
+            return
+        }
         
         self.sendDataQueue.async {
             autoreleasepool {
@@ -88,34 +91,37 @@ protocol DataWormholeDataTransportDelegate {
 public class DataWormholeServerManager: NSObject {
 
     public static let sharedManager: DataWormholeServerManager = DataWormholeServerManager()
-    
+        
     private var delegate: DataWormholeDataTransportDelegate?
     
     private var sockets: [GCDAsyncSocket] = []
     private var socket: GCDAsyncSocket?
     private var recvBuffer: UnsafeMutablePointer<NTESTPCircularBuffer>?
-    private let queue: DispatchQueue = DispatchQueue.init(label: "RecvServerSocketManager")
+    private let recvServerSocketQueue: DispatchQueue = DispatchQueue.init(label: "RecvServerSocketManager")
     
     private var currenDataSize: Int64 = 0
     private var targeDataSize: Int64 = 0
     
     func setupSocket(with delegate: DataWormholeDataTransportDelegate) {
-        self.delegate = delegate
-        
-        self.recvBuffer = UnsafeMutablePointer<NTESTPCircularBuffer>.allocate(capacity: 1)
-        _NTESTPCircularBufferInit(recvBuffer, kRecvBufferMaxSize, MemoryLayout<NTESTPCircularBuffer>.size)
-        self.socket = GCDAsyncSocket.init(delegate: self, delegateQueue: queue)
-        self.socket?.isIPv6Enabled = false
-        try! self.socket?.accept(onPort: 8999)
-        self.socket?.readData(withTimeout: -1, tag: 0)
+        recvServerSocketQueue.async {
+            self.delegate = delegate
+            self.recvBuffer = UnsafeMutablePointer<NTESTPCircularBuffer>.allocate(capacity: 1)
+            _NTESTPCircularBufferInit(self.recvBuffer, kRecvBufferMaxSize, MemoryLayout<NTESTPCircularBuffer>.size)
+            self.socket = GCDAsyncSocket.init(delegate: self, delegateQueue: self.recvServerSocketQueue)
+            self.socket?.isIPv6Enabled = false
+            try! self.socket?.accept(onPort: 8999)
+            self.socket?.readData(withTimeout: -1, tag: 0)
+        }
     }
     
     func stopSocket() {
-        if socket != nil {
-            socket?.disconnect()
-            socket = nil
-            sockets.removeAll()
-            NTESTPCircularBufferCleanup(recvBuffer)
+        recvServerSocketQueue.async {
+            if self.socket != nil {
+                self.socket?.disconnect()
+                self.socket = nil
+                self.sockets.removeAll()
+                NTESTPCircularBufferCleanup(self.recvBuffer)
+            }
         }
     }
 
@@ -125,12 +131,12 @@ extension DataWormholeServerManager: GCDAsyncSocketDelegate {
     
     public func socketDidDisconnect(_ sock: GCDAsyncSocket, withError err: Error?) {
         NTESTPCircularBufferClear(self.recvBuffer)
-        self.sockets = self.sockets.filter({ return $0 == sock })
+        self.sockets = self.sockets.filter({ return $0 != sock })
     }
     
     public func socketDidCloseReadStream(_ sock: GCDAsyncSocket) {
         NTESTPCircularBufferClear(self.recvBuffer)
-        self.sockets = self.sockets.filter({ return $0 == sock })
+        self.sockets = self.sockets.filter({ return $0 != sock })
     }
     
     public func socket(_ sock: GCDAsyncSocket, didAcceptNewSocket newSocket: GCDAsyncSocket) {

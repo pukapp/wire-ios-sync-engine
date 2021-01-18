@@ -38,18 +38,18 @@ extension CallingSignalManager {
     }
     
     func requestToJudgeIsPeerAlreadyInRoom(completion: @escaping (Bool) -> Void) {
-        sendSocketRequest(with: "getP2PInfo", data: nil) { (res) in
-            guard !res.ok, res.data == nil, let peerCount = res.data!["peerCount"].int else {
-                completion(false)
-                return
-            }
-            completion(peerCount > 1)
+        guard let res = sendSocketRequest(with: "getP2PInfo", data: nil), res.ok, res.data != nil, let peerCount = res.data!["peerCount"].int else {
+            completion(false)
+            return
         }
+        completion(peerCount > 1)
     }
     
     func requestToSwitchRoomMode(to mode: RoomMode, completion: @escaping (Bool) -> Void) {
-        sendSocketRequest(with: WebRTCP2PSignalAction.sendRequest.switchRoomMode.rawValue, data: ["roomMode": mode.rawValue], completion: { res in
-            completion(res.ok)
-        })
+        guard let res = sendSocketRequest(with: WebRTCP2PSignalAction.sendRequest.switchRoomMode.rawValue, data: ["roomMode": mode.rawValue]) else {
+            completion(false)
+            return
+        }
+        completion(res.ok)
     }
 }

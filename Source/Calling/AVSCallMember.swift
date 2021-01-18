@@ -18,28 +18,48 @@
 
 import Foundation
 
+//目前成员分为普通群聊音视频中的成员以及会议模式下的成员，所以这里将成员抽象出来
+public protocol CallMemberProtocol {
+    var remoteId: UUID { get }
+    var networkQuality: NetworkQuality { set get }
+    var callParticipantState: CallParticipantState { set get }
+    var isMute: Bool { set get }
+    var videoState: VideoState { set get }
+    var audioEstablished: Bool { get }
+    var isSelf: Bool { get }
+    //用作会议的排序
+    var isTop: Bool { get }
+    var sortLevel: Int { get }
+}
 
 /**
  * An object that represents the member of an AVS call.
  */
 
-public struct AVSCallMember: Hashable {
+public struct AVSCallMember: CallMemberProtocol {
 
     /// The remote identifier of the user.
     public let remoteId: UUID
 
     /// Whether an audio connection was established.
     //public let audioEstablished: Bool
-
+    
+    public var isMute: Bool
+    
     /// The state of video connection.
-    //public let videoState: VideoState
+    public var videoState: VideoState
 
     /// Netwok quality of this leg
-    public let networkQuality: NetworkQuality
+    public var networkQuality: NetworkQuality
 
-    public let callParticipantState: CallParticipantState
+    public var callParticipantState: CallParticipantState
+    
+    public var isSelf: Bool = false //由于普通聊天中，成员列表不存储自己的信息，所以这里统一为false，此属性在会议成员列表中需要用到
+    
+    public var isTop: Bool = false
+    public var sortLevel: Int = 0
     // MARK: - Initialization
-
+    
     /**
      * Creates the call member from its values.
      * - parameter userId: The remote identifier of the user.
@@ -56,9 +76,11 @@ public struct AVSCallMember: Hashable {
     }
  */
 
-    public init(userId : UUID, callParticipantState: CallParticipantState, networkQuality: NetworkQuality = .normal) {
+    public init(userId : UUID, callParticipantState: CallParticipantState, isMute: Bool, videoState: VideoState, networkQuality: NetworkQuality = .normal) {
         self.remoteId = userId
         self.callParticipantState = callParticipantState
+        self.isMute = isMute
+        self.videoState = videoState
         self.networkQuality = networkQuality
     }
 
@@ -74,21 +96,11 @@ public struct AVSCallMember: Hashable {
 //    }
     public var audioEstablished: Bool {
         switch self.callParticipantState {
-        case .connected(videoState: _):
+        case .connected:
             return true
         default:
             return false
         }
-    }
-
-    // MARK: - Hashable
-
-    public var hashValue: Int {
-        return remoteId.hashValue
-    }
-
-    public static func == (lhs: AVSCallMember, rhs: AVSCallMember) -> Bool {
-        return lhs.remoteId == rhs.remoteId
     }
 
 }
