@@ -46,7 +46,7 @@ public final class MemberDownloadRequestStrategy: AbstractRequestStrategy, ZMCon
 
     private (set) var downstreamSync: ZMDownstreamObjectSync!
 
-    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
         configuration = [.allowsRequestsDuringEventProcessing]
         downstreamSync = ZMDownstreamObjectSync(

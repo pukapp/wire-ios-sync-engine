@@ -193,6 +193,29 @@ struct PushTokenMetadata {
     }()
 }
 
+struct ApnsPushTokenMetadata {
+    let isSandbox: Bool
+    let appIdentifier: String
+    var transportType: String {
+        if isSandbox {
+            return "APNS_SANDBOX"
+        }
+        else {
+            return "APNS"
+        }
+    }
+    static var current: ApnsPushTokenMetadata = {
+        let appId = Bundle.main.bundleIdentifier ?? ""
+        let buildType = BuildType.init(bundleID: appId)
+        
+        let isSandbox = ZMMobileProvisionParser().apsEnvironment == .sandbox
+        let appIdentifier = buildType.certificateName
+        
+        let metadata = ApnsPushTokenMetadata(isSandbox: isSandbox, appIdentifier: appIdentifier)
+        return metadata
+    }()
+}
+
 extension ZMUserSession {
 
     @objc public static let registerCurrentPushTokenNotificationName = Notification.Name(rawValue: "ZMUserSessionResetPushTokensNotification")
@@ -216,6 +239,22 @@ extension ZMUserSession {
             }
         }
     }
+    
+    func setApnsPushKitToken(_ token: String) {
+        let metadata = ApnsPushTokenMetadata.current
+        let syncMOC = managedObjectContext.zm_sync!
+        syncMOC.performGroupedBlock {
+            guard let selfClient = ZMUser.selfUser(in: syncMOC).selfClient() else { return }
+            if selfClient.apnsPushToken?.deviceToken != token ||
+                selfClient.apnsPushToken?.isRegistered == false  {
+                selfClient.apnsPushToken = ApnsPushToken(deviceToken: token,
+                                                 appIdentifier: metadata.appIdentifier,
+                                                 transportType: metadata.transportType,
+                                                 isRegistered: false, randomCode: Int(arc4random()) % 100)
+                syncMOC.saveOrRollback()
+            }
+        }
+    }
 
     func deletePushKitToken() {
         let syncMOC = managedObjectContext.zm_sync!
@@ -230,6 +269,7 @@ extension ZMUserSession {
     @objc public func registerCurrentPushToken() {
         managedObjectContext.performGroupedBlock {
             self.sessionManager.updatePushToken(for: self)
+            self.sessionManager.updateApnsPushToken(for: self)
         }
     }
 

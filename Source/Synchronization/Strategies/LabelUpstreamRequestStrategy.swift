@@ -24,7 +24,7 @@ public class LabelUpstreamRequestStrategy: AbstractRequestStrategy {
     fileprivate let jsonEncoder = JSONEncoder()
     fileprivate var upstreamSync: ZMSingleRequestSync!
     
-    override public init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    override public init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
         
         self.configuration = .allowsRequestsDuringEventProcessing

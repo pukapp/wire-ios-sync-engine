@@ -66,6 +66,7 @@
 @property (nonatomic) MissingClientsRequestStrategy *missingClientsRequestStrategy;
 @property (nonatomic) LinkPreviewAssetDownloadRequestStrategy *linkPreviewAssetDownloadRequestStrategy;
 @property (nonatomic) PushTokenStrategy *pushTokenStrategy;
+@property (nonatomic) ApnsPushTokenStrategy *apnsPushTokenStrategy;
 @property (nonatomic) SearchUserImageStrategy *searchUserImageStrategy;
 
 @property (nonatomic, readwrite) CallingRequestStrategy *callingRequestStrategy;
@@ -139,6 +140,10 @@ ZM_EMPTY_ASSERTING_INIT()
         self.missingClientsRequestStrategy = [[MissingClientsRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory];
         self.fetchingClientRequestStrategy = [[FetchingClientRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory];
         
+        self.pushTokenStrategy = [[PushTokenStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory analytics:applicationStatusDirectory.analytics];
+        
+        self.apnsPushTokenStrategy = [[ApnsPushTokenStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory analytics:applicationStatusDirectory.analytics];
+        
         self.requestStrategies = @[
                                    self.userClientRequestStrategy,
                                    self.missingClientsRequestStrategy,
@@ -162,7 +167,8 @@ ZM_EMPTY_ASSERTING_INIT()
                                    self.linkPreviewAssetDownloadRequestStrategy,
                                    self.linkPreviewAssetUploadRequestStrategy,
                                    self.imageV2DownloadRequestStrategy,
-                                   [[PushTokenStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory analytics:applicationStatusDirectory.analytics],
+                                   self.pushTokenStrategy,
+                                   self.apnsPushTokenStrategy,
                                    [[TypingStrategy alloc] initWithApplicationStatus:applicationStatusDirectory managedObjectContext:self.syncMOC],
                                    [[SearchUserImageStrategy alloc] initWithApplicationStatus:applicationStatusDirectory managedObjectContext:self.syncMOC],
                                    [[BGPMemberImageStrategy alloc] initWithApplicationStatus:applicationStatusDirectory managedObjectContext:self.syncMOC],

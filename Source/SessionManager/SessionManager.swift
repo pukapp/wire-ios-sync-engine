@@ -70,6 +70,8 @@ public protocol SessionManagerType : class {
     /// Will update the push token for the session if it has changed
     func updatePushToken(for session: ZMUserSession)
     
+    func updateApnsPushToken(for session: ZMUserSession)
+    
     /// Configure user notification settings. This will ask the user for permission to display notifications.
     func configureUserNotifications()
     
@@ -688,6 +690,7 @@ public protocol ForegroundNotificationResponder: class {
         backgroundUserSessions[account.userIdentifier] = userSession
         userSession.useConstantBitRateAudio = useConstantBitRateAudio
         updatePushToken(for: userSession)
+        updateApnsPushToken(for: userSession)
         registerObservers(account: account, session: userSession)
     }
     
