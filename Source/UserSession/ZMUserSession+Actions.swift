@@ -104,7 +104,7 @@ import Foundation
         }
     }
     
-    public  func reply(with userInfo: NotificationUserInfo, message: String, completionHandler: @escaping () -> Void) {
+    public func reply(with userInfo: NotificationUserInfo, message: String, completionHandler: @escaping () -> Void) {
         guard
             !message.isEmpty,
             let conversation = userInfo.conversation(in: managedObjectContext)
@@ -128,7 +128,9 @@ import Foundation
                     self.syncManagedObjectContext.analytics?.tagActionOnPushNotification(conversation: conversationOnSyncContext, action: .text)
                 }
                 BackgroundActivityFactory.shared.endBackgroundActivity(activity)
-                completionHandler()
+                DispatchQueue.main.async {
+                    completionHandler()
+                }
             }
         }
         
