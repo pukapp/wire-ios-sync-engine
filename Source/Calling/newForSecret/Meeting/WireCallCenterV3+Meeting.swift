@@ -51,27 +51,6 @@ public enum MeetingParticipantInviteState: String {
     case callLimit     = "call_limit"
     case left          = "left"
     case kickOut       = "kick_out" //被踢出
-    
-    public var description: String {
-        switch self {
-        case .notJoined:
-            return "未加入"
-        case .noResponse:
-            return "无响应"
-        case .accepted:
-            return ""
-        case .reject:
-            return "已拒绝"
-        case .calling:
-            return "呼叫中"
-        case .callLimit:
-            return "呼叫受限"
-        case .left:
-            return "已离开"
-        case .kickOut:
-            return "被踢出"
-        }
-    }
 }
 
 //获取排序状态
