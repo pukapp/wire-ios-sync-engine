@@ -151,7 +151,7 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
     ZMLogWithLevelAndTag(ZMLogLevelInfo, ZMTAG_EVENT_PROCESSING, @"Downloaded %lu event(s)", (unsigned long)parsedEvents.count);
     
     [syncStrategy processHugeUpdateEvents:parsedEvents ignoreBuffer:YES];
-    [self.pushHugeNotificationStatus didFetchEventIds:eventIds lastEventId:latestEventId finished:!self.listPaginator.hasMoreToFetch];
+//    [self.pushHugeNotificationStatus didFetchEventIds:eventIds lastEventId:latestEventId finished:!self.listPaginator.hasMoreToFetch];
     
     [tp warnIfLongerThanInterval];
     return latestEventId;
@@ -287,7 +287,7 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
     }
     
     if (!self.listPaginator.hasMoreToFetch) {
-        [self.previouslyReceivedEventIDsCollection discardListOfAlreadyReceivedPushEventIDs];
+        [self.previouslyReceivedEventIDsCollection discardListOfAlreadyReceivedHugePushEventIDs];
     }
         
     if (response.result == ZMTransportResponseStatusPermanentError && self.isSyncing){

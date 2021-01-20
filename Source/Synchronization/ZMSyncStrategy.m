@@ -79,6 +79,7 @@
 
 @property (nonatomic) NSManagedObjectContext *eventMOC;
 @property (nonatomic) EventDecoder *eventDecoder;
+@property (nonatomic) HugeEventDecoder *hugeEventDecoder;
 @property (nonatomic, weak) LocalNotificationDispatcher *localNotificationDispatcher;
 
 @property (nonatomic, weak) ApplicationStatusDirectory *applicationStatusDirectory;
@@ -227,13 +228,14 @@ ZM_EMPTY_ASSERTING_INIT()
                                applicationStatusDirectory:(ApplicationStatusDirectory *)applicationStatusDirectory
 {
     self.eventDecoder = [[EventDecoder alloc] initWithEventMOC:self.eventMOC syncMOC:self.syncMOC];
+    self.hugeEventDecoder = [[HugeEventDecoder alloc] initWithEventMOC:self.eventMOC syncMOC:self.syncMOC];
     self.connectionTranscoder = [[ZMConnectionTranscoder alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory syncStatus:applicationStatusDirectory.syncStatus];
     self.userTranscoder = [[ZMUserTranscoder alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory syncStatus:applicationStatusDirectory.syncStatus];
     self.selfStrategy = [[ZMSelfStrategy alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory clientRegistrationStatus:applicationStatusDirectory.clientRegistrationStatus syncStatus:applicationStatusDirectory.syncStatus];
     self.conversationTranscoder = [[ZMConversationTranscoder alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory localNotificationDispatcher:localNotificationsDispatcher syncStatus:applicationStatusDirectory.syncStatus];
     self.clientMessageTranscoder = [[ClientMessageTranscoder alloc] initIn:self.syncMOC localNotificationDispatcher:localNotificationsDispatcher applicationStatus:applicationStatusDirectory];
     self.missingUpdateEventsTranscoder = [[ZMMissingUpdateEventsTranscoder alloc] initWithSyncStrategy:self previouslyReceivedEventIDsCollection:self.eventDecoder application:self.application applicationStatus:applicationStatusDirectory];
-    self.missingHugeUpdateEventsTranscoder = [[ZMMissingHugeUpdateEventsTranscoder alloc] initWithSyncStrategy:self previouslyReceivedEventIDsCollection:self.eventDecoder application:self.application applicationStatus:applicationStatusDirectory];
+    self.missingHugeUpdateEventsTranscoder = [[ZMMissingHugeUpdateEventsTranscoder alloc] initWithSyncStrategy:self previouslyReceivedEventIDsCollection:self.hugeEventDecoder application:self.application applicationStatus:applicationStatusDirectory];
     self.lastUpdateEventIDTranscoder = [[ZMLastUpdateEventIDTranscoder alloc] initWithManagedObjectContext:self.syncMOC applicationStatus:applicationStatusDirectory syncStatus:applicationStatusDirectory.syncStatus objectDirectory:self];
     self.callingRequestStrategy = [[CallingRequestStrategy alloc] initWithManagedObjectContext:self.syncMOC clientRegistrationDelegate:applicationStatusDirectory.clientRegistrationStatus flowManager:flowManager callEventStatus:applicationStatusDirectory.callEventStatus];
     self.userDisableSendMsgStrategy = [[UserDisableSendMsgStatusStrategy alloc]initWithContext:self.syncMOC dispatcher:self.localNotificationDispatcher];
@@ -328,6 +330,7 @@ ZM_EMPTY_ASSERTING_INIT()
     self.lastUpdateEventIDTranscoder = nil;
     self.allChangeTrackers = nil;
     self.eventDecoder = nil;
+    self.hugeEventDecoder = nil;
     [self.eventMOC performGroupedBlockAndWait:^{
         [self.eventMOC tearDownEventMOC];
     }];

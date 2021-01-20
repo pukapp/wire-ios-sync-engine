@@ -76,7 +76,7 @@ extension Notification.Name {
     public internal (set) var currentSyncPhase : SyncPhase = .done {
         didSet {
             if currentSyncPhase != oldValue {
-                zmLog.debug("did change sync phase: \(currentSyncPhase)")
+                print("did change sync phase: \(currentSyncPhase)")
                 notifySyncPhaseDidStart()
                 NotificationCenter.default.post(name: .TrackSyncPhase, object: nil, userInfo: ["trackSyncPhase" : currentSyncPhase])
             }

@@ -37,6 +37,7 @@
 @class ApplicationStatusDirectory;
 @class CallingRequestStrategy;
 @class EventDecoder;
+@class HugeEventDecoder;
 
 @protocol ZMTransportData;
 @protocol ZMSyncStateDelegate;
@@ -73,6 +74,7 @@
 @property (nonatomic, readonly, nonnull) NSManagedObjectContext *msgMOC;
 @property (nonatomic, weak, readonly, nullable) ApplicationStatusDirectory *applicationStatusDirectory;
 @property (nonatomic, readonly, nonnull) CallingRequestStrategy *callingRequestStrategy;
+@property (nonatomic, readonly, nonnull) HugeEventDecoder *hugeEventDecoder;
 @property (nonatomic, readonly, nonnull) EventDecoder *eventDecoder;
 @property (nonatomic, readonly, nonnull) ZMUpdateEventsBuffer *eventsBuffer;
 @property (nonatomic, readonly, nonnull) ZMUpdateEventsBuffer *hugeEventsBuffer;
