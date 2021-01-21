@@ -21,16 +21,12 @@ import WireSystem
 enum BuildType: Equatable {
     case production
     case alpha
-    case development
-    case `internal`
     case custom(bundleID: String)
 
     init(bundleID: String) {
         switch bundleID {
-        case "com.hzb.itask": self = .production
-        case "com.hzb.itask-alpha": self = .alpha
-        case "com.hzb.itask-development": self = .development
-        case "com.hzb.itask-beta": self = .internal
+        case "security.itask.group": self = .production
+        case "security.itask.group-alpha": self = .alpha
         default: self = .custom(bundleID: bundleID)
         }
     }
@@ -38,13 +34,9 @@ enum BuildType: Equatable {
     var certificateName: String {
         switch self {
         case .production:
-            return "Task"
+            return "itask.production"
         case .alpha:
-            return "TaskBeta"
-        case .development:
-            return "TaskDevelopment"
-        case .internal:
-            return "TaskBeta"
+            return "itask.alpha"
         case .custom(let bundleID):
             return bundleID
         }
@@ -53,13 +45,9 @@ enum BuildType: Equatable {
     var bundleID: String {
         switch self {
         case .production:
-            return "com.hzb.itask"
+            return "security.itask.group"
         case .alpha:
-            return "com.hzb.itask-alpha"
-        case .development:
-            return "com.hzb.itask-development"
-        case .internal:
-            return "com.hzb.itask-beta"
+            return "security.itask.group-alpha"
         case .custom(let bundleID):
             return bundleID
         }
