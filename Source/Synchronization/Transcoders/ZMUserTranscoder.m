@@ -183,7 +183,10 @@ NSString *const UserMomentAdd = @"UserMomentAdd";
     
     NSMutableArray *connectedUsers = [NSMutableArray array];
     for(ZMConnection *connection in connections) {
-        [connectedUsers addObject:connection.to];
+        // 修复可能为空时崩溃
+        if (connection.to != nil) {
+            [connectedUsers addObject:connection.to];
+        }
     }
     return connectedUsers;
 }
