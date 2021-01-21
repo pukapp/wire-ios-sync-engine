@@ -34,6 +34,15 @@ extension ZMLocalNotification {
             guard let systemMessage = ZMSystemMessage.createOrUpdate(from: event, in: moc, prefetchResult: nil) else {
                 return nil
             }
+            // 和自己无关的加人删人消息 过滤
+            if let sysMessage = systemMessage as? ZMSystemMessage,  (sysMessage.systemMessageType == .participantsAdded ||
+                sysMessage.systemMessageType == .participantsRemoved) {
+                let selfUser = ZMUser.selfUser(in: moc)
+                
+                if sysMessage.sender?.remoteIdentifier.transportString() == selfUser.remoteIdentifier.transportString() {
+                    return nil
+                }
+            }
             builder = NSEMessageNotificationBuilder(message: systemMessage)
             
         case .conversationCreate:
