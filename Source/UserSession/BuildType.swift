@@ -34,9 +34,9 @@ enum BuildType: Equatable {
     var certificateName: String {
         switch self {
         case .production:
-            return "itask.production"
+            return "production"
         case .alpha:
-            return "itask.alpha"
+            return "alpha"
         case .custom(let bundleID):
             return bundleID
         }
