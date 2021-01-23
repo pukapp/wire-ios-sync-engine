@@ -21,8 +21,9 @@ extension ZMLocalNotification {
     
     // for each supported event type, use the corresponding notification builder.
     //
-    convenience init?(event: ZMUpdateEvent, conversation: ZMConversation?, managedObjectContext moc: NSManagedObjectContext) {
+    public convenience init?(event: ZMUpdateEvent, conversation: ZMConversation?, managedObjectContext moc: NSManagedObjectContext) {
         var builder: NotificationBuilder?
+        
         
         switch event.type {
         case .conversationOtrMessageAdd:
@@ -44,6 +45,8 @@ extension ZMLocalNotification {
             return nil
         }
         
+        moc.processPendingChanges()
+        
         if let builder = builder {
             self.init(conversation: conversation, builder: builder)
         } else {
@@ -56,7 +59,7 @@ extension ZMLocalNotification {
 // Base class for event notification builders. Subclass this for each
 // event type, and override the components specific for that type.
 ///
-fileprivate class EventNotificationBuilder: NotificationBuilder {
+class EventNotificationBuilder: NotificationBuilder {
     
     let event: ZMUpdateEvent
     let moc: NSManagedObjectContext
@@ -183,7 +186,7 @@ private class ReactionEventNotificationBuilder: EventNotificationBuilder {
 
 // MARK: - Conversation Create Event
 
-private class ConversationCreateEventNotificationBuilder: EventNotificationBuilder {
+class ConversationCreateEventNotificationBuilder: EventNotificationBuilder {
     
     override var notificationType: LocalNotificationType {
         return LocalNotificationType.event(.conversationCreated)
@@ -197,7 +200,7 @@ private class ConversationCreateEventNotificationBuilder: EventNotificationBuild
 
 // MARK: - Conversation Delete Event
 
-private class ConversationDeleteEventNotificationBuilder: EventNotificationBuilder {
+class ConversationDeleteEventNotificationBuilder: EventNotificationBuilder {
     
     override var notificationType: LocalNotificationType {
         return LocalNotificationType.event(.conversationDeleted)
@@ -212,7 +215,7 @@ private class ConversationDeleteEventNotificationBuilder: EventNotificationBuild
 
 // MARK: - User Connection Event
 
-private class UserConnectionEventNotificationBuilder: EventNotificationBuilder {
+class UserConnectionEventNotificationBuilder: EventNotificationBuilder {
     
     var eventType : LocalNotificationEventType
     var senderName: String?
@@ -253,7 +256,7 @@ private class UserConnectionEventNotificationBuilder: EventNotificationBuilder {
 
 // MARK: - New User Event
 
-private class NewUserEventNotificationBuilder: EventNotificationBuilder {
+class NewUserEventNotificationBuilder: EventNotificationBuilder {
     
     override var notificationType: LocalNotificationType {
         return LocalNotificationType.event(.newConnection)

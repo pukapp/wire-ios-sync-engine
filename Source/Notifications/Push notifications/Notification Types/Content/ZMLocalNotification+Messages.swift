@@ -27,88 +27,93 @@ extension ZMLocalNotification {
         self.init(conversation: message.conversation, builder: builder)
     }
     
-    fileprivate class MessageNotificationBuilder: NotificationBuilder {
-        
-        fileprivate let message: ZMMessage
-        fileprivate let contentType: LocalNotificationContentType
-        fileprivate let managedObjectContext : NSManagedObjectContext
-        
-        let sender: ZMUser
-        let conversation: ZMConversation
-        
-        init?(message: ZMMessage) {
-            guard let sender = message.sender,
-                  let conversation = message.conversation,
-                  let managedObjectContext = message.managedObjectContext,
-                  let contentType = LocalNotificationContentType.typeForMessage(message) else {
-                
-                    Logging.push.safePublic("Not creating local notification for message with nonce = \(message.nonce) because context is unknown")
-                    return nil
-            }
-            
-            self.sender = sender
-            self.conversation = conversation
-            self.message = message
-            self.contentType = contentType
-            self.managedObjectContext = managedObjectContext
-        }
-        
-        var notificationType: LocalNotificationType {
-            if LocalNotificationDispatcher.shouldHideNotificationContent(moc: managedObjectContext), !message.isEphemeral {
-                return LocalNotificationType.message(.hidden)
-            } else {
-                return LocalNotificationType.message(contentType)
-            }
-        }
-        
-        func shouldCreateNotification() -> Bool {
-            guard !message.isSilenced else {
-                Logging.push.safePublic("Not creating local notification for message with nonce = \(message.nonce) because conversation is silenced")
-                return false
-            }
+}
 
-            if let timeStamp = message.serverTimestamp,
-               let lastRead = conversation.lastReadServerTimeStamp,
-               lastRead.compare(timeStamp) != .orderedAscending
-            {
-                return false
-            }
+public class MessageNotificationBuilder: NotificationBuilder {
+    
+    let message: ZMMessage
+    fileprivate let contentType: LocalNotificationContentType
+    fileprivate let managedObjectContext : NSManagedObjectContext
+    
+    let sender: ZMUser
+    let conversation: ZMConversation
+    
+    init?(message: ZMMessage) {
+        guard let sender = message.sender,
+              let conversation = message.conversation,
+              let managedObjectContext = message.managedObjectContext,
+              let contentType = LocalNotificationContentType.typeForMessage(message) else {
             
-            return true
+                Logging.push.safePublic("Not creating local notification for message with nonce = \(message.nonce) because context is unknown")
+                return nil
         }
         
-        func titleText() -> String? {
-            return notificationType.titleText(selfUser: ZMUser.selfUser(in: managedObjectContext), conversation: conversation)
-        }
-        
-        func bodyText() -> String {
-            return notificationType.messageBodyText(sender: sender, conversation: conversation).trimmingCharacters(in: .whitespaces)
-        }
-        
-        func userInfo() -> NotificationUserInfo? {
-            guard let moc = message.managedObjectContext else { return nil }
-            let selfUser = ZMUser.selfUser(in: moc)
-
-            guard let selfUserID = ZMUser.selfUser(in: moc).remoteIdentifier,
-                let senderID = sender.remoteIdentifier,
-                let conversationID = conversation.remoteIdentifier,
-                let eventTime = message.serverTimestamp
-                else { return nil }
-            
-            let userInfo = NotificationUserInfo()
-            userInfo.selfUserID = selfUserID
-            userInfo.senderID = senderID
-            userInfo.messageNonce = message.nonce
-            userInfo.conversationID = conversationID
-            userInfo.eventTime = eventTime
-            userInfo.conversationName = conversation.meaningfulDisplayName
-            userInfo.teamName = selfUser.team?.name
-
-            return userInfo
+        self.sender = sender
+        self.conversation = conversation
+        self.message = message
+        self.contentType = contentType
+        self.managedObjectContext = managedObjectContext
+    }
+    
+    deinit {
+        print("MessageNotificationBuilder deinit")
+    }
+    
+    var notificationType: LocalNotificationType {
+        if LocalNotificationDispatcher.shouldHideNotificationContent(moc: managedObjectContext), !message.isEphemeral {
+            return LocalNotificationType.message(.hidden)
+        } else {
+            return LocalNotificationType.message(contentType)
         }
     }
     
+    func shouldCreateNotification() -> Bool {
+        guard !message.isSilenced else {
+            Logging.push.safePublic("Not creating local notification for message with nonce = \(message.nonce) because conversation is silenced")
+            return false
+        }
+
+        if let timeStamp = message.serverTimestamp,
+           let lastRead = conversation.lastReadServerTimeStamp,
+           lastRead.compare(timeStamp) != .orderedAscending
+        {
+            return false
+        }
+        
+        return true
+    }
+    
+    func titleText() -> String? {
+        return notificationType.titleText(selfUser: ZMUser.selfUser(in: managedObjectContext), conversation: conversation)
+    }
+    
+    func bodyText() -> String {
+        return notificationType.messageBodyText(sender: sender, conversation: conversation).trimmingCharacters(in: .whitespaces)
+    }
+    
+    func userInfo() -> NotificationUserInfo? {
+        guard let moc = message.managedObjectContext else { return nil }
+        let selfUser = ZMUser.selfUser(in: moc)
+
+        guard let selfUserID = ZMUser.selfUser(in: moc).remoteIdentifier,
+            let senderID = sender.remoteIdentifier,
+            let conversationID = conversation.remoteIdentifier,
+            let eventTime = message.serverTimestamp
+            else { return nil }
+        
+        let userInfo = NotificationUserInfo()
+        userInfo.selfUserID = selfUserID
+        userInfo.senderID = senderID
+        userInfo.messageNonce = message.nonce
+        userInfo.conversationID = conversationID
+        userInfo.eventTime = eventTime
+        userInfo.conversationName = conversation.meaningfulDisplayName
+        userInfo.teamName = selfUser.team?.name
+
+        return userInfo
+    }
 }
+
 
 
 // MARK: - System Message
