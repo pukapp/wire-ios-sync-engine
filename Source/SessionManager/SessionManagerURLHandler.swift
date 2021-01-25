@@ -316,7 +316,8 @@ extension URLAction {
     func execute(in session: ZMUserSession) {
         switch self {
         case .connectBot(let serviceUserData):
-            session.startConversation(with: serviceUserData, completion: nil)
+//            session.startConversation(with: serviceUserData, completion: nil)
+            break
         default:
             fatalError("This action cannot be executed with an authenticated session.")
         }

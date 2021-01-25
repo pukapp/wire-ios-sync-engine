@@ -197,10 +197,6 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
        prefetchResult:(__unused ZMFetchRequestBatchResult *)prefetchResult;
 {
     
-    if (!liveEvents) {
-        return;
-    }
-    
     for (ZMUpdateEvent *event in events) {
         if (event.uuid != nil && ! event.isTransient && event.isHuge) {
             self.lastUpdateEventID = event.uuid;
@@ -274,17 +270,14 @@ previouslyReceivedEventIDsCollection:(id<PreviouslyReceivedEventIDsCollection>)e
         [self updateBackgroundFetchResultWithResponse:response];
     }
     
-    if (latestEventId != nil) {
-        if (response.HTTPStatus == 404 && self.isSyncing) {
+//    if (latestEventId != nil) {
+//        if (response.HTTPStatus == 404 && self.isSyncing) {
             // If we fail during quick sync we need to re-enter slow sync and should not store the lastUpdateEventID until after the slowSync has been completed
             // Otherwise, if the device crashes or is restarted during slow sync, we lose the information that we need to perform a slow sync
-            [syncStatus updateLastHugeUpdateEventIDWithEventID:latestEventId];
+//            [syncStatus updateLastHugeUpdateEventIDWithEventID:latestEventId];
             // TODO Sabine: What happens when we receive a 404 when we are fetching the notification for a push notification? In theory we would have to enter slow sync as well or at least not store the lastUpdateEventID until the next proper sync in the foreground
-        }
-        else {
-            self.lastUpdateEventID = latestEventId;
-        }
-    }
+//        }
+//    }
     
     if (!self.listPaginator.hasMoreToFetch) {
         [self.previouslyReceivedEventIDsCollection discardListOfAlreadyReceivedHugePushEventIDs];

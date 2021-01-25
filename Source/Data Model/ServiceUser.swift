@@ -215,7 +215,7 @@ extension AddBotError {
 
 public extension ZMConversation {
     
-    public func add(serviceUser: ServiceUser, in userSession: ZMUserSession, completion: ((AddBotError?)->())?) {
+    func add(serviceUser: ServiceUser, in userSession: ZMUserSession, completion: ((AddBotError?)->())?) {
         guard let serviceUserData = serviceUser.serviceUserData else {
             fatal("Not a service user")
         }
@@ -223,7 +223,7 @@ public extension ZMConversation {
         add(serviceUser: serviceUserData, in: userSession, completion: completion)
     }
     
-    public func add(serviceUser serviceUserData: ServiceUserData, in userSession: ZMUserSession, completion: ((AddBotError?)->())?) {
+    func add(serviceUser serviceUserData: ServiceUserData, in userSession: ZMUserSession, completion: ((AddBotError?)->())?) {
         guard userSession.transportSession.reachability.mayBeReachable else {
             completion?(AddBotError.offline)
             return
@@ -244,10 +244,10 @@ public extension ZMConversation {
             
             completion?(nil)
             
-            userSession.syncManagedObjectContext.performGroupedBlock {
-                // Process user added event
-                userSession.operationLoop.syncStrategy.process(updateEvents: [event], ignoreBuffer: true)
-            }
+//            userSession.syncManagedObjectContext.performGroupedBlock {
+//                // Process user added event
+//                userSession.operationLoop.syncStrategy.process(updateEvents: [event], ignoreBuffer: true)
+//            }
         }))
         
         userSession.transportSession.enqueueOneTime(request)
@@ -255,14 +255,14 @@ public extension ZMConversation {
 }
 
 public extension ZMUserSession {
-    public func startConversation(with serviceUser: ServiceUser, completion: ((AddBotResult)->())?) {
+    func startConversation(with serviceUser: ServiceUser, completion: ((AddBotResult)->())?) {
         guard let serviceUserData = serviceUser.serviceUserData else {
             fatal("Not a service user")
         }
         startConversation(with: serviceUserData, completion: completion)
     }
     
-    public func startConversation(with serviceUserData: ServiceUserData, completion: ((AddBotResult)->())?) {
+    func startConversation(with serviceUserData: ServiceUserData, completion: ((AddBotResult)->())?) {
         guard self.transportSession.reachability.mayBeReachable else {
             completion?(AddBotResult.failure(error: .offline))
             return
