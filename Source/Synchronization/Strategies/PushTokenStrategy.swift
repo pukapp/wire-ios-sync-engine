@@ -101,11 +101,8 @@ extension PushTokenStrategy : ZMUpstreamTranscoder {
             requestType = .getToken
         } else if !pushToken.isRegistered {
             let tokenPayload = PushTokenPayload(pushToken: pushToken, clientIdentifier: clientIdentifier)
-            let payloadData = try! JSONEncoder().encode(tokenPayload)
-
-            // In various places (MockTransport for example) the payload is expected to be dictionary
-            let payload = ((try? JSONDecoder().decode([String : String].self, from: payloadData)) ?? [:]) as NSDictionary
-            request = ZMTransportRequest(path: "\(PushTokenPath)", method: .methodPOST, payload: payload)
+            let payload = tokenPayload.asDictionary()
+            request = ZMTransportRequest(path: "\(PushTokenPath)", method: .methodPOST, payload: payload as ZMTransportData)
             requestType = .postToken
         } else {
             return nil
@@ -199,12 +196,28 @@ fileprivate struct PushTokenPayload: Codable {
         app = pushToken.appIdentifier
         transport = pushToken.transportType
         client = clientIdentifier
+        if #available(iOS 13.3, *) {
+            ios133 = true
+        } else {
+            ios133 = false
+        }
+    }
+    
+    public func asDictionary() -> Dictionary<String, Any> {
+        return [
+            "token" : token,
+            "app": app,
+            "transport": transport,
+            "client": client,
+            "ios133": ios133
+        ]
     }
 
     let token: String
     let app: String
     let transport: String
     let client: String
+    let ios133: Bool
 }
 
 extension PushTokenStrategy : ZMEventConsumer {
