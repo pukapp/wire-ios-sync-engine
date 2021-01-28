@@ -20,6 +20,7 @@ class ConversationCallingInfo: ZMTimerClient {
     let convType: AVSConversationType
     let mediaState: AVSCallMediaState
     let starter: CallStarter
+    let callerName: String
     
     var members: [CallMemberProtocol]
     private var callTimer: ZMTimer?
@@ -52,8 +53,9 @@ class ConversationCallingInfo: ZMTimerClient {
         }
     }
     
-    init(cid: UUID, convType: AVSConversationType, mediaState: AVSCallMediaState, starter: CallStarter, members: [CallMemberProtocol], state: CallState, token: String?, delegate: CallingTimeoutDelegate) {
+    init(cid: UUID, callerName: String, convType: AVSConversationType, mediaState: AVSCallMediaState, starter: CallStarter, members: [CallMemberProtocol], state: CallState, token: String?, delegate: CallingTimeoutDelegate) {
         self.cid = cid
+        self.callerName = callerName
         self.convType = convType
         self.mediaState = mediaState
         self.starter = starter

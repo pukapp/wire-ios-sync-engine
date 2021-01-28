@@ -373,7 +373,7 @@ extension WireCallCenterV3 {
         endAllCalls(exluding: remoteIdentifier)
         clearSnapshot(conversationId: remoteIdentifier) // make sure we don't have an old state for this conversation
         
-        let started = avsWrapper.startCall(conversationId: remoteIdentifier, mediaState: mediaState, conversationType: relyModel.callType, useCBR: useConstantBitRateAudio, members: relyModel.initialMember, token: relyModel.token)
+        let started = avsWrapper.startCall(conversationId: remoteIdentifier, callerName: relyModel.callTitle, mediaState: mediaState, conversationType: relyModel.callType, useCBR: useConstantBitRateAudio, members: relyModel.initialMember, token: relyModel.token)
         if started {
             let callState: CallState = .outgoing(degraded: isDegraded(conversationId: remoteIdentifier))
             
@@ -487,8 +487,8 @@ extension WireCallCenterV3 {
 extension WireCallCenterV3 {
 
     /// Sends a call OTR message when requested by AVS through `wcall_send_h`.
-    func send(token: WireCallMessageToken, conversationId: UUID, userId: UUID, clientId: String, data: Data, dataLength: Int) {
-        transport?.send(data: data, conversationId: conversationId, userId: userId, completionHandler: { [weak self] status in
+    func send(token: WireCallMessageToken, conversationId: UUID, userId: UUID, clientId: String, newCalling: ZMNewCalling) {
+        transport?.send(newCalling: newCalling, conversationId: conversationId, userId: userId, completionHandler: { [weak self] status in
             self?.avsWrapper.handleResponse(httpStatus: status, reason: "", context: token)
         })
     }

@@ -49,7 +49,7 @@ public protocol CallRelyModel: NSObjectProtocol {
     
     var initialMember: [CallMemberProtocol] { get }
     
-    var callTitle: String? { get }
+    var callTitle: String { get }
     
     //用来连接mediaServer
     var token: String? { get }
@@ -80,7 +80,7 @@ extension ZMMeeting: CallRelyModel {
         return self.memberList.array as! [CallMemberProtocol]
     }
     
-    public var callTitle: String? {
+    public var callTitle: String {
         return self.title
     }
     
@@ -112,7 +112,7 @@ extension ZMConversation: CallRelyModel {
         return [AVSCallMember(userId: user.remoteIdentifier, callParticipantState: .connecting, isMute: false, videoState: .stopped)]
     }
     
-    public var callTitle: String? {
+    public var callTitle: String {
         return self.displayName
     }
     

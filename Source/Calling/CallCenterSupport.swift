@@ -103,6 +103,7 @@ public struct CallEvent {
     let conversationId: UUID
     let userId: UUID
     let clientId: String
+    let voipString: String?
 }
 
 // MARK: - Call center transport
@@ -115,6 +116,6 @@ public typealias CallConfigRequestCompletion = (String?, Int) -> Void
  */
 
 @objc public protocol WireCallCenterTransport: class {
-    func send(data: Data, conversationId: UUID, userId: UUID, completionHandler: @escaping ((_ status: Int) -> Void))
+    func send(newCalling: ZMNewCalling, conversationId: UUID, userId: UUID, completionHandler: @escaping ((_ status: Int) -> Void))
     func requestCallConfig(completionHandler: @escaping CallConfigRequestCompletion)
 }

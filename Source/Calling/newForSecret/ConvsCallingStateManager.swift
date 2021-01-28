@@ -12,7 +12,7 @@ import Foundation
 private let zmLog = ZMSLog(tag: "calling")
 
 protocol ConvsCallingStateObserve {
-    func changeCallStateNeedToSendMessage(in cid: UUID, callAction: CallingAction, convType: AVSConversationType?, mediaState: AVSCallMediaState?, to: CallStarter?, memberCount: Int?)
+    func changeCallStateNeedToSendMessage(in cid: UUID, callAction: CallingAction, memberCount: Int?)
     func updateCallState(in cid: UUID, callType: AVSConversationType, userId: UUID, callState: CallState)
     func onGroupMemberChange(conversationId: UUID, callType: AVSConversationType)
     func onVideoStateChange(peerId: UUID, videoState: VideoState)
@@ -37,6 +37,10 @@ class ConvsCallingStateManager {
         return self.convsCallingState.contains(where: { return $0.isInCalling })
     }
     
+    func callModeInfo(with cid: UUID) -> ConversationCallingInfo? {
+        return self.convsCallingState.first(where: {return $0.cid == cid })
+    }
+    
     init(selfUserID: UUID, selfClientID: String) {
         self.selfUserID = selfUserID
         self.selfClientID = selfClientID
@@ -48,7 +52,7 @@ class ConvsCallingStateManager {
         self.roomManager.setCallingConfigure(callingConfigure)
     }
     
-    func startCall(cid: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, members: [CallMemberProtocol], token: String?) -> Bool {
+    func startCall(cid: UUID, callerName: String, mediaState: AVSCallMediaState, conversationType: AVSConversationType, members: [CallMemberProtocol], token: String?) -> Bool {
         if roomManager.isCalling {
             return false
         }
@@ -61,11 +65,11 @@ class ConvsCallingStateManager {
             zmLog.info("ConvsCallingStateManager-error-startCall-already calling")
             return false
         }
-        let info = ConversationCallingInfo(cid: cid, convType: conversationType, mediaState: mediaState, starter: (selfUserID, selfClientID), members: members, state: .none, token: token, delegate: self)
+        let info = ConversationCallingInfo(cid: cid, callerName: callerName, convType: conversationType, mediaState: mediaState, starter: (selfUserID, selfClientID), members: members, state: .none, token: token, delegate: self)
         info.state = .outgoing(degraded: false)
         self.convsCallingState.append(info)
         self.handleCallStateChange(in: info, userId: self.selfUserID, oldState: .none, newState: info.state)
-        self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .start, convType: conversationType, mediaState: mediaState, to: nil, memberCount: members.count)
+        self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .start, memberCount: members.count)
         return true
     }
     
@@ -86,7 +90,7 @@ class ConvsCallingStateManager {
         convInfo.members = members
         convInfo.token = token
         self.handleCallStateChange(in: convInfo, userId: selfUserID, oldState: previousState, newState: convInfo.state)
-        self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .answer, convType: nil, mediaState: nil, to: convInfo.starter, memberCount: nil)
+        self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .answer, memberCount: nil)
         return true
     }
     
@@ -101,8 +105,8 @@ class ConvsCallingStateManager {
         }
         let previousState = convInfo.state
         convInfo.state = .terminating(reason: .normal)
+        self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .cancel, memberCount: nil)
         self.handleCallStateChange(in: convInfo, userId: selfUserID, oldState: previousState, newState: convInfo.state)
-        self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .cancel, convType: nil, mediaState: nil, to: convInfo.starter, memberCount: nil)
     }
     
     public func endCall(cid: UUID, reason: CallClosedReason) {
@@ -114,11 +118,10 @@ class ConvsCallingStateManager {
         
         let previousState = convInfo.state
         convInfo.state = .terminating(reason: reason)
-        self.handleCallStateChange(in: convInfo, userId: selfUserID, oldState: previousState, newState: convInfo.state)
-        if reason == .rejectedElsewhere || convInfo.convType == .conference {
-            return
+        if reason != .rejectedElsewhere && convInfo.convType != .conference {
+            self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .end, memberCount: convInfo.members.count)
         }
-        self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .end, convType: nil, mediaState: nil, to: nil, memberCount: convInfo.members.count)
+        self.handleCallStateChange(in: convInfo, userId: selfUserID, oldState: previousState, newState: convInfo.state)
     }
     
     public func rejectCall(cid: UUID) {
@@ -137,8 +140,8 @@ class ConvsCallingStateManager {
         } else if convInfo.convType == .group {
             convInfo.state = .terminating(reason: .stillOngoing)
         }
+        self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .reject, memberCount: nil)
         self.handleCallStateChange(in: convInfo, userId: selfUserID, oldState: previousState, newState: convInfo.state)
-        self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .reject, convType: nil, mediaState: nil, to: convInfo.starter, memberCount: nil)
     }
     
     public func members(in conversationId: UUID) -> [CallMemberProtocol] {
@@ -217,12 +220,12 @@ class ConvsCallingStateManager {
 extension ConvsCallingStateManager {
     
     ///return : 当前正在通话中 则返回false, 错误则返回nil，正常就返回true
-    func recvStartCall(cid: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, userId: UUID, clientId: String, members: [CallMemberProtocol]) {
+    func recvStartCall(cid: UUID, callerName: String, mediaState: AVSCallMediaState, conversationType: AVSConversationType, userId: UUID, clientId: String, members: [CallMemberProtocol]) {
         if let conv = self.convsCallingState.first(where: { return $0.cid == cid }), conv.state != .terminating(reason: .stillOngoing) {
             zmLog.info("ConvsCallingStateManager-error-recvStartCall-already exist convInfo")
             return
         }
-        let info = ConversationCallingInfo(cid: cid, convType: conversationType, mediaState: .audioOnly, starter: (userId, clientId), members: members, state: .none, token: nil, delegate: self)
+        let info = ConversationCallingInfo(cid: cid, callerName: callerName, convType: conversationType, mediaState: .audioOnly, starter: (userId, clientId), members: members, state: .none, token: nil, delegate: self)
         info.state = .incoming(video: mediaState.needSendVideo, shouldRing: true, degraded: false)
         self.convsCallingState.append(info)
         self.handleCallStateChange(in: info, userId: userId, oldState: .none, newState: info.state)
@@ -247,10 +250,6 @@ extension ConvsCallingStateManager {
             zmLog.info("ConvsCallingStateManager-error-recvCancelCall-no exist convInfo")
             return
         }
-        guard convInfo.state == .outgoing(degraded: false) else {
-            zmLog.info("ConvsCallingStateManager-error-recvCancelCall-wrong state:\(convInfo.state)")
-            return
-        }
         let privious = convInfo.state
         if convInfo.convType == .oneToOne {
             convInfo.state = .terminating(reason: .canceled)
@@ -273,7 +272,7 @@ extension ConvsCallingStateManager {
             } else {
                 if convInfo.members.count == 0 {
                     convInfo.state = .terminating(reason: reason)
-                    self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .end, convType: nil, mediaState: nil, to: nil, memberCount: 0)
+                    self.observer?.changeCallStateNeedToSendMessage(in: cid, callAction: .end, memberCount: 0)
                 }
             }
         }
@@ -286,13 +285,8 @@ extension ConvsCallingStateManager {
             return
         }
         let privious = convInfo.state
-        ///自己其他设备发送的拒绝
-        if userID == self.selfUserID {
-            convInfo.state = .terminating(reason: .rejectedElsewhere)
-        } else {
-            if convInfo.convType == .oneToOne {
-                convInfo.state = .terminating(reason: .normal)
-            }
+        if convInfo.convType == .oneToOne {
+            convInfo.state = .terminating(reason: .normal)
         }
         self.handleCallStateChange(in: convInfo, userId: userID, oldState: privious, newState: convInfo.state)
     }
@@ -303,8 +297,12 @@ extension ConvsCallingStateManager {
             return
         }
         let privious = convInfo.state
-        if convInfo.convType == .oneToOne {
-            convInfo.state = .terminating(reason: .busy)
+        if userID == self.selfUserID {
+            convInfo.state = .terminating(reason: .rejectedElsewhere)
+        } else {
+            if convInfo.convType == .oneToOne {
+                convInfo.state = .terminating(reason: .busy)
+            }
         }
         self.handleCallStateChange(in: convInfo, userId: userID, oldState: privious, newState: convInfo.state)
     }
@@ -376,9 +374,10 @@ extension ConvsCallingStateManager: CallingRoomManagerDelegate {
                 convInfo.state = .terminating(reason: reason)
             }
         }
+        if convInfo.convType != .conference {
+            self.observer?.changeCallStateNeedToSendMessage(in: conversationId, callAction: .end, memberCount: convInfo.members.count)
+        }
         self.handleCallStateChange(in: convInfo, userId: selfUserID, oldState: previousState, newState: convInfo.state)
-        guard convInfo.convType != .conference else { return }
-        self.observer?.changeCallStateNeedToSendMessage(in: conversationId, callAction: .end, convType: nil, mediaState: nil, to: nil, memberCount: convInfo.members.count)
     }
     
     func onVideoStateChange(conversationId: UUID, memberId: UUID, videoState: VideoState) {

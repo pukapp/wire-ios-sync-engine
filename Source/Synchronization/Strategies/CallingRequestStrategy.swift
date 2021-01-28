@@ -129,10 +129,10 @@ extension CallingRequestStrategy : ZMEventConsumer {
         for event in events {
             guard event.type == .conversationOtrMessageAdd else { continue }
             
-            if let genericMessage = ZMGenericMessage(from: event), genericMessage.hasMediasoup() {
+            if let genericMessage = ZMGenericMessage(from: event), genericMessage.hasNewCalling() {
                 
                 guard
-                    let payload = genericMessage.mediasoup.content.data(using: .utf8, allowLossyConversion: false),
+                    let payload = genericMessage.newCalling.content.data(using: .utf8, allowLossyConversion: false),
                     let senderUUID = event.senderUUID(),
                     let conversationUUID = event.conversationUUID(),
                     let clientId = event.senderClientID(),
@@ -142,14 +142,14 @@ extension CallingRequestStrategy : ZMEventConsumer {
                     continue
                 }
                 
-                self.zmLog.debug("received calling message, timestamp \(eventTimestamp), serverTimeDelta \(serverTimeDelta), calling.content \(String(describing: genericMessage.calling.content))")
-                
+                self.zmLog.debug("received calling message, timestamp \(eventTimestamp), serverTimeDelta \(serverTimeDelta), calling.content \(String(describing: genericMessage.newCalling.content)),  voipString: \(genericMessage.newCalling.iosVoipString ?? "nil")")
                 let callEvent = CallEvent(data: payload,
                                           currentTimestamp: Date().addingTimeInterval(serverTimeDelta),
                                           serverTimestamp: eventTimestamp,
                                           conversationId: conversationUUID,
                                           userId: senderUUID,
-                                          clientId: clientId)
+                                          clientId: clientId,
+                                          voipString: genericMessage.newCalling.iosVoipString)
                 
                 callEventStatus.scheduledCallEventForProcessing()
                 
@@ -165,13 +165,7 @@ extension CallingRequestStrategy : ZMEventConsumer {
 
 extension CallingRequestStrategy : WireCallCenterTransport {
     
-    public func send(data: Data, conversationId: UUID, userId: UUID, completionHandler: @escaping ((Int) -> Void)) {
-        
-        guard let dataString = String(data: data, encoding: .utf8) else {
-            zmLog.error("Not sending calling messsage since it's not UTF-8")
-            completionHandler(500)
-            return
-        }
+    public func send(newCalling: ZMNewCalling, conversationId: UUID, userId: UUID, completionHandler: @escaping ((Int) -> Void)) {
         
         managedObjectContext.performGroupedBlock {
             guard let conversation = ZMConversation(remoteID: conversationId, createIfNeeded: false, in: self.managedObjectContext) else {
@@ -182,7 +176,7 @@ extension CallingRequestStrategy : WireCallCenterTransport {
             
             self.zmLog.debug("sending calling message")
             
-            let genericMessage = ZMGenericMessage.message(content: ZMMediasoup.mediasoup(message: dataString))
+            let genericMessage = ZMGenericMessage.message(content: newCalling)
             
             self.genericMessageStrategy.schedule(message: genericMessage, inConversation: conversation) { (response) in
                 if response.httpStatus == 201 {

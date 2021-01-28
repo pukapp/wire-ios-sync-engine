@@ -155,7 +155,7 @@ extension WireCallCenterV3 {
     }
 
     /// Handles sending call messages
-    internal func handleCallMessageRequest(token: WireCallMessageToken, conversationId: UUID, senderUserId: UUID, senderClientId: String, data: Data)
+    internal func handleCallMessageRequest(token: WireCallMessageToken, conversationId: UUID, senderUserId: UUID, senderClientId: String, newCalling: ZMNewCalling)
     {
         handleEvent("send-call-message") {
             self.send(
@@ -163,8 +163,7 @@ extension WireCallCenterV3 {
                 conversationId: conversationId,
                 userId: senderUserId,
                 clientId: senderClientId,
-                data: data,
-                dataLength: data.count
+                newCalling: newCalling
             )
         }
     }
