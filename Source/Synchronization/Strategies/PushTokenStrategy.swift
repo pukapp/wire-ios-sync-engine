@@ -106,7 +106,7 @@ extension PushTokenStrategy : ZMUpstreamTranscoder {
         } else if pushToken.isMarkedForDownload {
             request = ZMTransportRequest(path: "\(PushTokenPath)", method: .methodGET, payload: nil)
             requestType = .getToken
-        } else if !pushToken.isRegistered || !pushToken.isiOS13Registered {
+        } else if !pushToken.isRegistered || !pushToken.isiOS13Registered || !pushToken.isUpdateiOS13 {
             let tokenPayload = PushTokenPayload(pushToken: pushToken, clientIdentifier: clientIdentifier)
             let payload = tokenPayload.asDictionary()
             request = ZMTransportRequest(path: "\(PushTokenPath)", method: .methodPOST, payload: payload as ZMTransportData?)
@@ -138,6 +138,9 @@ extension PushTokenStrategy : ZMUpstreamTranscoder {
             var token = pushToken.resetFlags()
             token.isRegistered = true
             token.isiOS13Registered = true
+            if #available(iOS 13.3, *) {
+                token.isUpdateiOS13 = true
+            }
             client.pushToken = token
             return false
         case .deleteToken:

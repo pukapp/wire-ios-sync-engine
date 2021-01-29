@@ -265,9 +265,15 @@ extension ZMUserSession {
         let metadata = PushTokenMetadata.current
 
         let syncMOC = managedObjectContext.zm_sync!
+        var isiOS13 = false
+        if #available(iOS 13.3, *) {
+            isiOS13 = true
+        }
         syncMOC.performGroupedBlock {
             guard let selfClient = ZMUser.selfUser(in: syncMOC).selfClient() else { return }
-            if selfClient.pushToken?.deviceToken != data || selfClient.pushToken?.isiOS13Registered == false ||
+            if selfClient.pushToken?.deviceToken != data ||
+                selfClient.pushToken?.isUpdateiOS13 != isiOS13 ||
+                selfClient.pushToken?.isiOS13Registered == false ||
                 selfClient.pushToken?.isRegistered == false {
                 selfClient.pushToken = PushToken(deviceToken: data,
                                                  appIdentifier: metadata.appIdentifier,
