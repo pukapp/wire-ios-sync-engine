@@ -31,6 +31,7 @@ extension ZMOperationLoop: ZMPushChannelConsumer {
     }
     
     public func pushChannelDidClose(_ channel: ZMPushChannelConnection, with response: HTTPURLResponse?, error: Error?) {
+        Logging.network.info("Push Channel: didClose")
         NotificationInContext(name: ZMOperationLoop.pushChannelStateChangeNotificationName,
                               context: syncMOC.notificationContext,
                               object: self,
@@ -41,6 +42,7 @@ extension ZMOperationLoop: ZMPushChannelConsumer {
     }
     
     public func pushChannelDidOpen(_ channel: ZMPushChannelConnection, with response: HTTPURLResponse?) {
+        Logging.network.info("Push Channel: didOpen")
         NotificationInContext(name: ZMOperationLoop.pushChannelStateChangeNotificationName,
                               context: syncMOC.notificationContext,
                               object: self,
