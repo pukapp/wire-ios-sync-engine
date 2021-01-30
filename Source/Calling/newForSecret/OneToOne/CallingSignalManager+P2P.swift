@@ -25,6 +25,7 @@ enum WebRTCP2PSignalAction {
     
     enum Notification: String {
         case peerOpened = "peerOpened"
+        case peerLeave  = "peerLeave"
     }
     
 }

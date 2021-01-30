@@ -113,7 +113,7 @@ extension ZMConversation: CallRelyModel {
     }
     
     public var callTitle: String {
-        return self.displayName
+        return ZMUser.selfUser(in: self.managedObjectContext!).newName()
     }
     
     public var token: String? {

@@ -44,25 +44,24 @@ private class WaitingConvInfoCall: ZMTimerClient {
     }
     
     let cid : UUID
-    var state: State
+    var state: State = .incoming
     var onWaitingTimeout : (() -> Void)?
     var onWaitingSuccess : (() -> Void)?
-    //由于userSession处理call信令的时间可能受网络情况影响，所以这里开一个定时器增加30s等待时间
+    //由于userSession加载conversation以及处理call信令的时间可能受网络情况影响，所以这里开一个定时器增加30s等待时间
     var timer: ZMTimer?
     
     init(cid : UUID) {
         self.cid = cid
-        self.state = .incoming
+        self.updateState(.incoming)
     }
     
     func updateState(_ state: State) {
         self.state = state
         switch state {
         case .incoming:
-            break;
+            startTimer()
         case .answering:
-            timer = ZMTimer.init(target: self)
-            timer?.fire(at: Date.init(timeIntervalSinceNow: 30))
+            startTimer()
         case .finallyWaited:
             onWaitingSuccess?()
             self.timer?.cancel()
@@ -71,6 +70,12 @@ private class WaitingConvInfoCall: ZMTimerClient {
             self.timer = nil
             onWaitingTimeout?()
         }
+    }
+    
+    func startTimer() {
+        timer?.cancel()
+        timer = ZMTimer.init(target: self)
+        timer?.fire(at: Date.init(timeIntervalSinceNow: 30))
     }
     
     func timerDidFire(_ timer: ZMTimer!) {
@@ -94,7 +99,7 @@ public class CallKitDelegate : NSObject {
      * 仍存在一个问题，当点击接听按钮时，如果在30s之后仍然没有获取到conversation，那么这次通话就会失败。
      */
     fileprivate var stashIncommingCallConvs: [UUID: WaitingConvInfoCall]
-    
+        
     public convenience init(sessionManager: SessionManagerType, mediaManager: MediaManagerType?) {
         self.init(provider: CXProvider(configuration: CallKitDelegate.providerConfiguration),
                   callController: CXCallController(queue: DispatchQueue.main),
@@ -243,7 +248,7 @@ extension CallKitDelegate {
     
     func requestJoinCall(in conversation: ZMConversation, mediaState: AVSCallMediaState) {
         
-        let existingCallUUID = callUUID(for: conversation)
+        let existingCallUUID = callUUID(for: conversation) ?? callUUIDV2(for: conversation.remoteIdentifier!.transportString())
         let existingCall = callController.callObserver.calls.first(where: { $0.uuid == existingCallUUID })
         
         if let call = existingCall, !call.isOutgoing {
@@ -339,7 +344,7 @@ extension CallKitDelegate {
         let callUUID = UUID()
         calls[callUUID] = CallKitCall(conversation: conversation)
         
-        log("provider.reportNewIncomingCall")
+        log("provider.reportNewIncomingCall-provider:\(provider)")
         
         provider.reportNewIncomingCall(with: callUUID, update: update) { [weak self] (error) in
             if let error = error {
@@ -395,13 +400,24 @@ extension CallKitDelegate {
         print("test-----receiveVoipNotification:\(voipModel)")
         switch voipModel.callAction {
         case .start:
+            guard self.stashIncommingCallConvs.isEmpty, self.calls.isEmpty else {
+                //不为空则说明当前已经有个电话了，则接收到新的voip，不响应
+                return
+            }
             self.reportIncomingCallV2(from: voipModel.callerId.uuidString, callerName: voipModel.callerName, conversationId: voipModel.cid.uuidString, video: voipModel.mediaState.needSendVideo)
+        case .cancel:
+            if let callUUID = callUUIDV2(for: voipModel.cid.uuidString) {
+                self.requestEndCallV2(in: callUUID)
+            } else {
+                //如果收到cancel的时候，之前并没有可以拒绝的通话，那么则会崩溃了
+                log("provider.receiveVoipNotification:Cannot deal with cancel")
+            }
         default: break
         }
     }
 
     internal func callUUIDV2(for conversationid: String) -> UUID? {
-        guard let cUid = UUID.init(uuidString: conversationid) else {
+        guard let cUid = UUID(uuidString: conversationid) else {
             return nil
         }
         if let callUID = stashIncommingCallConvs.first(where: { $0.value.cid == cUid })?.key {
@@ -422,10 +438,22 @@ extension CallKitDelegate {
         update.remoteHandle = handle
         update.hasVideo = video
         
+        let uCid = UUID(uuidString: conversationId)!
         let callUUID = UUID()
-        self.stashIncommingCallConvs[callUUID] = WaitingConvInfoCall(cid: UUID(uuidString: conversationId)!)
-
-        log("provider.reportNewIncomingCallv2")
+        let stashWaitingCall = WaitingConvInfoCall(cid: uCid)
+        self.stashIncommingCallConvs[callUUID] = stashWaitingCall
+        stashWaitingCall.onWaitingTimeout = {[weak self] in
+            guard let self = self else {
+                print("perform CXAnswerCallAction: stillWaitingCall onWaitingTimeout1111")
+                return
+            }
+            self.log("perform reportIncomingCallV2: waiting For load Conversation onWaitingTimeout")
+            self.stashIncommingCallConvs.removeValue(forKey: callUUID)
+            //当在规定时间内还没有加载到conversation的信息的话，则直接结束callKit的呼叫
+            self.requestEndCallV2(in: uCid)
+        }
+        
+        log("provider.reportNewIncomingCallv2-provider:\(provider)--callUUID:\(callUUID)")
         
         provider.reportNewIncomingCall(with: callUUID, update: update) { [weak self] (error) in
             if let error = error {
@@ -433,6 +461,19 @@ extension CallKitDelegate {
                 self?.stashIncommingCallConvs.removeValue(forKey: callUUID)
             } else {
                 self?.mediaManager?.setupAudioDevice()
+            }
+        }
+    }
+    
+    func requestEndCallV2(in callUUID: UUID) {
+        let action = CXEndCallAction(call: callUUID)
+        let transaction = CXTransaction(action: action)
+        
+        log("request CXEndCallActionv2-provider:\(provider)--callUUID:\(callUUID)")
+        
+        callController.request(transaction) { [weak self] (error) in
+            if let error = error {
+                self?.log("Cannot end call: \(error)")
             }
         }
     }
@@ -533,21 +574,26 @@ extension CallKitDelegate : CXProviderDelegate {
         if let call = self.calls[action.callUUID] {
             canAnswerwhenCallReady(call: call, action: action)
         } else if let stillWaitingCall = self.stashIncommingCallConvs[action.callUUID] {
+            log("perform CXAnswerCallAction: stillWaitingCall")
             stillWaitingCall.updateState(.answering)
             stillWaitingCall.onWaitingTimeout = {[weak self] in
                 guard let self = self else {
+                    print("perform CXAnswerCallAction: stillWaitingCall onWaitingTimeout1111")
                     action.fail()
                     return
                 }
+                self.log("perform CXAnswerCallAction: stillWaitingCall onWaitingTimeout")
                 self.stashIncommingCallConvs.removeValue(forKey: action.callUUID)
                 action.fail()
             }
             stillWaitingCall.onWaitingSuccess = {[weak self] in
                 guard let self = self,
                     let call = self.calls[action.callUUID] else {
+                    print("perform CXAnswerCallAction: stillWaitingCall onWaitingSuccess11111")
                     action.fail()
                     return
                 }
+                self.log("perform CXAnswerCallAction: stillWaitingCall onWaitingSuccess")
                 canAnswerwhenCallReady(call: call, action: action)
             }
         } else {
@@ -559,14 +605,16 @@ extension CallKitDelegate : CXProviderDelegate {
     public func provider(_ provider: CXProvider, perform action: CXEndCallAction) {
         log("perform CXEndCallAction: \(action)")
         
-        guard let call = calls[action.callUUID] else {
+        if let _ = self.stashIncommingCallConvs[action.callUUID] {
+            stashIncommingCallConvs.removeValue(forKey: action.callUUID)
+        } else if let call = calls[action.callUUID] {
+            calls.removeValue(forKey: action.callUUID)
+            call.conversation.voiceChannel?.leave()
+        } else {
             log("fail CXEndCallAction because call did not exist")
             action.fail()
             return
         }
-        
-        calls.removeValue(forKey: action.callUUID)
-        call.conversation.voiceChannel?.leave()
         action.fulfill()
     }
     

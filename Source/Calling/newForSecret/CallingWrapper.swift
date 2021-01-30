@@ -146,15 +146,16 @@ enum CallingAction: Int {
     case noResponse = 5
     case busy = 6
     
+    //发送消息时，增加voipString的参数
     var needVoipNoti: Bool {
         switch self {
-        case .start:
+        case .start, .cancel:
            return true
         default:
             return false
         }
     }
-    
+    //该消息是否同步给自己账号的其他设备
     var shouldSyncOtherClients: Bool {
         switch self {
         case .start, .cancel:
@@ -250,19 +251,19 @@ struct CallingVoipModel {
     
     var json: JSON {
         return JSON(["cid": cid.transportString(),
-                     "callAction": callAction.rawValue,
-                     "mediaState": mediaState.rawValue,
-                     "callerId": callerId.transportString(),
-                     "callerName": callerName])
+                     "call_state": callAction.rawValue,
+                     "call_type": mediaState.rawValue,
+                     "caller_id": callerId.transportString(),
+                     "caller_name": callerName])
     }
     
     init?(json: JSON) {
         guard let cid = json["cid"].string else { return nil }
         self.cid = UUID(uuidString: cid)!
-        self.callAction = CallingAction(rawValue: json["callAction"].intValue)!
-        self.mediaState = AVSCallMediaState(rawValue: json["mediaState"].intValue)!
-        self.callerId = UUID(uuidString: json["callerId"].stringValue)!
-        self.callerName = json["callerName"].stringValue
+        self.callAction = CallingAction(rawValue: json["call_state"].intValue)!
+        self.mediaState = AVSCallMediaState(rawValue: json["call_type"].intValue)!
+        self.callerId = UUID(uuidString: json["caller_id"].stringValue)!
+        self.callerName = json["caller_name"].stringValue
     }
 }
 

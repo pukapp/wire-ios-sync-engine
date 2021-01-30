@@ -147,7 +147,7 @@ class CallingRoomManager: NSObject {
             return
         }
         
-        zmLog.info("CallingRoomManager-connectToRoom roomId:\(roomId) userId:\(userId)")
+        zmLog.info("CallingRoomManager-connectToRoom roomId:\(roomId) userId:\(userId), members:\(members.count)")
         
         self.roomId = roomId
         self.userId = userId

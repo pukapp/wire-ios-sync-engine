@@ -82,6 +82,7 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
         case disconnected
         case faild
         case close
+        case end
     }
     
     private var connectState: ConnectState = .waitForPeerReady
@@ -305,6 +306,10 @@ extension WebRTCClientManager: ZMTimerClient {
             }
         case .close:
             self.establishConnectionFailed()
+        case .end:
+            self.invalidTimer()
+            self.dispose()
+            self.membersManagerDelegate.removeMember(with: self.peerId)
         }
         self.connectState = currentState
     }
@@ -460,6 +465,8 @@ extension WebRTCClientManager {
             } else {
                 zmLog.error("WebRTCClientManager-peerOpen :wrong peerId:\(peerId)")
             }
+        case .peerLeave:
+            self.changeConnectState(.end)
         }
     }
     

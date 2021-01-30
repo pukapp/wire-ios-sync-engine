@@ -47,7 +47,7 @@ class ConversationCallingInfo: ZMTimerClient {
     
     var isInCalling: Bool {
         switch state {
-        case .outgoing, .incoming, .answered, .reconnecting, .established:
+        case .outgoing, .incoming, .answered, .answeredIncomingCall, .reconnecting, .established:
             return true
         default: return false
         }

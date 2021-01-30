@@ -114,6 +114,11 @@ class ConvsCallingStateManager {
             zmLog.info("ConvsCallingStateManager-error-answerCall-no exist convInfo")
             return
         }
+        if convInfo.state == .outgoing(degraded: false) {
+            //用户还没有连接，则执行cancel的操作
+            self.cancelCall(cid: cid)
+            return
+        }
         zmLog.info("ConvsCallingStateManager-endCall--memberCount:\(convInfo.members.count)--reason:\(reason)")
         
         let previousState = convInfo.state
