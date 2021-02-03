@@ -42,6 +42,10 @@ extension ZMLocalNotification {
                 if sysMessage.sender?.remoteIdentifier.transportString() == selfUser.remoteIdentifier.transportString() {
                     return nil
                 }
+                
+                if !sysMessage.userIDs.contains(selfUser.remoteIdentifier.transportString()) {
+                    return nil
+                }
             }
             builder = NSEMessageNotificationBuilder(message: systemMessage)
             
