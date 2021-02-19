@@ -97,6 +97,8 @@
 @property (nonatomic) ZMHotFix *hotFix;
 @property (nonatomic) NotificationDispatcher *notificationDispatcher;
 
+@property (nonatomic) NSCache<NSString *, NSString *> *evevdHugeIdCaches;
+
 @end
 
 
@@ -147,6 +149,7 @@ ZM_EMPTY_ASSERTING_INIT()
         
         self.eventsBuffer = [[ZMUpdateEventsBuffer alloc] initWithUpdateEventConsumer:self isHuge:NO];
         self.hugeEventsBuffer = [[ZMUpdateEventsBuffer alloc] initWithUpdateEventConsumer:self isHuge:YES];
+        self.evevdHugeIdCaches = [[NSCache alloc] init];
         self.userClientRequestStrategy = [[UserClientRequestStrategy alloc] initWithClientRegistrationStatus:applicationStatusDirectory.clientRegistrationStatus
                                                                                           clientUpdateStatus:applicationStatusDirectory.clientUpdateStatus
                                                                                                      context:self.syncMOC

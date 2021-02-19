@@ -82,6 +82,7 @@
 @property (nonatomic, weak, readonly, nullable) LocalNotificationDispatcher *localNotificationDispatcher;
 @property (nonatomic, readonly) BOOL isReadyToProcessEvents;
 @property (nonatomic, nullable) id<EventProcessingTrackerProtocol> eventProcessingTracker;
+@property (nonatomic, readonly, nonnull) NSCache<NSString *, NSString *> *evevdHugeIdCaches;
 
 @end
 

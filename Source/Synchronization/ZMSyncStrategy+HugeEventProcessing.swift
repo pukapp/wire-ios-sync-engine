@@ -11,8 +11,6 @@ import WireUtilities
 
 extension ZMSyncStrategy {
     
-    static var evevdHugeIds = Set<String>()
-    
     @objc(processHugeUpdateEvents:ignoreBuffer:)
     public func processHuge(updateEvents: [ZMUpdateEvent], ignoreBuffer: Bool) {
         if ignoreBuffer || isReadyToProcessEvents {
@@ -39,15 +37,13 @@ extension ZMSyncStrategy {
             
             for event in updateEvents {
                 let date1 = Date()
-                guard let uuid = event.uuid?.transportString() else {continue}
-                if ZMSyncStrategy.evevdHugeIds.contains(uuid) {
-                    ZMSyncStrategy.evevdHugeIds.remove(uuid)
-                    continue
-                }
                 if event.senderClientID() == selfClientIdentifier {
                     continue
                 }
-                ZMSyncStrategy.evevdHugeIds.insert(uuid)
+                //万人群websocket 不会重复给自己的设备推了 这段逻辑暂时注释
+//                if self.isRepeatEvent(event) {
+//                    continue
+//                }
                 for eventConsumer in self.eventConsumers {
                     eventConsumer.processEvents([event], liveEvents: true, prefetchResult: prefetchResult)
                 }
@@ -83,6 +79,18 @@ extension ZMSyncStrategy {
         }
 
     }
+    
+//    func isRepeatEvent(_ event: ZMUpdateEvent) -> Bool {
+//        guard let uuid = event.uuid?.transportString() else {return true}
+//        let uuidnString = uuid as NSString
+//        let TRUE = "true" as NSString
+//        if self.evevdHugeIdCaches.object(forKey: uuidnString) == TRUE {
+//            self.evevdHugeIdCaches.removeObject(forKey: uuidnString)
+//            return true
+//        }
+//        self.evevdHugeIdCaches.setObject(TRUE, forKey: uuidnString)
+//        return false
+//    }
     
 }
 
