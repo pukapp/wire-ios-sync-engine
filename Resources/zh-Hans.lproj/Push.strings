@@ -36,7 +36,7 @@
 // Ephemeral
 "push.notification.ephemeral.title" = "有人";
 "push.notification.ephemeral" = "发送消息";
-"push.notification.ephemeral.mention" = "@了您";
+"push.notification.ephemeral.mention" = "提及了您";
 "push.notification.ephemeral.reply" = "回复了您";
 
 // 2 Components: Sender, Message
@@ -61,7 +61,7 @@
 // Message with mention
 // 2 Components: Sender, Message
 
-"push.notification.add.message.group.mention" = "%1$@：%2$@提及你";
+"push.notification.add.message.group.mention" = "%1$@提及您：%2$@";
 "push.notification.add.message.group.nousername.mention" = "提及你的群组: %1$@";
 "push.notification.add.message.group.nousername.noconversationname.mention" = "提及你的群组: %1$@";
 "push.notification.add.message.group.noconversationname.mention" = "%1$@在%2$@中提及你";
@@ -73,7 +73,7 @@
 // Message with quote
 // 2 Components: Sender, Message
 
-"push.notification.add.message.group.reply" = "%1$@：%2$@回复您";
+"push.notification.add.message.group.reply" = "%1$@回复您: %2$@";
 "push.notification.add.message.group.nousername.reply" = "新回复: %1$@";
 "push.notification.add.message.group.nousername.noconversationname.reply" = "新回复: %1$@";
 "push.notification.add.message.group.noconversationname.reply" = "%1$@在%2$@中回复您";
