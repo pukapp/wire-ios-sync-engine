@@ -65,12 +65,8 @@ extension ZMLocalNotification {
             builder = nil
         }
         
-        //编辑的消息 不入库
-        let genericMessage = ZMGenericMessage(from: event)
-        if genericMessage == nil || !(genericMessage!.hasEdited()) {
-            moc.saveOrRollback()
-        }
-
+        moc.saveOrRollback()
+        
         if let builder = builder {
             self.init(conversation: conversation, builder: builder)
         } else {
