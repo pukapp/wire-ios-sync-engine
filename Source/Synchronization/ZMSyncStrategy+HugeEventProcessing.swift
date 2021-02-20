@@ -50,7 +50,7 @@ extension ZMSyncStrategy {
                 let time = -date1.timeIntervalSinceNow
                 // 打印处理时间超过0.001的事件
                 if time > 0.001 {
-                    Logging.hugeEventProcessing.debug("Event processed in \(time): \(event.type.stringValue ?? ""))")
+                    Logging.hugeEventProcessing.debug("Huge Event processed in \(time): \(event.type.stringValue ?? ""))")
                 }
                 self.eventProcessingTracker?.registerEventProcessed()
                 let time1 = -date1.timeIntervalSinceNow
