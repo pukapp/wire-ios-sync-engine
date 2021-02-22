@@ -9,7 +9,7 @@
 import Foundation
 import SwiftyJSON
 
-let MediasoupServiceURL = "https://143.92.53.170:4000/api/getConfigInfo"
+let MediasoupServiceURL = "https://118.107.13.196:4000/api/getConfigInfo"
 
 struct CallingConfigure {
     struct Gateway {
@@ -55,7 +55,7 @@ struct CallingConfigure {
     
     ///返回有效的webSocket地址
     var vaildGateway: String? {
-        return self.gateways.first(where: { return ($0.ip.contains("143")) })?.webSocketUrlString
+        return self.gateways.first?.webSocketUrlString
     }
 }
 

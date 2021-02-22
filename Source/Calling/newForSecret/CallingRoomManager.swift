@@ -143,7 +143,9 @@ class CallingRoomManager: NSObject {
             let wsUrl = callingConfigure.vaildGateway,
             self.roomId == nil else {
             ///已经在房间里面了
-            zmLog.info("CallingRoomManager-connectToRoom err:获取configuare出错，或者roomId不为空")
+            zmLog.info("CallingRoomManager-connectToRoom err: vaildGateway:\(self.callingConfigure?.vaildGateway), roomId:\(roomId)")
+            self.roomId = roomId
+            self.roomEmpty()
             return
         }
         
@@ -339,7 +341,6 @@ extension CallingRoomManager: CallingMembersObserver {
         guard let roomId = self.roomId else {
             return
         }
-        zmLog.info("CallingRoomManager-roomMembersConnectStateChange- membersCount:\(self.roomMembersManager!.membersCount)")
         self.delegate?.onGroupMemberChange(conversationId: roomId, memberCount: self.roomMembersManager!.membersCount)
     }
     

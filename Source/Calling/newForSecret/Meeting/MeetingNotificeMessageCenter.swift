@@ -9,6 +9,7 @@
 import Foundation
 import SwiftyJSON
 
+public let MeetingNotificationServiceConversationId: String = "00000000-0000-0000-0001-000000000004"
 public let ReceivedMeetingNotificationName: NSNotification.Name = NSNotification.Name("ReceivedMeetingNotificationName")
 
 //TODO: 这是目前会议相关的im消息推送，需要更新ui，显示弹框，目前没有统一，先列举出来

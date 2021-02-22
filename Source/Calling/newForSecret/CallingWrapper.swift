@@ -258,9 +258,10 @@ struct CallingVoipModel {
     }
     
     init?(json: JSON) {
-        guard let cid = json["cid"].string else { return nil }
+        guard let cid = json["cid"].string,
+              let callActionValue = json["call_state"].int else { return nil }
         self.cid = UUID(uuidString: cid)!
-        self.callAction = CallingAction(rawValue: json["call_state"].intValue)!
+        self.callAction = CallingAction(rawValue: callActionValue)!
         self.mediaState = AVSCallMediaState(rawValue: json["call_type"].intValue)!
         self.callerId = UUID(uuidString: json["caller_id"].stringValue)!
         self.callerName = json["caller_name"].stringValue

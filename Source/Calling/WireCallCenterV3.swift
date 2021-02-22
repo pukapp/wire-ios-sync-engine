@@ -304,7 +304,9 @@ extension WireCallCenterV3 {
     /// Call this method when the callParticipants changed and avs calls the handler `wcall_group_changed_h`
     func callParticipantsChanged(conversationId: UUID, participants: [CallMemberProtocol]) {
         //guard callSnapshots[conversationId]!.callType != .oneToOne else { return }
-        zmLog.info("callParticipantsChanged : conversationId:\(conversationId), participants:\(participants.count)")
+        if callSnapshots[conversationId]?.callParticipants.members.count != participants.count {
+            zmLog.info("callParticipantsChanged : conversationId:\(conversationId), participants:\(participants.count)")
+        }
         callSnapshots[conversationId]?.callParticipants.callParticipantsChanged(participants: participants)
     }
 
