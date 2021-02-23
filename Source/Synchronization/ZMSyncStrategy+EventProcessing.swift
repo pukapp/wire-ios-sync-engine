@@ -21,7 +21,6 @@ import WireUtilities
 
 extension ZMSyncStrategy: ZMUpdateEventConsumer {
     
-    static var evevdIds = Set<String>()
 
     @objc(processUpdateEvents:ignoreBuffer:)
     public func process(updateEvents: [ZMUpdateEvent], ignoreBuffer: Bool) {
@@ -45,13 +44,6 @@ extension ZMSyncStrategy: ZMUpdateEventConsumer {
             Logging.eventProcessing.info("ConsumeUpdateEvents Consuming: [\n\(decryptedUpdateEvents.map({ "\tevent: \(ZMUpdateEvent.eventTypeString(for: $0.type) ?? "Unknown")" }).joined(separator: "\n"))\n]")
         
             for event in decryptedUpdateEvents {
-                if let uuid = event.uuid?.transportString() {
-                    if ZMSyncStrategy.evevdIds.contains(uuid) {
-                        ZMSyncStrategy.evevdIds.remove(uuid)
-                        continue
-                    }  
-                    ZMSyncStrategy.evevdIds.insert(uuid)
-                }
                 if event.senderClientID() == ZMUser.selfUser(in: moc).selfClient()?.remoteIdentifier {
                     continue
                 }
