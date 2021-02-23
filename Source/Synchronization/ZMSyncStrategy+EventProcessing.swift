@@ -42,7 +42,7 @@ extension ZMSyncStrategy: ZMUpdateEventConsumer {
             let fetchRequest = prefetchRequest(updateEvents: decryptedUpdateEvents)
             let prefetchResult = syncMOC.executeFetchRequestBatchOrAssert(fetchRequest)
             
-            Logging.eventProcessing.info("Consuming: [\n\(decryptedUpdateEvents.map({ "\tevent: \(ZMUpdateEvent.eventTypeString(for: $0.type) ?? "Unknown")" }).joined(separator: "\n"))\n]")
+            Logging.eventProcessing.info("ConsumeUpdateEvents Consuming: [\n\(decryptedUpdateEvents.map({ "\tevent: \(ZMUpdateEvent.eventTypeString(for: $0.type) ?? "Unknown")" }).joined(separator: "\n"))\n]")
         
             for event in decryptedUpdateEvents {
                 if let uuid = event.uuid?.transportString() {

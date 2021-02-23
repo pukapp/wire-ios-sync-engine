@@ -31,7 +31,7 @@ extension ZMSyncStrategy {
             let fetchRequest = prefetchHugeRequest(updateEvents: updateEvents)
             let prefetchResult = syncMOC.executeFetchRequestBatchOrAssert(fetchRequest)
             
-            Logging.hugeEventProcessing.info("Consuming: [\n\(updateEvents.map({ "\tevent: \(ZMUpdateEvent.eventTypeString(for: $0.type) ?? "Unknown")" }).joined(separator: "\n"))\n]")
+            Logging.hugeEventProcessing.info("ConsumeHugeUpdateEvents Consuming: [\n\(updateEvents.map({ "\tevent: \(ZMUpdateEvent.eventTypeString(for: $0.type) ?? "Unknown")" }).joined(separator: "\n"))\n]")
             
             let selfClientIdentifier = ZMUser.selfUser(in: moc).selfClient()?.remoteIdentifier
             

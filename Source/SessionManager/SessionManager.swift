@@ -500,6 +500,8 @@ public protocol ForegroundNotificationResponder: class {
                     if let session = session {
                         self?.accountManager.select(account)
                         completion?(session)
+                    } else {
+                        self?.accountManager.remove(account)
                     }
                 }
             })
