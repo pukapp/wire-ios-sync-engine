@@ -58,24 +58,8 @@ public struct AVSCallMember: CallMemberProtocol {
     
     public var isTop: Bool = false
     public var sortLevel: Int = 0
-    // MARK: - Initialization
     
-    /**
-     * Creates the call member from its values.
-     * - parameter userId: The remote identifier of the user.
-     * - parameter audioEstablished: Whether an audio connection was established. Defaults to `false`.
-     * - parameter videoState: The state of video connection. Defaults to `stopped`.
-     */
-    /*
-    public init?(wcallMember: wcall_member) {
-        guard let remoteId = UUID(cString: wcallMember.userid) else { return nil }
-        self.remoteId = remoteId
-        audioEstablished = (wcallMember.audio_estab != 0)
-        videoState = VideoState(rawValue: wcallMember.video_recv) ?? .stopped
-        networkQuality = .normal
-    }
- */
-
+    // MARK: - Initialization
     public init(userId : UUID, callParticipantState: CallParticipantState, isMute: Bool, videoState: VideoState, networkQuality: NetworkQuality = .normal) {
         self.remoteId = userId
         self.callParticipantState = callParticipantState
@@ -84,16 +68,6 @@ public struct AVSCallMember: CallMemberProtocol {
         self.networkQuality = networkQuality
     }
 
-    // MARK: - Properties
-
-    /// The state of the participant.
-//    var callParticipantState: CallParticipantState {
-//        if audioEstablished {
-//            return .connected(videoState: videoState)
-//        } else {
-//            return .connecting
-//        }
-//    }
     public var audioEstablished: Bool {
         switch self.callParticipantState {
         case .connected:

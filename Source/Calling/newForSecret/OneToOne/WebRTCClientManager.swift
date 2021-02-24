@@ -49,7 +49,7 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     private let connectStateObserver: CallingClientConnectStateObserve
     
     private let connectRole: ConnectRole
-    private let mediaState: AVSCallMediaState
+    private let mediaState: CallMediaType
     // The `RTCPeerConnectionFactory` is in charge of creating new RTCPeerConnection instances.
     // A new RTCPeerConnection should be created every new call, but the factory is shared.
     private static let factory: RTCPeerConnectionFactory = {
@@ -95,7 +95,7 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
                   mediaStateManagerDelegate: CallingMediaStateManagerProtocol,
                   observe: CallingClientConnectStateObserve,
                   isStarter: Bool,
-                  mediaState: AVSCallMediaState) {
+                  mediaState: CallMediaType) {
         self.signalManager = signalManager
         self.mediaManager = mediaManager
         self.membersManagerDelegate = membersManagerDelegate

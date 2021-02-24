@@ -25,21 +25,16 @@ private let zmLog = ZMSLog(tag: "calling")
  * This provides strong typing, dependency injection and better testing.
  */
 
-public protocol AVSWrapperType {
-    init(userId: UUID, clientId: String, observer: UnsafeMutableRawPointer?)
-    //TODO: 由于p2p模式下无法从websocket获取peerId,所以这里新增了一个参数
-    func startCall(conversationId: UUID, callerName: String, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool, members: [CallMemberProtocol], token: String?) -> Bool
-    func answerCall(conversationId: UUID, mediaState: AVSCallMediaState, conversationType: AVSConversationType, useCBR: Bool, members: [CallMemberProtocol], token: String?) -> Bool
-    func endCall(conversationId: UUID, reason: CallClosedReason)
-    func rejectCall(conversationId: UUID)
-    func close()
-    func received(callEvent: CallEvent) -> CallError?
-    func setVideoState(conversationId: UUID, videoState: VideoState)
-    func handleResponse(httpStatus: Int, reason: String, context: WireCallMessageToken)
+public protocol CallWrapperType {
+    func setCallingConfigure(_ callingConfigure: CallingConfigure)
+    func connectToRoom(with roomId: UUID, userId: UUID, roomMode: CallRoomType, mediaState: CallMediaType, isStarter: Bool, members: [CallMemberProtocol], token: String?, delegate: CallingRoomManagerDelegate) -> Bool
+    func leaveRoom(with roomId: UUID)
+    func setLocalAudio(mute: Bool)
+    func setLocalVideo(state: VideoState)
     func members(in conversationId: UUID) -> [CallMemberProtocol]
-    func update(callConfig: String?, httpStatusCode: Int)
+    func removePeer(with id: UUID)
     
-    func muteSelf(isMute: Bool)
+    //meeting
     func muteOther(_ userId: String, isMute: Bool)
     func topUser(_ userId: String)
     func setScreenShare(isStart: Bool)

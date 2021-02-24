@@ -42,11 +42,11 @@ import WireDataModel
      * - returns: The call center to use for the given configuration.
      */
 
-    public class func callCenter(withUserId userId: UUID, clientId: String, uiMOC: NSManagedObjectContext, flowManager: FlowManagerType, analytics: AnalyticsType? = nil, transport: WireCallCenterTransport) -> WireCallCenterV3 {
+    public class func callCenter(withUserId userId: UUID, userName: String, clientId: String, uiMOC: NSManagedObjectContext, flowManager: FlowManagerType, analytics: AnalyticsType? = nil, transport: WireCallCenterTransport) -> WireCallCenterV3 {
         if let wireCallCenter = uiMOC.zm_callCenter {
             return wireCallCenter
         } else {
-            let newInstance = WireCallCenterV3Factory.wireCallCenterClass.init(userId: userId, clientId: clientId, uiMOC: uiMOC, flowManager: flowManager, analytics: analytics, transport: transport)
+            let newInstance = WireCallCenterV3Factory.wireCallCenterClass.init(userId: userId, userName: userName, clientId: clientId, uiMOC: uiMOC, flowManager: flowManager, analytics: analytics, transport: transport)
             newInstance.useConstantBitRateAudio = uiMOC.zm_useConstantBitRateAudio
             uiMOC.zm_callCenter = newInstance
             return newInstance

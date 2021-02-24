@@ -32,6 +32,7 @@ public final class CallStateObserver : NSObject {
     fileprivate var callStateToken : Any? = nil
     fileprivate var missedCalltoken : Any? = nil
     fileprivate let systemMessageGenerator = CallSystemMessageGenerator()
+    fileprivate var callingConnectTimer: [UUID: ZMTimer] = [:]
     
     @objc public init(localNotificationDispatcher : LocalNotificationDispatcher, userSession: ZMUserSession) {
         self.userSession = userSession
@@ -58,17 +59,61 @@ public final class CallStateObserver : NSObject {
     
 }
 
+private let CallingNeedResponseTimeoutIInterval: TimeInterval = 90 //发起通话到接收响应的超时时间
+private let CallingConnectedTimeoutIInterval: TimeInterval = 60 //接收到响应到建立连接的超时时间
+private let CallingReconnectingTimeoutIInterval: TimeInterval = 30 //发起重连的超时时间
+
+//监听通话状态并进行时间控制，呼叫超时，连接超时处理
+extension CallStateObserver: ZMTimerClient {
+    
+    public func timerDidFire(_ timer: ZMTimer!) {
+        guard let conversationId = self.callingConnectTimer.first(where: { return $0.value == timer })?.key else {
+            return
+        }
+        self.syncManagedObjectContext.performGroupedBlock {
+            let uiManagedObjectContext = self.syncManagedObjectContext.zm_userInterface
+            uiManagedObjectContext?.performGroupedBlock {
+                let conversation = ZMConversation(remoteID: conversationId, createIfNeeded: false, in: uiManagedObjectContext!)
+                conversation?.voiceChannel?.leave()
+            }
+        }
+    }
+    
+    func dealWithCallingTimeOut(callState: CallState, conversationId: UUID) {
+        if let timer = self.callingConnectTimer[conversationId] {
+            timer.cancel()
+            self.callingConnectTimer.removeValue(forKey: conversationId)
+        }
+        switch callState {
+        case .outgoing, .incoming:
+            let timer = ZMTimer(target: self)!
+            timer.fire(afterTimeInterval: CallingNeedResponseTimeoutIInterval)
+            self.callingConnectTimer[conversationId] = timer
+        case .answered, .answeredIncomingCall:
+            let timer = ZMTimer(target: self)!
+            timer.fire(afterTimeInterval: CallingConnectedTimeoutIInterval)
+            self.callingConnectTimer[conversationId] = timer
+        case .reconnecting:
+            let timer = ZMTimer(target: self)!
+            timer.fire(afterTimeInterval: CallingReconnectingTimeoutIInterval)
+            self.callingConnectTimer[conversationId] = timer
+        default: break
+        }
+    }
+    
+}
+
 extension CallStateObserver : WireCallCenterCallStateObserver, WireCallCenterMissedCallObserver  {
     
     public func callCenterDidChange(callState: CallState, relyModel: CallRelyModel, caller: ZMUser, timestamp: Date?, previousCallState: CallState?) {
-        guard let conversation = relyModel as? ZMConversation else { return }
         let callerId = caller.remoteIdentifier
-        let conversationId = conversation.remoteIdentifier
+        guard let conversationId = (relyModel as? ZMConversation)?.remoteIdentifier else { return }
+
+        self.dealWithCallingTimeOut(callState: callState, conversationId: conversationId)
         
         syncManagedObjectContext.performGroupedBlock {
             guard
                 let callerId = callerId,
-                let conversationId = conversationId,
                 let conversation = ZMConversation(remoteID: conversationId, createIfNeeded: false, in: self.syncManagedObjectContext),
                 let caller = ZMUser(remoteID: callerId, createIfNeeded: false, in: self.syncManagedObjectContext)
             else {

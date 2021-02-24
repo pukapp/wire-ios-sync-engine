@@ -94,7 +94,7 @@ public struct WireCallCenterCallStateNotification : SelfPostingNotification {
     weak var context : NSManagedObjectContext?
     let callState : CallState
     let remoteIdentifier : UUID
-    let callType: AVSConversationType
+    let callType: CallRoomType
     let callerId : UUID
     let messageTime : Date?
     let previousCallState: CallState?
@@ -111,7 +111,7 @@ public struct WireCallCenterMissedCallNotification : SelfPostingNotification {
     
     weak var context : NSManagedObjectContext?
     let remoteIdentifier : UUID
-    let callType: AVSConversationType
+    let callType: CallRoomType
     let callerId : UUID
     let timestamp: Date
     let video: Bool
@@ -148,10 +148,10 @@ public struct WireCallCenterCallParticipantNotification : SelfPostingNotificatio
     static let notificationName = Notification.Name("VoiceChannelParticipantNotification")
     
     let remoteIdentifier : UUID
-    let callType: AVSConversationType
+    let callType: CallRoomType
     let participants: [(UUID, CallParticipantState, VideoState)]
     
-    init(remoteIdentifier: UUID, callType: AVSConversationType, participants: [(UUID, CallParticipantState, VideoState)]) {
+    init(remoteIdentifier: UUID, callType: CallRoomType, participants: [(UUID, CallParticipantState, VideoState)]) {
         self.remoteIdentifier = remoteIdentifier
         self.callType = callType
         self.participants = participants
@@ -358,7 +358,7 @@ extension WireCallCenterV3 {
         }
     }
     
-    public class func getRelyModel(with remoteIdentifier: UUID, callType: AVSConversationType, in context: NSManagedObjectContext) -> CallRelyModel? {
+    public class func getRelyModel(with remoteIdentifier: UUID, callType: CallRoomType, in context: NSManagedObjectContext) -> CallRelyModel? {
         if callType == .conference {
             return ZMMeeting.fetchExistingMeeting(with: remoteIdentifier.transportString(), in: context)
         } else {

@@ -21,6 +21,67 @@ import Foundation
 private let zmLog = ZMSLog(tag: "calling")
 
 /**
+ * The media state of call.
+ */
+
+@objc public enum CallMediaType: Int {
+    case none = 0
+    case audioOnly = 1
+    case bothAudioAndVideo = 2
+    case forceAudio = 3 //强制音频-目前暂时用不到，只是为了适配之前的avs
+    case videoOnly = 4
+    
+    public var isMute: Bool {
+        return self == .none || self == .videoOnly
+    }
+    
+    public var needSendVideo: Bool {
+        return self == .videoOnly || self == .bothAudioAndVideo
+    }
+    
+    public static func getState(isMute: Bool, video: Bool) -> CallMediaType {
+        switch (isMute, video) {
+        case (true, true):
+            return .videoOnly
+        case (true, false):
+            return .none
+        case (false, true):
+            return .bothAudioAndVideo
+        case (false, false):
+            return .audioOnly
+        }
+    }
+    
+    public mutating func videoStateChanged(_ videoState: VideoState) {
+        switch (self, videoState) {
+        case (.none, .started):
+            self = .videoOnly
+        case (.audioOnly, .started):
+            self = .bothAudioAndVideo
+        case (.videoOnly, .stopped):
+            self = .none
+        case (.bothAudioAndVideo, .stopped):
+            self = .audioOnly
+        default:break
+        }
+    }
+    
+    public mutating func audioMuted(_ isMute: Bool) {
+        switch (self, isMute) {
+        case (.none, !isMute):
+            self = .audioOnly
+        case (.audioOnly, isMute):
+            self = .none
+        case (.videoOnly, !isMute):
+            self = .bothAudioAndVideo
+        case (.bothAudioAndVideo, isMute):
+            self = .videoOnly
+        default:break
+        }
+    }
+}
+
+/**
  * The state of a participant in a call.
  */
 
@@ -78,34 +139,6 @@ public enum CallState: Equatable {
     case unknown
 
     case reconnecting
-    /**
-     * Creates the call state from the given AVS flag.
-     * - parameter wcallState: The state of the call as represented in AVS.
-     */
-
-    /*
-    init(wcallState: Int32) {
-        switch wcallState {
-        case WCALL_STATE_NONE:
-            self = .none
-        case WCALL_STATE_INCOMING:
-            self = .incoming(video: false, shouldRing: true, degraded: false)
-        case WCALL_STATE_OUTGOING:
-            self = .outgoing(degraded: false)
-        case WCALL_STATE_ANSWERED:
-            self = .answered(degraded: false)
-        case WCALL_STATE_MEDIA_ESTAB:
-            self = .established
-        case WCALL_STATE_TERM_LOCAL: fallthrough
-        case WCALL_STATE_TERM_REMOTE:
-            self = .terminating(reason: .unknown)
-        default:
-            // WCALL_STATE_UNKNOWN can happen when we check the call state of a
-            // conversation id that isn't in the list of calls
-            self = .none
-        }
-    }
- */
 
     /**
      * Logs the current state to the calling logs.

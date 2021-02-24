@@ -298,9 +298,7 @@
 		5E1FD7A5210B2694003D2C3D /* NotificationAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1FD7A4210B2694003D2C3D /* NotificationAction.swift */; };
 		5E2C354D21A806A80034F1EE /* MockBackgroundActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E2C354C21A806A80034F1EE /* MockBackgroundActivityManager.swift */; };
 		5E6716912174CA6700522E61 /* MockUser+LoginCredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E67168F2174CA6300522E61 /* MockUser+LoginCredentials.swift */; };
-		5E8BB8992147CD3F00EEA64B /* AVSBridging.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8BB8982147CD3F00EEA64B /* AVSBridging.swift */; };
 		5E8BB89C2147CE1600EEA64B /* AVSCallMember.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8BB89B2147CE1600EEA64B /* AVSCallMember.swift */; };
-		5E8BB89E2147E9DF00EEA64B /* AVSWrapper+Handlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8BB89D2147E9DF00EEA64B /* AVSWrapper+Handlers.swift */; };
 		5E8BB8A02147F5BC00EEA64B /* CallSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8BB89F2147F5BC00EEA64B /* CallSnapshot.swift */; };
 		5E8BB8A22147F89000EEA64B /* CallCenterSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8BB8A12147F89000EEA64B /* CallCenterSupport.swift */; };
 		5E8BB8A52149130800EEA64B /* AVSBridgingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8BB8A3214912D100EEA64B /* AVSBridgingTests.swift */; };
@@ -323,14 +321,12 @@
 		734554CB24C1566B0079DCF4 /* AVSMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734554CA24C1566B0079DCF4 /* AVSMedia.swift */; };
 		734554CD24C157760079DCF4 /* MediaEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734554CC24C157760079DCF4 /* MediaEventManager.swift */; };
 		734554CF24C157C20079DCF4 /* AVSAudioEffectForNew.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734554CE24C157C20079DCF4 /* AVSAudioEffectForNew.swift */; };
-		73568C63246D3F5D00DE68D5 /* ConvsCallingStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73568C62246D3F5C00DE68D5 /* ConvsCallingStateManager.swift */; };
 		735E682E244559EF003E089C /* SwiftyJSON.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 735E682D244559EF003E089C /* SwiftyJSON.framework */; };
 		735E698E244856C4003E089C /* VideoTrackRenderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735E698D244856C4003E089C /* VideoTrackRenderView.swift */; };
 		7369402E2390C222001A6C44 /* BGPMemberImageStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7369402D2390C222001A6C44 /* BGPMemberImageStrategy.swift */; };
 		7385504D2593013C007A458C /* MeetingNotificeMessageCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7385504C2593013C007A458C /* MeetingNotificeMessageCenter.swift */; };
 		738D96AC2508B8C10070C73E /* WireCallCenterV3+Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738D96AB2508B8C10070C73E /* WireCallCenterV3+Meeting.swift */; };
 		738D96AE2508B9050070C73E /* MeetingClientManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738D96AD2508B9050070C73E /* MeetingClientManager.swift */; };
-		7399918E247CC0340039BCF5 /* ConversationCallingInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */; };
 		7399F57123A10556002DA207 /* ConversationAvatarUpdateStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */; };
 		7399F57323A1E1F9002DA207 /* ConversationAvatarUpdateStategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */; };
 		73AD783D24E27F7D006616D4 /* NTESTPCircularBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 73AD783724E27F7D006616D4 /* NTESTPCircularBuffer.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -352,7 +348,10 @@
 		73C7D9EF24CBDDCD009B24DB /* CallingSignalManager+P2P.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9EE24CBDDCD009B24DB /* CallingSignalManager+P2P.swift */; };
 		73C7D9F124CBEEA0009B24DB /* WebRTCP2PMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9F024CBEEA0009B24DB /* WebRTCP2PMessage.swift */; };
 		73C7D9F424D808CC009B24DB /* ScreenRecordingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C7D9F324D808CC009B24DB /* ScreenRecordingManager.swift */; };
-		73EA4D0E243EC90400E63429 /* CallingWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D0D243EC90400E63429 /* CallingWrapper.swift */; };
+		73D0FD3625E3989000917A61 /* WireCallCenterV3+SendMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D0FD3525E3989000917A61 /* WireCallCenterV3+SendMessage.swift */; };
+		73D0FD3C25E4ADE900917A61 /* WireCallCenterV3+ReceiveMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D0FD3B25E4ADE900917A61 /* WireCallCenterV3+ReceiveMessage.swift */; };
+		73D0FD5425E4FCF100917A61 /* WireCallCenterV3+CallingRoomDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D0FD5325E4FCF100917A61 /* WireCallCenterV3+CallingRoomDelegate.swift */; };
+		73D0FD6325E6656E00917A61 /* CallRoomType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D0FD6225E6656E00917A61 /* CallRoomType.swift */; };
 		73EA4D10243ED97B00E63429 /* CallingRoomManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D0F243ED97B00E63429 /* CallingRoomManager.swift */; };
 		73EA4D12243EE1AD00E63429 /* MediaOutputManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D11243EE1AD00E63429 /* MediaOutputManager.swift */; };
 		73EA4D142440192000E63429 /* CallingSignalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D132440192000E63429 /* CallingSignalManager.swift */; };
@@ -528,7 +527,7 @@
 		F1F3FE8820F36DFC00B0BAF3 /* PushNotificationTokenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1F3FE8620F36DEC00B0BAF3 /* PushNotificationTokenTests.swift */; };
 		F1FE8027200684F200A438CF /* NotificationsTrackingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1FE8025200684DB00A438CF /* NotificationsTrackingTests.swift */; };
 		F905C47F1E79A86A00AF34A5 /* WireCallCenterV3Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F905C47E1E79A86A00AF34A5 /* WireCallCenterV3Tests.swift */; };
-		F90EC5A31E7BF1AC00A6779E /* AVSWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90EC5A21E7BF1AC00A6779E /* AVSWrapper.swift */; };
+		F90EC5A31E7BF1AC00A6779E /* CallWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90EC5A21E7BF1AC00A6779E /* CallWrapper.swift */; };
 		F920F4D61DA3DCF8002B860B /* ConversationTests+Ephemeral.swift in Sources */ = {isa = PBXBuildFile; fileRef = F920F4D51DA3DCF8002B860B /* ConversationTests+Ephemeral.swift */; };
 		F9245BED1CBF95A8009D1E85 /* ZMHotFixDirectory+Swift.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9245BEC1CBF95A8009D1E85 /* ZMHotFixDirectory+Swift.swift */; };
 		F925468E1C63B61000CE2D7C /* MessagingTest+EventFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = F925468D1C63B61000CE2D7C /* MessagingTest+EventFactory.m */; };
@@ -955,9 +954,7 @@
 		5E1FD7A4210B2694003D2C3D /* NotificationAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationAction.swift; sourceTree = "<group>"; };
 		5E2C354C21A806A80034F1EE /* MockBackgroundActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockBackgroundActivityManager.swift; sourceTree = "<group>"; };
 		5E67168F2174CA6300522E61 /* MockUser+LoginCredentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MockUser+LoginCredentials.swift"; sourceTree = "<group>"; };
-		5E8BB8982147CD3F00EEA64B /* AVSBridging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVSBridging.swift; sourceTree = "<group>"; };
 		5E8BB89B2147CE1600EEA64B /* AVSCallMember.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVSCallMember.swift; sourceTree = "<group>"; };
-		5E8BB89D2147E9DF00EEA64B /* AVSWrapper+Handlers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AVSWrapper+Handlers.swift"; sourceTree = "<group>"; };
 		5E8BB89F2147F5BC00EEA64B /* CallSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallSnapshot.swift; sourceTree = "<group>"; };
 		5E8BB8A12147F89000EEA64B /* CallCenterSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallCenterSupport.swift; sourceTree = "<group>"; };
 		5E8BB8A3214912D100EEA64B /* AVSBridgingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVSBridgingTests.swift; sourceTree = "<group>"; };
@@ -980,7 +977,6 @@
 		734554CA24C1566B0079DCF4 /* AVSMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVSMedia.swift; sourceTree = "<group>"; };
 		734554CC24C157760079DCF4 /* MediaEventManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaEventManager.swift; sourceTree = "<group>"; };
 		734554CE24C157C20079DCF4 /* AVSAudioEffectForNew.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVSAudioEffectForNew.swift; sourceTree = "<group>"; };
-		73568C62246D3F5C00DE68D5 /* ConvsCallingStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvsCallingStateManager.swift; sourceTree = "<group>"; };
 		735E68272445566F003E089C /* Starscream.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Starscream.framework; path = ../../Build/iOS/Starscream.framework; sourceTree = "<group>"; };
 		735E682D244559EF003E089C /* SwiftyJSON.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftyJSON.framework; path = ../../Build/iOS/SwiftyJSON.framework; sourceTree = "<group>"; };
 		735E698D244856C4003E089C /* VideoTrackRenderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoTrackRenderView.swift; sourceTree = "<group>"; };
@@ -988,7 +984,6 @@
 		7385504C2593013C007A458C /* MeetingNotificeMessageCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingNotificeMessageCenter.swift; sourceTree = "<group>"; };
 		738D96AB2508B8C10070C73E /* WireCallCenterV3+Meeting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireCallCenterV3+Meeting.swift"; sourceTree = "<group>"; };
 		738D96AD2508B9050070C73E /* MeetingClientManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingClientManager.swift; sourceTree = "<group>"; };
-		7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationCallingInfo.swift; sourceTree = "<group>"; };
 		7399F57023A10556002DA207 /* ConversationAvatarUpdateStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStatus.swift; sourceTree = "<group>"; };
 		7399F57223A1E1F8002DA207 /* ConversationAvatarUpdateStategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAvatarUpdateStategy.swift; sourceTree = "<group>"; };
 		73AD783724E27F7D006616D4 /* NTESTPCircularBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NTESTPCircularBuffer.h; sourceTree = "<group>"; };
@@ -1010,8 +1005,11 @@
 		73C7D9EE24CBDDCD009B24DB /* CallingSignalManager+P2P.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CallingSignalManager+P2P.swift"; sourceTree = "<group>"; };
 		73C7D9F024CBEEA0009B24DB /* WebRTCP2PMessage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebRTCP2PMessage.swift; sourceTree = "<group>"; };
 		73C7D9F324D808CC009B24DB /* ScreenRecordingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenRecordingManager.swift; sourceTree = "<group>"; };
+		73D0FD3525E3989000917A61 /* WireCallCenterV3+SendMessage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "WireCallCenterV3+SendMessage.swift"; sourceTree = "<group>"; };
+		73D0FD3B25E4ADE900917A61 /* WireCallCenterV3+ReceiveMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireCallCenterV3+ReceiveMessage.swift"; sourceTree = "<group>"; };
+		73D0FD5325E4FCF100917A61 /* WireCallCenterV3+CallingRoomDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireCallCenterV3+CallingRoomDelegate.swift"; sourceTree = "<group>"; };
+		73D0FD6225E6656E00917A61 /* CallRoomType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallRoomType.swift; sourceTree = "<group>"; };
 		73EA4CE9243DB55A00E63429 /* mediasoup_client_ios.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = mediasoup_client_ios.framework; path = ../../Build/iOS/mediasoup_client_ios.framework; sourceTree = "<group>"; };
-		73EA4D0D243EC90400E63429 /* CallingWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallingWrapper.swift; sourceTree = "<group>"; };
 		73EA4D0F243ED97B00E63429 /* CallingRoomManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallingRoomManager.swift; sourceTree = "<group>"; };
 		73EA4D11243EE1AD00E63429 /* MediaOutputManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaOutputManager.swift; sourceTree = "<group>"; };
 		73EA4D132440192000E63429 /* CallingSignalManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallingSignalManager.swift; sourceTree = "<group>"; };
@@ -1248,7 +1246,7 @@
 		F1F3FE8620F36DEC00B0BAF3 /* PushNotificationTokenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationTokenTests.swift; sourceTree = "<group>"; };
 		F1FE8025200684DB00A438CF /* NotificationsTrackingTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NotificationsTrackingTests.swift; sourceTree = "<group>"; };
 		F905C47E1E79A86A00AF34A5 /* WireCallCenterV3Tests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WireCallCenterV3Tests.swift; sourceTree = "<group>"; };
-		F90EC5A21E7BF1AC00A6779E /* AVSWrapper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AVSWrapper.swift; sourceTree = "<group>"; };
+		F90EC5A21E7BF1AC00A6779E /* CallWrapper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CallWrapper.swift; sourceTree = "<group>"; };
 		F91CA6AC1BECBD3F000EE5C2 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Base; path = Base.lproj/Push.strings; sourceTree = "<group>"; };
 		F91CA6AD1BECBD46000EE5C2 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.plist.stringsdict; name = Base; path = Base.lproj/Push.stringsdict; sourceTree = "<group>"; };
 		F91CA6AE1BECBD51000EE5C2 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Push.strings; sourceTree = "<group>"; };
@@ -1543,16 +1541,18 @@
 				5E8BB89B2147CE1600EEA64B /* AVSCallMember.swift */,
 				5E8BB89F2147F5BC00EEA64B /* CallSnapshot.swift */,
 				16C4BD9F20A309CD00BCDB17 /* CallParticipantSnapshot.swift */,
+				73D0FD6225E6656E00917A61 /* CallRoomType.swift */,
 				5EC2C5902137F80E00C6CE35 /* CallState.swift */,
 				F1B5D53C2181FDA300986911 /* NetworkQuality.swift */,
 				5EC2C58E2137F5EE00C6CE35 /* CallClosedReason.swift */,
 				7C5482D9225380160055F1AB /* CallReceivedResult.swift */,
-				5E8BB89D2147E9DF00EEA64B /* AVSWrapper+Handlers.swift */,
-				5E8BB8982147CD3F00EEA64B /* AVSBridging.swift */,
-				F90EC5A21E7BF1AC00A6779E /* AVSWrapper.swift */,
+				F90EC5A21E7BF1AC00A6779E /* CallWrapper.swift */,
 				5E8BB8A12147F89000EEA64B /* CallCenterSupport.swift */,
 				165D3A141E1D3EF30052E654 /* WireCallCenterV3.swift */,
+				73D0FD3525E3989000917A61 /* WireCallCenterV3+SendMessage.swift */,
+				73D0FD3B25E4ADE900917A61 /* WireCallCenterV3+ReceiveMessage.swift */,
 				5EC2C592213827BF00C6CE35 /* WireCallCenterV3+Events.swift */,
+				73D0FD5325E4FCF100917A61 /* WireCallCenterV3+CallingRoomDelegate.swift */,
 				F9E577201E77EC6D0065EFE4 /* WireCallCenterV3+Notifications.swift */,
 				166A8BF21E015F3B00F5EEEA /* WireCallCenterV3Factory.swift */,
 			);
@@ -2181,9 +2181,6 @@
 				73EA4D132440192000E63429 /* CallingSignalManager.swift */,
 				7342AC2624860BA400E37829 /* CallingService.swift */,
 				73EA4D0F243ED97B00E63429 /* CallingRoomManager.swift */,
-				7399918D247CC0330039BCF5 /* ConversationCallingInfo.swift */,
-				73568C62246D3F5C00DE68D5 /* ConvsCallingStateManager.swift */,
-				73EA4D0D243EC90400E63429 /* CallingWrapper.swift */,
 				73EA4D11243EE1AD00E63429 /* MediaOutputManager.swift */,
 				735E698D244856C4003E089C /* VideoTrackRenderView.swift */,
 				73C7D9E824C98F18009B24DB /* CallingMembersManager.swift */,
@@ -3120,7 +3117,6 @@
 				54E2C1E01E682DC400536569 /* LocalNotificationDispatcher.swift in Sources */,
 				A0BA1E7F25B682BF00BEA4A9 /* ApnsPushTokenStrategy.swift in Sources */,
 				879634401F7BEA4700FC79BA /* DispatchQueue+SerialAsync.swift in Sources */,
-				73EA4D0E243EC90400E63429 /* CallingWrapper.swift in Sources */,
 				F93A75F21C1F219800252586 /* ConversationStatusStrategy.swift in Sources */,
 				544F8FF31DDCD34600D1AB04 /* UserProfileUpdateNotifications.swift in Sources */,
 				F19F1D1F1EFBC2F000275E27 /* ZMAuthenticationStatus.m in Sources */,
@@ -3137,14 +3133,13 @@
 				5EC2C5912137F80E00C6CE35 /* CallState.swift in Sources */,
 				7399F57123A10556002DA207 /* ConversationAvatarUpdateStatus.swift in Sources */,
 				5478A1411DEC4048006F7268 /* UserProfile.swift in Sources */,
-				5E8BB89E2147E9DF00EEA64B /* AVSWrapper+Handlers.swift in Sources */,
 				F16C8BE82044129700677D31 /* ZMConversationTranscoder.swift in Sources */,
 				1626344920D7DB81000D4063 /* PushNotificationCategory.swift in Sources */,
 				F98EDCD71D82B913001E65CB /* LocalNotificationContentType.swift in Sources */,
 				F19E55A222B3A3FA005C792D /* UNNotificationResponse+SafeLogging.swift in Sources */,
 				EFF940402240FF12004F3115 /* DeepLinkError.swift in Sources */,
-				F90EC5A31E7BF1AC00A6779E /* AVSWrapper.swift in Sources */,
-				5E8BB8992147CD3F00EEA64B /* AVSBridging.swift in Sources */,
+				F90EC5A31E7BF1AC00A6779E /* CallWrapper.swift in Sources */,
+				73D0FD5425E4FCF100917A61 /* WireCallCenterV3+CallingRoomDelegate.swift in Sources */,
 				734554CD24C157760079DCF4 /* MediaEventManager.swift in Sources */,
 				16F5F16C1E4092C00062F0AE /* NSManagedObjectContext+CTCallCenter.swift in Sources */,
 				16962EE420286D690069D88D /* LocalNotificationType+Configuration.swift in Sources */,
@@ -3165,7 +3160,6 @@
 				F9B171F61C0EF21100E6EEC6 /* ClientUpdateStatus.swift in Sources */,
 				54D175271ADE9EC9001AA338 /* ZMUserSession+Authentication.m in Sources */,
 				549816351A432BC800A7CE2E /* ZMLoginTranscoder.m in Sources */,
-				73568C63246D3F5D00DE68D5 /* ConvsCallingStateManager.swift in Sources */,
 				5E8BB89C2147CE1600EEA64B /* AVSCallMember.swift in Sources */,
 				166D18A4230EBFFA001288CD /* MediaManager.swift in Sources */,
 				7385504D2593013C007A458C /* MeetingNotificeMessageCenter.swift in Sources */,
@@ -3220,6 +3214,7 @@
 				8754B84C1F73C38900EC02AD /* MessageChangeInfo+UserSession.swift in Sources */,
 				162DEE111F87B9800034C8F9 /* ZMUserSession+Calling.swift in Sources */,
 				BF3C1B1720DBE254001CE126 /* Conversation+MessageDestructionTimeout.swift in Sources */,
+				73D0FD6325E6656E00917A61 /* CallRoomType.swift in Sources */,
 				F97678FA1D76D11400CC075D /* BackgroundAPNSConfirmationStatus.swift in Sources */,
 				1659114F1DEF1F6E007FA847 /* LocalNotificationDispatcher+Calling.swift in Sources */,
 				73AD784224E27F7D006616D4 /* NTESTPCircularBuffer.c in Sources */,
@@ -3248,6 +3243,7 @@
 				F9ABDF411CECBD8A008461B2 /* AccountStatus.swift in Sources */,
 				165D3A3D1E1D60520052E654 /* ZMConversation+VoiceChannel.swift in Sources */,
 				7369402E2390C222001A6C44 /* BGPMemberImageStrategy.swift in Sources */,
+				73D0FD3625E3989000917A61 /* WireCallCenterV3+SendMessage.swift in Sources */,
 				165D3A221E1D43870052E654 /* VoiceChannel.swift in Sources */,
 				73AD784A24E28900006616D4 /* CVPixelBufferConvertDataHelper.swift in Sources */,
 				5EDF03EC2245563C00C04007 /* LinkPreviewAssetUploadRequestStrategy+Helper.swift in Sources */,
@@ -3261,6 +3257,7 @@
 				73EA4D10243ED97B00E63429 /* CallingRoomManager.swift in Sources */,
 				D52257232062637500562561 /* DeletableAssetIdentifierProvider.swift in Sources */,
 				D5225720206261AA00562561 /* AssetDeletionStatus.swift in Sources */,
+				73D0FD3C25E4ADE900917A61 /* WireCallCenterV3+ReceiveMessage.swift in Sources */,
 				5E8BB8A02147F5BC00EEA64B /* CallSnapshot.swift in Sources */,
 				163FB9972057E25600E74F83 /* NSManagedObjectContext+LastNotificationID.swift in Sources */,
 				734554C924C155C20079DCF4 /* AVSMediaManager.swift in Sources */,
@@ -3285,7 +3282,6 @@
 				1662648221661C9F00300F45 /* ZMOperatonLoop+Background.swift in Sources */,
 				73AD783E24E27F7D006616D4 /* GCDAsyncSocket.m in Sources */,
 				168CF42B20079A02009FCB89 /* TeamInvitationRequestStrategy.swift in Sources */,
-				7399918E247CC0340039BCF5 /* ConversationCallingInfo.swift in Sources */,
 				F98EDCF31D82B924001E65CB /* ZMLocalNotificationSet.swift in Sources */,
 				5498161C1A432BC800A7CE2E /* ZMTypingUsersTimeout.m in Sources */,
 				5498165A1A432BC800A7CE2E /* ZMUpdateEventsBuffer.m in Sources */,

@@ -32,9 +32,9 @@ class CallParticipantsSnapshot {
     
     fileprivate unowned var callCenter : WireCallCenterV3
     fileprivate let remoteIdentifier : UUID
-    fileprivate let callType : AVSConversationType
+    fileprivate let callType : CallRoomType
     
-    init(remoteIdentifier: UUID, callType : AVSConversationType, members: [CallMemberProtocol], callCenter: WireCallCenterV3) {
+    init(remoteIdentifier: UUID, callType : CallRoomType, members: [CallMemberProtocol], callCenter: WireCallCenterV3) {
         self.callCenter = callCenter
         self.remoteIdentifier = remoteIdentifier
         self.callType = callType

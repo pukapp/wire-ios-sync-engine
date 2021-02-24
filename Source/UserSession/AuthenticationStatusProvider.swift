@@ -24,6 +24,7 @@ import Foundation
 
 extension ZMPersistentCookieStorage: AuthenticationStatusProvider {
     public var isAuthenticated: Bool {
+        print("logging------data:\(authenticationCookieData)----date:\(authenticationCookieExpirationDate)")
         return authenticationCookieData != nil
     }
 }

@@ -11,7 +11,7 @@ import SwiftyJSON
 
 let MediasoupServiceURL = "https://118.107.13.196:4000/api/getConfigInfo"
 
-struct CallingConfigure {
+public struct CallingConfigure {
     struct Gateway {
         let ip: String
         let port: UInt

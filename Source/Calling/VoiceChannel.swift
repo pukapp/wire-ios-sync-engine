@@ -43,7 +43,7 @@ public protocol CallRelyModel: NSObjectProtocol {
     
     var activeParticipants: Set<ZMUser> { get }
     
-    var callType: AVSConversationType { get }
+    var callType: CallRoomType { get }
     
     var peerId: UUID? { get }
     
@@ -53,6 +53,9 @@ public protocol CallRelyModel: NSObjectProtocol {
     
     //用来连接mediaServer
     var token: String? { get }
+    
+    //是否需要通过callKit来通知用户
+    var canNotifyByVoip: Bool { get }
 }
 
 extension ZMMeeting: CallRelyModel {
@@ -68,7 +71,7 @@ extension ZMMeeting: CallRelyModel {
         return []
     }
     
-    public var callType: AVSConversationType {
+    public var callType: CallRoomType {
         return .conference
     }
     
@@ -87,11 +90,15 @@ extension ZMMeeting: CallRelyModel {
     public var token: String? {
         return self.mediaServerToken
     }
+    
+    public var canNotifyByVoip: Bool {
+        return false
+    }
 }
 
 extension ZMConversation: CallRelyModel {
     
-    public var callType: AVSConversationType {
+    public var callType: CallRoomType {
         return self.conversationType == .group ? .group : .oneToOne
     }
     
@@ -118,6 +125,10 @@ extension ZMConversation: CallRelyModel {
     
     public var token: String? {
         return nil
+    }
+    
+    public var canNotifyByVoip: Bool {
+        return true
     }
 }
 
@@ -160,7 +171,7 @@ public protocol CallProperties : NSObjectProtocol {
 public protocol CallActions : NSObjectProtocol {
     
     func muteSelf(_ isMute: Bool, userSession: ZMUserSession)
-    func join(mediaState: AVSCallMediaState, userSession: ZMUserSession) -> Bool
+    func join(mediaState: CallMediaType, userSession: ZMUserSession) -> Bool
     func leave(userSession: ZMUserSession, completion: (() -> ())?)
     func continueByDecreasingConversationSecurity(userSession: ZMUserSession)
     func leaveAndDecreaseConversationSecurity(userSession: ZMUserSession)
@@ -173,7 +184,7 @@ public protocol CallActions : NSObjectProtocol {
 @objc
 public protocol CallActionsInternal : NSObjectProtocol {
     
-    func join(mediaState: AVSCallMediaState) -> Bool
+    func join(mediaState: CallMediaType) -> Bool
     func leave()
     
 }

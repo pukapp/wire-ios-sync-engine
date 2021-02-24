@@ -198,7 +198,7 @@ extension VoiceChannelV3 : CallActions {
         leave(userSession: userSession, completion: nil)
     }
     
-    public func join(mediaState: AVSCallMediaState, userSession: ZMUserSession) -> Bool {
+    public func join(mediaState: CallMediaType, userSession: ZMUserSession) -> Bool {
         if userSession.callNotificationStyle == .callKit, #available(iOS 10.0, *),
             relyModel?.needCallKit ?? false {
             userSession.callKitDelegate?.requestJoinCall(in: relyModel as! ZMConversation, mediaState: mediaState)
@@ -223,7 +223,7 @@ extension VoiceChannelV3 : CallActions {
 extension VoiceChannelV3: CallActionsInternal {
     
     //新增isMute，会议模式，可以静音进入会议
-    public func join(mediaState: AVSCallMediaState) -> Bool {
+    public func join(mediaState: CallMediaType) -> Bool {
         guard let relyModel = relyModel else { return false }
         
         var joined = false

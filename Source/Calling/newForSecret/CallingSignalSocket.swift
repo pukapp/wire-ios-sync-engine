@@ -31,7 +31,7 @@ public class CallingSignalSocket: NSObject {
     
     private let url: URL
     private let delegate: SocketActionDelegate
-    private var isClosed: Bool = false //是否关闭当前websocket
+    private var isManualShutdown: Bool = false //是否手动关闭当前websocket
     
     init(url: URL, delegate: SocketActionDelegate) {
         zmLog.info("CallingSignalSocket-init--url:\(url)")
@@ -40,27 +40,27 @@ public class CallingSignalSocket: NSObject {
         super.init()
     }
     
-    func createSocket() {
+    private func createSocket() {
         self.socket = ZMWebSocket(consumer: self, queue: recvSocketSignalQueue, group: recvSocketSignalDispatchGroup, url: url, trustProvider: self, additionalHeaderFields: ["Sec-WebSocket-Protocol": "media--protoo"])
     }
 
     func connect() {
         zmLog.info("CallingSignalSocket-connect")
-        self.isClosed = false
-        self.createSocket()
-    }
-    
-    func reConnect() {
-        zmLog.info("CallingSignalSocket-reConnect")
-        self.socket = nil
+        self.isManualShutdown = false
         self.createSocket()
     }
     
     func disConnect() {
         zmLog.info("CallingSignalSocket-disConnect")
-        self.isClosed = true
+        self.isManualShutdown = true
         self.socket?.close()
         self.socket = nil
+    }
+    
+    private func reConnect() {
+        zmLog.info("CallingSignalSocket-reConnect")
+        self.socket = nil
+        self.createSocket()
     }
     
     func send(string: String) {
@@ -84,7 +84,6 @@ extension CallingSignalSocket: ZMWebSocketConsumer, BackendTrustProvider {
     
     public func webSocketDidCompleteHandshake(_ websocket: ZMWebSocket!, httpResponse response: HTTPURLResponse!) {
         zmLog.info("CallingSignalSocket-webSocketDidCompleteHandshake")
-        self.isClosed = false
         self.delegate.receive(action: .connected)
     }
     
@@ -97,9 +96,9 @@ extension CallingSignalSocket: ZMWebSocketConsumer, BackendTrustProvider {
     }
     
     public func webSocketDidClose(_ webSocket: ZMWebSocket!, httpResponse response: HTTPURLResponse!, error: Error!) {
-        zmLog.info("CallingSignalSocket-webSocketDidClose")
-        //如果不是手动关闭，则需要重新连接
-        guard !self.isClosed else {
+        zmLog.info("CallingSignalSocket-webSocketDidClose isManualShutdown:\(isManualShutdown) error==\(String(describing: error))")
+        //如果手动关闭，则不需要重新连接
+        if self.isManualShutdown {
             return
         }
         self.reConnectedTimes += 1
@@ -107,7 +106,7 @@ extension CallingSignalSocket: ZMWebSocketConsumer, BackendTrustProvider {
             self.delegate.receive(action: .disconnected(needDestory: true))
         } else {
             self.delegate.receive(action: .disconnected(needDestory: false))
-            roomWorkQueue.asyncAfter(deadline: .now() + 5) {
+            roomWorkQueue.asyncAfter(deadline: .now() + 3) {
                 self.reConnect()
             }
         }

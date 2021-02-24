@@ -246,7 +246,7 @@ extension CallKitDelegate {
         }
     }
     
-    func requestJoinCall(in conversation: ZMConversation, mediaState: AVSCallMediaState) {
+    func requestJoinCall(in conversation: ZMConversation, mediaState: CallMediaType) {
         
         let existingCallUUID = callUUID(for: conversation) ?? callUUIDV2(for: conversation.remoteIdentifier!.transportString())
         let existingCall = callController.callObserver.calls.first(where: { $0.uuid == existingCallUUID })
@@ -258,7 +258,7 @@ extension CallKitDelegate {
         }
     }
     
-    func requestStartCall(in conversation: ZMConversation, mediaState: AVSCallMediaState) {
+    func requestStartCall(in conversation: ZMConversation, mediaState: CallMediaType) {
         guard
             let managedObjectContext = conversation.managedObjectContext,
             let handle = conversation.callKitHandle
@@ -289,7 +289,7 @@ extension CallKitDelegate {
         
     }
     
-    func requestAnswerCall(in conversation: ZMConversation, mediaState: AVSCallMediaState) {
+    func requestAnswerCall(in conversation: ZMConversation, mediaState: CallMediaType) {
         guard let callUUID = callUUID(for: conversation) else { return }
         
         let action = CXAnswerCallAction(call: callUUID)

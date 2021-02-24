@@ -45,20 +45,9 @@ extension CallingRoomManager: CallingSignalManagerDelegate {
     
 }
 
-protocol CallingRoomManagerDelegate {
-    func onEstablishedCall(conversationId: UUID)
-    func onReconnectingCall(conversationId: UUID)
-    func onCallEnd(conversationId: UUID, reason: CallClosedReason)
-    func onVideoStateChange(conversationId: UUID, memberId: UUID, videoState: VideoState)
-    func onGroupMemberChange(conversationId: UUID, memberCount: Int)
-    
-    //仅为会议支持
-    func onReceiveMeetingPropertyChange(in mid: UUID, with property: MeetingProperty)
-}
-
 ///client连接管理，具体实现分别由继承类独自实现
 protocol CallingClientConnectProtocol {
-    init(signalManager: CallingSignalManager, mediaManager: MediaOutputManager, membersManagerDelegate: CallingMembersManagerProtocol, mediaStateManagerDelegate: CallingMediaStateManagerProtocol, observe: CallingClientConnectStateObserve, isStarter: Bool, mediaState: AVSCallMediaState)
+    init(signalManager: CallingSignalManager, mediaManager: MediaOutputManager, membersManagerDelegate: CallingMembersManagerProtocol, mediaStateManagerDelegate: CallingMediaStateManagerProtocol, observe: CallingClientConnectStateObserve, isStarter: Bool, mediaState: CallMediaType)
     func webSocketConnected()
     func webSocketDisConnected()
     func webSocketReceiveRequest(with method: String, info: JSON, completion: (Bool) -> Void)
@@ -87,7 +76,7 @@ protocol CallingClientConnectStateObserve {
  */
 let roomWorkQueue: DispatchQueue = DispatchQueue.init(label: "MediasoupSignalWorkQueue")
 
-class CallingRoomManager: NSObject {
+class CallingRoomManager: NSObject, CallWrapperType {
     
     enum RoomState {
         case none
@@ -104,9 +93,9 @@ class CallingRoomManager: NSObject {
     
     var roomId: UUID?
     private var userId: UUID?
-    private var mediaState: AVSCallMediaState = .none
+    private var mediaState: CallMediaType = .none
     private var isStarter: Bool = false
-    private var roomMode: AVSConversationType = .group
+    private var roomMode: CallRoomType = .group
     private var roomState: RoomState = .none
     
     //房间信令的管理
@@ -132,23 +121,22 @@ class CallingRoomManager: NSObject {
         self.callingConfigure = callingConfigure
     }
     
-    func connectToRoom(with roomId: UUID, userId: UUID, roomMode: AVSConversationType, mediaState: AVSCallMediaState, isStarter: Bool, members: [CallMemberProtocol], token: String?) {
-        roomWorkQueue.async {
-            self.internalConnectToRoom(with: roomId, userId: userId, roomMode: roomMode, mediaState: mediaState, isStarter: isStarter, members: members, token: token)
+    func connectToRoom(with roomId: UUID, userId: UUID, roomMode: CallRoomType, mediaState: CallMediaType, isStarter: Bool, members: [CallMemberProtocol], token: String?, delegate: CallingRoomManagerDelegate) -> Bool {
+        guard let callingConfigure = self.callingConfigure,
+            let _ = callingConfigure.vaildGateway else {
+            zmLog.info("CallingRoomManager-connectToRoom err: vaildGateway:\(self.callingConfigure?.vaildGateway), roomId:\(roomId)")
+            return false
         }
+        roomWorkQueue.async {
+            if let oldRoomId = self.roomId {
+                self.leaveRoom(with: oldRoomId)
+            }
+            self.internalConnectToRoom(with: roomId, userId: userId, roomMode: roomMode, mediaState: mediaState, isStarter: isStarter, members: members, token: token, delegate: delegate)
+        }
+        return true
     }
     
-    private func internalConnectToRoom(with roomId: UUID, userId: UUID, roomMode: AVSConversationType, mediaState: AVSCallMediaState, isStarter: Bool, members: [CallMemberProtocol], token: String?) {
-        guard let callingConfigure = self.callingConfigure,
-            let wsUrl = callingConfigure.vaildGateway,
-            self.roomId == nil else {
-            ///已经在房间里面了
-            zmLog.info("CallingRoomManager-connectToRoom err: vaildGateway:\(self.callingConfigure?.vaildGateway), roomId:\(roomId)")
-            self.roomId = roomId
-            self.roomEmpty()
-            return
-        }
-        
+    private func internalConnectToRoom(with roomId: UUID, userId: UUID, roomMode: CallRoomType, mediaState: CallMediaType, isStarter: Bool, members: [CallMemberProtocol], token: String?, delegate: CallingRoomManagerDelegate) {
         zmLog.info("CallingRoomManager-connectToRoom roomId:\(roomId) userId:\(userId), members:\(members.count)")
         
         self.roomId = roomId
@@ -157,10 +145,11 @@ class CallingRoomManager: NSObject {
         self.mediaState = mediaState
         self.isStarter = isStarter
         self.roomState = .socketConnecting
+        self.delegate = delegate
         
         self.mediaOutputManager = MediaOutputManager()
         self.roomMembersManager = CallingMembersManager(observer: self)
-        self.signalManager.connectRoom(with: wsUrl, roomId: roomId.transportString(), userId: self.userId!.transportString(), token: token)
+        self.signalManager.connectRoom(with: self.callingConfigure!.vaildGateway!, roomId: roomId.transportString(), userId: self.userId!.transportString(), token: token)
         //成员管理
         members.forEach({
             self.roomMembersManager?.addNewMember($0)
@@ -223,6 +212,10 @@ class CallingRoomManager: NSObject {
             ///关闭socket
             self.signalManager.leaveRoom()
         }
+    }
+    
+    func members(in conversationId: UUID) -> [CallMemberProtocol] {
+        return self.roomMembersManager?.callMembers ?? []
     }
     
     ///当外部收到end消息时，需要主动remove，确保该成员已经被移除
@@ -303,7 +296,7 @@ extension CallingRoomManager: CallingClientConnectStateObserve {
         }
     }
     
-    private func switchMode(mode: AVSConversationType) {
+    private func switchMode(mode: CallRoomType) {
         guard self.roomMode != mode else { return }
         zmLog.info("CallingRoomManager-switchMode:\(mode)")
         roomWorkQueue.async {
@@ -325,6 +318,7 @@ extension CallingRoomManager: CallingMembersObserver {
             return
         }
         zmLog.info("CallingRoomManager-roomEmpty")
+        self.leaveRoom(with: roomId)
         self.delegate?.onCallEnd(conversationId: roomId, reason: .normal)
     }
     

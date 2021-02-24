@@ -113,8 +113,7 @@ class MediaEventManager {
             guard let usingCallKit = data as? Bool else { return }
             self.startCall(with: usingCallKit)
         case .incomingCall:
-            guard let usingCallKit = data as? Bool else { return }
-            self.invokeIncoming(with: usingCallKit)
+            self.invokeIncoming()
         case .connectingCall:
             self.connectingCall()
         case .enterCall:
@@ -143,7 +142,7 @@ fileprivate extension MediaEventManager {
         self.isCalling = true
     }
     
-    func invokeIncoming(with usingCallKit: Bool) {
+    func invokeIncoming() {
         self.isCalling = true
         ///设置外放，播放铃声
         self.enableSpeake(isEnable: true)

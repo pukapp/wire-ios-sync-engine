@@ -44,9 +44,11 @@ public final class CallingRequestStrategy : NSObject, RequestStrategy {
         let selfUser = ZMUser.selfUser(in: managedObjectContext)
         self.callConfigRequestSync = ZMSingleRequestSync(singleRequestTranscoder: self, groupQueue: self.managedObjectContext)
         
-        if let userId = selfUser.remoteIdentifier, let clientId = selfUser.selfClient()?.remoteIdentifier {
+        if let userId = selfUser.remoteIdentifier,
+           let userName = selfUser.name,
+           let clientId = selfUser.selfClient()?.remoteIdentifier {
             zmLog.debug("Creating callCenter from init")
-            callCenter = WireCallCenterV3Factory.callCenter(withUserId: userId, clientId: clientId, uiMOC: managedObjectContext.zm_userInterface, flowManager: flowManager, analytics: managedObjectContext.analytics, transport: self)
+            callCenter = WireCallCenterV3Factory.callCenter(withUserId: userId, userName: userName, clientId: clientId, uiMOC: managedObjectContext.zm_userInterface, flowManager: flowManager, analytics: managedObjectContext.analytics, transport: self)
         }
     }
     
@@ -106,12 +108,15 @@ extension CallingRequestStrategy : ZMContextChangeTracker, ZMContextChangeTracke
         guard callCenter == nil else { return }
         
         for object in objects {
-            if let userClient = object as? UserClient, userClient.isSelfClient(), let clientId = userClient.remoteIdentifier, let userId = userClient.user?.remoteIdentifier {
+            if let userClient = object as? UserClient, userClient.isSelfClient(),
+               let clientId = userClient.remoteIdentifier,
+               let userId = userClient.user?.remoteIdentifier,
+               let userName = userClient.user?.name {
                 zmLog.debug("Creating callCenter")
                 let uiContext = managedObjectContext.zm_userInterface!
                 let analytics = managedObjectContext.analytics
                 uiContext.performGroupedBlock {
-                    self.callCenter = WireCallCenterV3Factory.callCenter(withUserId: userId, clientId: clientId, uiMOC: uiContext.zm_userInterface, flowManager: self.flowManager, analytics: analytics, transport: self)
+                    self.callCenter = WireCallCenterV3Factory.callCenter(withUserId: userId, userName: userName, clientId: clientId, uiMOC: uiContext.zm_userInterface, flowManager: self.flowManager, analytics: analytics, transport: self)
                 }
                 break
             }

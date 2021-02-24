@@ -96,7 +96,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         case connectFailure
     }
     
-    var mode: AVSConversationType = .group
+    var mode: CallRoomType = .group
     
     private var device: MediasoupDevice?
     
@@ -106,7 +106,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     private let mediaStateManagerDelegate: CallingMediaStateManagerProtocol
     let connectStateObserver: CallingClientConnectStateObserve
     
-    private var mediaState: AVSCallMediaState
+    private var mediaState: CallMediaType
     
     private var sendTransport: SendTransport?
     private var recvTransport: RecvTransport?
@@ -130,7 +130,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
                   mediaStateManagerDelegate: CallingMediaStateManagerProtocol,
                   observe: CallingClientConnectStateObserve,
                   isStarter: Bool,
-                  mediaState: AVSCallMediaState) {
+                  mediaState: CallMediaType) {
         zmLog.info("MediasoupClientManager-init")
         
         //Logger.setLogLevel(LogLevel.TRACE)

@@ -18,16 +18,17 @@
 
 import Foundation
 
+typealias CallStarterInfo = (id: UUID, name: String)
+
 /**
  * The snapshot of the state of a call.
  */
-
 struct CallSnapshot {
     let callParticipants: CallParticipantsSnapshot
     let callState: CallState
-    let callStarter: UUID
-    let mediaState: AVSCallMediaState
-    let callType: AVSConversationType
+    let callStarter: CallStarterInfo
+    let mediaState: CallMediaType
+    let callType: CallRoomType
     let isConstantBitRate: Bool
     let videoState: VideoState
     let networkQuality: NetworkQuality

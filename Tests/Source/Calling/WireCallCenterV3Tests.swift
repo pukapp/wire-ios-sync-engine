@@ -407,7 +407,7 @@ class WireCallCenterV3Tests: MessagingTest {
             _ = sut.startCall(conversation: oneOnOneConversation, video: false)
             
             // then
-            XCTAssertEqual(mockAVSWrapper.startCallArguments?.conversationType, AVSConversationType.oneToOne)
+            XCTAssertEqual(mockAVSWrapper.startCallArguments?.conversationType, CallRoomType.oneToOne)
             XCTAssertEqual(mockAVSWrapper.startCallArguments?.callType, AVSCallType.normal)
         }
     }
@@ -426,7 +426,7 @@ class WireCallCenterV3Tests: MessagingTest {
             _ = sut.startCall(conversation: oneOnOneConversation, video: false)
             
             // then
-            XCTAssertEqual(mockAVSWrapper.startCallArguments?.conversationType, AVSConversationType.oneToOne)
+            XCTAssertEqual(mockAVSWrapper.startCallArguments?.conversationType, CallRoomType.oneToOne)
             XCTAssertEqual(mockAVSWrapper.startCallArguments?.callType, AVSCallType.normal)
             XCTAssertEqual(sut.callParticipants(conversationId: oneOnOneConversationID), [oneOnOneConversation.connectedUser!.remoteIdentifier])
         }
@@ -438,7 +438,7 @@ class WireCallCenterV3Tests: MessagingTest {
             _ = sut.startCall(conversation: groupConversation, video: false)
             
             // then
-            XCTAssertEqual(mockAVSWrapper.startCallArguments?.conversationType, AVSConversationType.group)
+            XCTAssertEqual(mockAVSWrapper.startCallArguments?.conversationType, CallRoomType.group)
             XCTAssertEqual(mockAVSWrapper.startCallArguments?.callType, AVSCallType.normal)
         }
     }
@@ -449,7 +449,7 @@ class WireCallCenterV3Tests: MessagingTest {
             _ = sut.startCall(conversation: groupConversation, video: true)
             
             // then
-            XCTAssertEqual(mockAVSWrapper.startCallArguments?.conversationType, AVSConversationType.group)
+            XCTAssertEqual(mockAVSWrapper.startCallArguments?.conversationType, CallRoomType.group)
             XCTAssertEqual(mockAVSWrapper.startCallArguments?.callType, AVSCallType.video)
         }
     }
@@ -468,7 +468,7 @@ class WireCallCenterV3Tests: MessagingTest {
             _ = sut.startCall(conversation: groupConversation, video: true)
             
             // then
-            XCTAssertEqual(mockAVSWrapper.startCallArguments?.conversationType, AVSConversationType.group)
+            XCTAssertEqual(mockAVSWrapper.startCallArguments?.conversationType, CallRoomType.group)
             XCTAssertEqual(mockAVSWrapper.startCallArguments?.callType, AVSCallType.audioOnly)
         }
     }

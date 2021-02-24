@@ -36,6 +36,12 @@ private let zmLog = ZMSLog(tag: "calling")
 
     /// The selfUser remoteIdentifier
     let selfUserId : UUID
+    
+    /// The selfUser current clientId
+    let selfClientId : String
+    
+    /// The selfUser nickname
+    let selfUserName: String
 
     /// The object that controls media flow.
     let flowManager: FlowManagerType
@@ -44,7 +50,7 @@ private let zmLog = ZMSLog(tag: "calling")
     let analytics: AnalyticsType?
 
     /// The bridge to use to communicate with and receive events from AVS.
-    var avsWrapper: AVSWrapperType!
+    var callWrapper: CallWrapperType!
 
     /// The Core Data context to use to coordinate events.
     weak var uiMOC: NSManagedObjectContext?
@@ -90,14 +96,14 @@ private let zmLog = ZMSLog(tag: "calling")
     // MARK: - Initialization
     
     deinit {
-        avsWrapper.close()
+        zmLog.info("WireCallCenterV3 --- deinit")
     }
 
     /**
      * Creates a call center with the required details.
      * - parameter userId: The identifier of the current signed-in user.
      * - parameter clientId: The identifier of the current client on the user's account.
-     * - parameter avsWrapper: The bridge to use to communicate with and receive events from AVS.
+     * - parameter callWrapper: The bridge to use to communicate with and receive events from AVS.
      * If you don't specify one, a default object will be created. Defaults to `nil`.
      * - parameter uiMOC: The Core Data context to use to coordinate events.
      * - parameter flowManager: The object that controls media flow.
@@ -105,8 +111,10 @@ private let zmLog = ZMSLog(tag: "calling")
      * - parameter transport: The object that performs network requests when the call center requests them.
      */
     
-    public required init(userId: UUID, clientId: String, avsWrapper: AVSWrapperType? = nil, uiMOC: NSManagedObjectContext, flowManager: FlowManagerType, analytics: AnalyticsType? = nil, transport: WireCallCenterTransport) {
+    public required init(userId: UUID, userName: String, clientId: String, uiMOC: NSManagedObjectContext, flowManager: FlowManagerType, analytics: AnalyticsType? = nil, transport: WireCallCenterTransport) {
         self.selfUserId = userId
+        self.selfClientId = clientId
+        self.selfUserName = userName
         self.uiMOC = uiMOC
         self.flowManager = flowManager
         self.analytics = analytics
@@ -114,8 +122,8 @@ private let zmLog = ZMSLog(tag: "calling")
         
         super.init()
         
-        let observer = Unmanaged.passUnretained(self).toOpaque()
-        self.avsWrapper = CallingWrapper(userId: userId, clientId: clientId, observer: observer)
+        self.callWrapper = CallingRoomManager.shareInstance
+        self.requestCallConfig()
     }
 
 }
@@ -138,7 +146,7 @@ extension WireCallCenterV3 {
      * - parameter conversationId: The identifier of the conversation that hosts the call.
      */
 
-    func createSnapshot(callState : CallState, members: [CallMemberProtocol], callStarter: UUID?, mediaState: AVSCallMediaState, for remoteIdentifier: UUID, callType: AVSConversationType) {
+    func createSnapshot(callState : CallState, members: [CallMemberProtocol], callStarter: CallStarterInfo, mediaState: CallMediaType, for remoteIdentifier: UUID, callType: CallRoomType) {
 //        guard
 //            let moc = uiMOC
 //            let conversation = ZMConversation(remoteID: conversationId, createIfNeeded: false, in: moc)
@@ -156,7 +164,7 @@ extension WireCallCenterV3 {
         callSnapshots[remoteIdentifier] = CallSnapshot(
             callParticipants: callParticipants,
             callState: callState,
-            callStarter: callStarter ?? selfUserId,
+            callStarter: callStarter,
             mediaState: mediaState,
             callType: callType,
             isConstantBitRate: false,
@@ -298,7 +306,7 @@ extension WireCallCenterV3 {
 
     /// Returns the remote identifier of the user that initiated the call.
     func initiatorForCall(conversationId: UUID) -> UUID? {
-        return callSnapshots[conversationId]?.callStarter
+        return callSnapshots[conversationId]?.callStarter.id
     }
 
     /// Call this method when the callParticipants changed and avs calls the handler `wcall_group_changed_h`
@@ -336,7 +344,7 @@ extension WireCallCenterV3 {
      * - parameter video: Whether to join the call with video.
      */
 
-    public func answerCall(relyModel: CallRelyModel, mediaState: AVSCallMediaState) -> Bool {
+    public func answerCall(relyModel: CallRelyModel, mediaState: CallMediaType) -> Bool {
         guard let remoteIdentifier = relyModel.remoteIdentifier else { return false }
         
         endAllCalls(exluding: remoteIdentifier)
@@ -345,19 +353,11 @@ extension WireCallCenterV3 {
             setVideoState(conversationId: remoteIdentifier, videoState: VideoState.stopped)
         }
         
-        let answered = avsWrapper.answerCall(conversationId: remoteIdentifier, mediaState: mediaState, conversationType: relyModel.callType, useCBR: useConstantBitRateAudio, members: relyModel.initialMember, token: relyModel.token)
+        let answered = callWrapper.connectToRoom(with: remoteIdentifier, userId: self.selfUserId, roomMode: relyModel.callType, mediaState: mediaState, isStarter: false, members: relyModel.initialMember, token: relyModel.token, delegate: self)
         if answered {
             let callState : CallState = .answered(degraded: isDegraded(conversationId: remoteIdentifier))
-            
-            let previousSnapshot = callSnapshots[remoteIdentifier]
-            
-            if previousSnapshot != nil {
-                callSnapshots[remoteIdentifier] = previousSnapshot!.update(with: callState)
-            }
-            
-            if let context = uiMOC, let callerId = initiatorForCall(conversationId: remoteIdentifier) {
-                WireCallCenterCallStateNotification(context: context, callState: callState, remoteIdentifier: remoteIdentifier, callType: relyModel.callType, callerId: callerId, messageTime:nil, previousCallState: previousSnapshot?.callState).post(in: context.notificationContext)
-            }
+            sendCallingAction(.answer, cid: remoteIdentifier)
+            handleCallState(callState: callState, remoteIdentifier: remoteIdentifier)
         }
         
         return answered
@@ -369,22 +369,20 @@ extension WireCallCenterV3 {
      * - parameter video: Whether to start the call as a video call.
      */
     
-    public func startCall(relyModel: CallRelyModel, mediaState: AVSCallMediaState) -> Bool {
+    public func startCall(relyModel: CallRelyModel, mediaState: CallMediaType) -> Bool {
         guard let remoteIdentifier = relyModel.remoteIdentifier else { return false }
         
         endAllCalls(exluding: remoteIdentifier)
         clearSnapshot(conversationId: remoteIdentifier) // make sure we don't have an old state for this conversation
         
-        let started = avsWrapper.startCall(conversationId: remoteIdentifier, callerName: relyModel.callTitle, mediaState: mediaState, conversationType: relyModel.callType, useCBR: useConstantBitRateAudio, members: relyModel.initialMember, token: relyModel.token)
+        let started = callWrapper.connectToRoom(with: remoteIdentifier, userId: self.selfUserId, roomMode: relyModel.callType, mediaState: mediaState, isStarter: true, members: relyModel.initialMember, token: relyModel.token, delegate: self)
         if started {
             let callState: CallState = .outgoing(degraded: isDegraded(conversationId: remoteIdentifier))
+            createSnapshot(callState: callState, members: relyModel.initialMember, callStarter: (selfUserId, selfUserName), mediaState: mediaState, for: remoteIdentifier, callType: relyModel.callType)
             
-            let previousCallState = callSnapshots[remoteIdentifier]?.callState
-            createSnapshot(callState: callState, members: relyModel.initialMember, callStarter: selfUserId, mediaState: mediaState, for: remoteIdentifier, callType: relyModel.callType)
+            sendCallingAction(.start, cid: remoteIdentifier)
             
-            if let context = uiMOC {
-                WireCallCenterCallStateNotification(context: context, callState: callState, remoteIdentifier: remoteIdentifier, callType: relyModel.callType, callerId: selfUserId, messageTime: nil, previousCallState: previousCallState).post(in: context.notificationContext)
-            }
+            handleCallState(callState: callState, remoteIdentifier: remoteIdentifier)
         }
         return started
     }
@@ -396,15 +394,23 @@ extension WireCallCenterV3 {
      */
 
     public func closeCall(conversationId: UUID, reason: CallClosedReason = .normal) {
-        avsWrapper.endCall(conversationId: conversationId, reason: reason)
-        if let previousSnapshot = callSnapshots[conversationId] {
-            if previousSnapshot.callType == .group {
-                let callState : CallState = .incoming(video: previousSnapshot.mediaState.needSendVideo, shouldRing: false, degraded: isDegraded(conversationId: conversationId))
-                callSnapshots[conversationId] = previousSnapshot.update(with: callState)
+        callWrapper.leaveRoom(with: conversationId)
+        guard let previousSnapshot = callSnapshots[conversationId] else { return }
+        var newState: CallState = .terminating(reason: reason)
+        switch previousSnapshot.callType {
+        case .group:
+            if self.callWrapper.members(in: conversationId).count > 1 {
+                sendCallingAction(.leave, cid: conversationId)
+                newState = .terminating(reason: .stillOngoing)
             } else {
-                callSnapshots[conversationId] = previousSnapshot.update(with: .terminating(reason: reason))
+                sendCallingAction(.end, cid: conversationId)
             }
+        case .oneToOne:
+            sendCallingAction(.end, cid: conversationId)
+        case .conference:
+            newState = .terminating(reason: .terminate)
         }
+        handleCallState(callState: newState, remoteIdentifier: conversationId)
     }
 
     /**
@@ -414,12 +420,16 @@ extension WireCallCenterV3 {
     
     @objc(rejectCallForConversationID:)
     public func rejectCall(conversationId: UUID) {
-        avsWrapper.rejectCall(conversationId: conversationId)
+        sendCallingAction(.reject, cid: conversationId)
         
-        if let previousSnapshot = callSnapshots[conversationId] {
-            let callState : CallState = .incoming(video: previousSnapshot.mediaState.needSendVideo, shouldRing: false, degraded: isDegraded(conversationId: conversationId))
-            callSnapshots[conversationId] = previousSnapshot.update(with: callState)
+        guard let snapshot = callSnapshots[conversationId] else { return }
+        var closeReason: CallClosedReason = .busy
+        switch snapshot.callType {
+        case .group:
+            closeReason = .stillOngoing
+        case .oneToOne, .conference: break
         }
+        handleCallState(callState: .terminating(reason: closeReason), remoteIdentifier: conversationId)
     }
 
     /**
@@ -454,23 +464,23 @@ extension WireCallCenterV3 {
             callSnapshots[conversationId] = snapshot.updateVideoState(videoState)
         }
         
-        avsWrapper.setVideoState(conversationId: conversationId, videoState: videoState)
+        callWrapper.setLocalVideo(state: videoState)
     }
     
     public func muteSelf(isMute: Bool) {
-        avsWrapper.muteSelf(isMute: isMute)
+        callWrapper.setLocalAudio(mute: isMute)
     }
     
     public func muteOther(_ userId: String, isMute: Bool) {
-        avsWrapper.muteOther(userId, isMute: isMute)
+        callWrapper.muteOther(userId, isMute: isMute)
     }
 
     func topUser(_ userId: String) {
-        avsWrapper.topUser(userId)
+        callWrapper.topUser(userId)
     }
     
     func setScreenShare(isStart: Bool) {
-        avsWrapper.setScreenShare(isStart: isStart)
+        callWrapper.setScreenShare(isStart: isStart)
     }
     /**
      * Sets the capture device type to use for video.
@@ -489,19 +499,19 @@ extension WireCallCenterV3 {
 extension WireCallCenterV3 {
 
     /// Sends a call OTR message when requested by AVS through `wcall_send_h`.
-    func send(token: WireCallMessageToken, conversationId: UUID, userId: UUID, clientId: String, newCalling: ZMNewCalling) {
+    func send(conversationId: UUID, userId: UUID, newCalling: ZMNewCalling) {
         transport?.send(newCalling: newCalling, conversationId: conversationId, userId: userId, completionHandler: { [weak self] status in
-            self?.avsWrapper.handleResponse(httpStatus: status, reason: "", context: token)
+            
         })
     }
 
     /// Sends the config request when requested by AVS through `wcall_config_req_h`.
     func requestCallConfig() {
-        zmLog.debug("\(self): requestCallConfig(), transport = \(String(describing: transport))")
-        transport?.requestCallConfig(completionHandler: { [weak self] (config, httpStatusCode) in
-            guard let `self` = self else { return }
-            zmLog.debug("\(self): self.avsWrapper.update with \(String(describing: config))")
-            self.avsWrapper.update(callConfig: config, httpStatusCode: httpStatusCode)
+        CallingService.getConfigInfo(completionHandler: { callingConfigure in
+            guard let callingConfigure = callingConfigure else { return }
+            zmLog.debug("\(self): requestCallConfig(), callingConfigure = \(callingConfigure)")
+            self.setCallReady(version: 3)
+            self.callWrapper.setCallingConfigure(callingConfigure)
         })
     }
 
@@ -527,8 +537,7 @@ extension WireCallCenterV3 {
     }
     
     fileprivate func handleCallEvent(_ callEvent: CallEvent, completionHandler: @escaping () -> Void) {
-        
-        let result = avsWrapper.received(callEvent: callEvent)
+        let result = self.received(callEvent: callEvent)
         
         if let context = uiMOC, let error = result {
             WireCallCenterCallErrorNotification(context: context, error: error).post(in: context.notificationContext)
@@ -544,13 +553,11 @@ extension WireCallCenterV3 {
      * - parameter messageTime: The timestamp of the event.
      */
 
-    func handleCallState(callState: CallState, remoteIdentifier: UUID, callType: AVSConversationType, userId: UUID?, messageTime: Date? = nil) {
+    func handleCallState(callState: CallState, remoteIdentifier: UUID, messageTime: Date? = nil) {
         callState.logState()
         var callState = callState
 
         switch callState {
-        case .incoming(video: let video, shouldRing: _, degraded: _):
-            createSnapshot(callState: callState, members: [AVSCallMember(userId: userId!, callParticipantState: .connecting, isMute: false, videoState: video ? .stopped : .stopped)], callStarter: userId, mediaState: .audioOnly, for: remoteIdentifier, callType: .group)
         case .established:
             // WORKAROUND: the call established handler will is called once for every participant in a
             // group call. Until that's no longer the case we must take care to only set establishedDate once.
@@ -559,7 +566,9 @@ extension WireCallCenterV3 {
             }
 
             if videoState(conversationId: remoteIdentifier) == .started {
-                avsWrapper.setVideoState(conversationId: remoteIdentifier, videoState: .started)
+                callWrapper.setLocalVideo(state: .started)
+                //当连接成功之后，需要判断下视频状态是否是开启状态，如开启，则改为扩音模式
+                AVSMediaManager.sharedInstance.isSpeakerEnabled = true
             }
         case .establishedDataChannel:
             if self.callState(conversationId: remoteIdentifier) == .established {
@@ -573,16 +582,16 @@ extension WireCallCenterV3 {
 
         let callerId = initiatorForCall(conversationId: remoteIdentifier)
 
-        let previousCallState = callSnapshots[remoteIdentifier]?.callState
+        guard let previousSnapshot = callSnapshots[remoteIdentifier] else { return }
 
         if case .terminating = callState {
             clearSnapshot(conversationId: remoteIdentifier)
-        } else if let previousSnapshot = callSnapshots[remoteIdentifier] {
+        } else {
             callSnapshots[remoteIdentifier] = previousSnapshot.update(with: callState)
         }
 
         if let context = uiMOC, let callerId = callerId  {
-            WireCallCenterCallStateNotification(context: context, callState: callState, remoteIdentifier: remoteIdentifier, callType: callType, callerId: callerId, messageTime: messageTime, previousCallState:previousCallState).post(in: context.notificationContext)
+            WireCallCenterCallStateNotification(context: context, callState: callState, remoteIdentifier: remoteIdentifier, callType: previousSnapshot.callType, callerId: callerId, messageTime: messageTime, previousCallState:previousSnapshot.callState).post(in: context.notificationContext)
         }
     }
 
