@@ -438,7 +438,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             self.membersManagerDelegate.setMemberAudio(audioState != 1, mid: uid)
             self.membersManagerDelegate.memberConnectStateChanged(with: uid, state: .connecting)
         case .group, .oneToOne:
-            member = AVSCallMember(userId: uid, callParticipantState: .connecting, isMute: audioState != 1, videoState: (videoStatus != 1) ? .stopped : .started)
+            member = ConversationCallMember(userId: uid, callParticipantState: .connecting, isMute: audioState != 1, videoState: (videoStatus != 1) ? .stopped : .started)
             self.membersManagerDelegate.addNewMember(member)
         }
     }

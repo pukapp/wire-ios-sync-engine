@@ -36,7 +36,7 @@ public protocol CallMemberProtocol {
  * An object that represents the member of an AVS call.
  */
 
-public struct AVSCallMember: CallMemberProtocol {
+public struct ConversationCallMember: CallMemberProtocol {
 
     /// The remote identifier of the user.
     public let remoteId: UUID

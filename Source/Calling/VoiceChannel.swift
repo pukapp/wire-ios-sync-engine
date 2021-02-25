@@ -116,7 +116,7 @@ extension ZMConversation: CallRelyModel {
     
     public var initialMember: [CallMemberProtocol]  {
         guard let user = self.connectedUser, self.conversationType == .oneOnOne else { return [] }
-        return [AVSCallMember(userId: user.remoteIdentifier, callParticipantState: .connecting, isMute: false, videoState: .stopped)]
+        return [ConversationCallMember(userId: user.remoteIdentifier, callParticipantState: .connecting, isMute: false, videoState: .stopped)]
     }
     
     public var callTitle: String {

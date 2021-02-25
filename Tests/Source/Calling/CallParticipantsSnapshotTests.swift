@@ -40,8 +40,8 @@ class CallParticipantsSnapshotTests : MessagingTest {
     func testThatItDoesNotCrashWhenInitializedWithDuplicateCallMembers(){
         // given
         let userId = UUID()
-        let callMember1 = AVSCallMember(userId: userId, audioEstablished: true)
-        let callMember2 = AVSCallMember(userId: userId, audioEstablished: false)
+        let callMember1 = ConversationCallMember(userId: userId, audioEstablished: true)
+        let callMember2 = ConversationCallMember(userId: userId, audioEstablished: false)
 
         // when
         let sut = WireSyncEngine.CallParticipantsSnapshot(conversationId: UUID(),
@@ -59,8 +59,8 @@ class CallParticipantsSnapshotTests : MessagingTest {
     func testThatItDoesNotCrashWhenUpdatedWithDuplicateCallMembers(){
         // given
         let userId = UUID()
-        let callMember1 = AVSCallMember(userId: userId, audioEstablished: true)
-        let callMember2 = AVSCallMember(userId: userId, audioEstablished: false)
+        let callMember1 = ConversationCallMember(userId: userId, audioEstablished: true)
+        let callMember2 = ConversationCallMember(userId: userId, audioEstablished: false)
         let sut = WireSyncEngine.CallParticipantsSnapshot(conversationId: UUID(),
                                                           members: [],
                                                           callCenter: mockWireCallCenterV3)
@@ -79,8 +79,8 @@ class CallParticipantsSnapshotTests : MessagingTest {
     func testThatItKeepsTheMemberWithAudioEstablished(){
         // given
         let userId = UUID()
-        let callMember1 = AVSCallMember(userId: userId, audioEstablished: false)
-        let callMember2 = AVSCallMember(userId: userId, audioEstablished: true)
+        let callMember1 = ConversationCallMember(userId: userId, audioEstablished: false)
+        let callMember2 = ConversationCallMember(userId: userId, audioEstablished: true)
         let sut = WireSyncEngine.CallParticipantsSnapshot(conversationId: UUID(),
                                                           members: [],
                                                           callCenter: mockWireCallCenterV3)
@@ -98,9 +98,9 @@ class CallParticipantsSnapshotTests : MessagingTest {
 
     func testThatItTakesTheWorstNetworkQualityFromParticipants() {
         // given
-        let normalQuality = AVSCallMember(userId: UUID(), audioEstablished: true, videoState: .started, networkQuality: .normal)
-        let mediumQuality = AVSCallMember(userId: UUID(), audioEstablished: true, videoState: .started, networkQuality: .medium)
-        let poorQuality = AVSCallMember(userId: UUID(), audioEstablished: true, videoState: .started, networkQuality: .poor)
+        let normalQuality = ConversationCallMember(userId: UUID(), audioEstablished: true, videoState: .started, networkQuality: .normal)
+        let mediumQuality = ConversationCallMember(userId: UUID(), audioEstablished: true, videoState: .started, networkQuality: .medium)
+        let poorQuality = ConversationCallMember(userId: UUID(), audioEstablished: true, videoState: .started, networkQuality: .poor)
 
         let sut = WireSyncEngine.CallParticipantsSnapshot(conversationId: UUID(),
                                                           members: [],
@@ -130,8 +130,8 @@ class CallParticipantsSnapshotTests : MessagingTest {
 
     func testThatItUpdatesNetworkQualityWhenItChangesForParticipant() {
         // given
-        let callMember1 = AVSCallMember(userId: UUID(), audioEstablished: true, networkQuality: .normal)
-        let callMember2 = AVSCallMember(userId: UUID(), audioEstablished: true, networkQuality: .normal)
+        let callMember1 = ConversationCallMember(userId: UUID(), audioEstablished: true, networkQuality: .normal)
+        let callMember2 = ConversationCallMember(userId: UUID(), audioEstablished: true, networkQuality: .normal)
         let sut = WireSyncEngine.CallParticipantsSnapshot(conversationId: UUID(),
                                                           members: [callMember1, callMember2],
                                                           callCenter: mockWireCallCenterV3)

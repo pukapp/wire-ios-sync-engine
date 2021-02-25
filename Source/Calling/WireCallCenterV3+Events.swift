@@ -80,7 +80,7 @@ extension WireCallCenterV3 {
         handleEvent("incoming-call") {
             let callState : CallState = .incoming(video: isVideoCall, shouldRing: shouldRing, degraded: self.isDegraded(conversationId: conversationId))
             self.createSnapshot(callState: callState,
-                           members: [AVSCallMember(userId: callStater.id, callParticipantState: .connecting, isMute: false, videoState: isVideoCall ? .started : .stopped)],
+                           members: [ConversationCallMember(userId: callStater.id, callParticipantState: .connecting, isMute: false, videoState: isVideoCall ? .started : .stopped)],
                            callStarter: callStater,
                            mediaState: isVideoCall ? .bothAudioAndVideo : .audioOnly,
                            for: conversationId,

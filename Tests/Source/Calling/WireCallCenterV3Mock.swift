@@ -35,7 +35,7 @@ public class MockAVSWrapper : AVSWrapperType {
     public var didUpdateCallConfig = false
     public var callError: CallError?
     public var hasOngoingCall = false
-    public var mockMembers : [AVSCallMember] = []
+    public var mockMembers : [ConversationCallMember] = []
     
     var receivedCallEvents : [CallEvent] = []
     
@@ -100,7 +100,7 @@ public class WireCallCenterV3Mock: WireCallCenterV3 {
     
     public let mockAVSWrapper: MockAVSWrapper
 
-    var mockMembers : [AVSCallMember] {
+    var mockMembers : [ConversationCallMember] {
         get {
             return mockAVSWrapper.mockMembers
         }
