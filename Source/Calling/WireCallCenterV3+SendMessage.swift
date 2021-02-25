@@ -12,13 +12,13 @@ import SwiftyJSON
 private let zmLog = ZMSLog(tag: "calling")
 
 enum CallingAction: Int {
-    case start = 0
-    case answer
-    case reject
-    case leave
-    case end
-    case cancel
-    case busy
+    case start = 0 //发起通话
+    case answer = 1 //接受
+    case reject = 2 //拒绝
+    case leave = 3 //离开-专门用于群通话，当自己离开时房间还有人在通话就发此信令
+    case end = 4 //结束通话
+    case cancel = 5 //取消自己发起的通话
+    case busy = 6 //当前处于忙碌状态
     
     
     //发送消息时，增加voipString的参数
@@ -92,11 +92,11 @@ extension WireCallCenterV3 {
         self.send(conversationId: cid, userId: self.selfUserId, newCalling: newCalling)
     }
 
-//    func sendBusyAction(cid: UUID, convType: CallRoomType, mediaState: CallMediaType) {
-//        let callInfo = CallingEventModel.CallingInfo.init(callAction: .busy, convType: convType, mediaState: mediaState, memberCount: nil)
-//        let newCalling = ZMNewCalling.newCalling(message: callInfo.json.description, canSynchronizeClients: CallingAction.busy.shouldSyncOtherClients, voipString: nil)
-//        self.sendMessage(with: cid, newCalling: newCalling)
-//    }
-//
+    //接收到他人通话请求，但是由于自己已经正在通话中，所以直接返回拒绝信令，且由于此通话请求没有保存在callSnapshots中，所以独立出来
+    func sendBusyAction(cid: UUID, convType: CallRoomType, mediaState: CallMediaType) {
+        let callInfo = CallingEventModel.CallingInfo.init(callAction: .busy, convType: convType, mediaState: mediaState)
+        let newCalling = ZMNewCalling.newCalling(message: callInfo.json.description, canSynchronizeClients: CallingAction.busy.shouldSyncOtherClients, voipString: nil)
+        self.send(conversationId: cid, userId: self.selfUserId, newCalling: newCalling)
+    }
 
 }

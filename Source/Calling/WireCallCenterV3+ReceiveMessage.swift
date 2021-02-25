@@ -113,6 +113,7 @@ extension WireCallCenterV3 {
                                               messageTime: model.callDate,
                                               userId: model.userId,
                                               isVideoCall: model.info.mediaState.needSendVideo)
+            self.sendBusyAction(cid: model.cid, convType: model.info.convType, mediaState: model.info.mediaState)
             return
         }
         
