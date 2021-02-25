@@ -298,7 +298,7 @@
 		5E1FD7A5210B2694003D2C3D /* NotificationAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1FD7A4210B2694003D2C3D /* NotificationAction.swift */; };
 		5E2C354D21A806A80034F1EE /* MockBackgroundActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E2C354C21A806A80034F1EE /* MockBackgroundActivityManager.swift */; };
 		5E6716912174CA6700522E61 /* MockUser+LoginCredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E67168F2174CA6300522E61 /* MockUser+LoginCredentials.swift */; };
-		5E8BB89C2147CE1600EEA64B /* AVSCallMember.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8BB89B2147CE1600EEA64B /* AVSCallMember.swift */; };
+		5E8BB89C2147CE1600EEA64B /* CallMemberProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8BB89B2147CE1600EEA64B /* CallMemberProtocol.swift */; };
 		5E8BB8A02147F5BC00EEA64B /* CallSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8BB89F2147F5BC00EEA64B /* CallSnapshot.swift */; };
 		5E8BB8A22147F89000EEA64B /* CallCenterSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8BB8A12147F89000EEA64B /* CallCenterSupport.swift */; };
 		5E8BB8A52149130800EEA64B /* AVSBridgingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8BB8A3214912D100EEA64B /* AVSBridgingTests.swift */; };
@@ -954,7 +954,7 @@
 		5E1FD7A4210B2694003D2C3D /* NotificationAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationAction.swift; sourceTree = "<group>"; };
 		5E2C354C21A806A80034F1EE /* MockBackgroundActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockBackgroundActivityManager.swift; sourceTree = "<group>"; };
 		5E67168F2174CA6300522E61 /* MockUser+LoginCredentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MockUser+LoginCredentials.swift"; sourceTree = "<group>"; };
-		5E8BB89B2147CE1600EEA64B /* AVSCallMember.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVSCallMember.swift; sourceTree = "<group>"; };
+		5E8BB89B2147CE1600EEA64B /* CallMemberProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallMemberProtocol.swift; sourceTree = "<group>"; };
 		5E8BB89F2147F5BC00EEA64B /* CallSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallSnapshot.swift; sourceTree = "<group>"; };
 		5E8BB8A12147F89000EEA64B /* CallCenterSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallCenterSupport.swift; sourceTree = "<group>"; };
 		5E8BB8A3214912D100EEA64B /* AVSBridgingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVSBridgingTests.swift; sourceTree = "<group>"; };
@@ -1538,7 +1538,7 @@
 				166D18A3230EBFFA001288CD /* MediaManager.swift */,
 				BF735CF91E70003D003BC61F /* SystemMessageCallObserver.swift */,
 				165911521DEF38EC007FA847 /* CallStateObserver.swift */,
-				5E8BB89B2147CE1600EEA64B /* AVSCallMember.swift */,
+				5E8BB89B2147CE1600EEA64B /* CallMemberProtocol.swift */,
 				5E8BB89F2147F5BC00EEA64B /* CallSnapshot.swift */,
 				16C4BD9F20A309CD00BCDB17 /* CallParticipantSnapshot.swift */,
 				73D0FD6225E6656E00917A61 /* CallRoomType.swift */,
@@ -3160,7 +3160,7 @@
 				F9B171F61C0EF21100E6EEC6 /* ClientUpdateStatus.swift in Sources */,
 				54D175271ADE9EC9001AA338 /* ZMUserSession+Authentication.m in Sources */,
 				549816351A432BC800A7CE2E /* ZMLoginTranscoder.m in Sources */,
-				5E8BB89C2147CE1600EEA64B /* AVSCallMember.swift in Sources */,
+				5E8BB89C2147CE1600EEA64B /* CallMemberProtocol.swift in Sources */,
 				166D18A4230EBFFA001288CD /* MediaManager.swift in Sources */,
 				7385504D2593013C007A458C /* MeetingNotificeMessageCenter.swift in Sources */,
 				874F142D1C16FD9700C15118 /* Device.swift in Sources */,

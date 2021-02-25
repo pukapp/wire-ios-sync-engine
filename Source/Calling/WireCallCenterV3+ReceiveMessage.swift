@@ -135,7 +135,7 @@ extension WireCallCenterV3 {
             }
         case .reject:
             if model.info.convType == .oneToOne {
-                self.handleCallEnd(reason: .busy, conversationId: model.cid, messageTime: model.callDate)
+                self.handleCallEnd(reason: .normal, conversationId: model.cid, messageTime: model.callDate)
             }
         case .leave:
             self.callWrapper.removePeer(with: model.userId)
