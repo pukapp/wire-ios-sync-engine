@@ -24,6 +24,7 @@ public enum MeetingProperty {
     case speaker(String) //主讲人
     case removeUser(String) //移除用户
     case terminateMeet
+    case inviteUser //邀请了用户
 }
 
 
@@ -142,6 +143,7 @@ extension MediasoupClientManager {
             guard let userJsons = info["property"].array, userJsons.count > 0 else {
                 return
             }
+            property = .inviteUser
             userJsons.forEach({
                 self.membersManagerDelegate.addNewMember(MeetingParticipant(json: $0, isSelf: false))
             })

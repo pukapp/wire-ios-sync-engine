@@ -613,10 +613,13 @@ extension WireCallCenterV3 {
                     meeting.isInternal = isInternal
                 case .lockmMeeting(let isLocked):
                     meeting.isLocked = isLocked
+                case .inviteUser:
+                    meeting.allUserNum = self.callWrapper.members(in: mid).count
                 case .removeUser(let userId):
                     if userId == self.selfUserId.transportString() {
                         meeting.notificationState = .hide
                     }
+                    meeting.allUserNum = self.callWrapper.members(in: mid).count
                 case .watchUser(let userId):
                     meeting.watchUserId = userId
                 case .screenShareUser(let userId):

@@ -388,6 +388,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             if let videoProduce = self.producers.first(where: { return $0.kind == .video }) {
                 videoProduce.close()
                 self.signalManager.closeProduce(with: videoProduce.id)
+                self.producers.first(where: { return $0.kind == .video })?.close()
                 self.producers = self.producers.filter({ return $0.kind != .video })
             }
         case .paused:
@@ -478,7 +479,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         consumerListen.delegate = consumerListen
         let consumer: Consumer = recvTransport.consume(consumerListen.delegate, id: id, producerId: producerId, kind: kind, rtpParameters: rtpParameters.description)
         
-        zmLog.info("MediasoupClientManager-handleNewConsumer-end:peer:\(peerId),kind:\(kind)--\(Thread.current)")
+        zmLog.info("MediasoupClientManager-handleNewConsumer:peer:\(peerId),kind:\(kind)--\(Thread.current)")
         if let peer = self.peerConsumers.first(where: { return $0.peerId == peerUId }) {
             peer.addConsumer(consumer, listener: consumerListen)
         } else {
@@ -486,13 +487,12 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             peer.addConsumer(consumer, listener: consumerListen)
             self.peerConsumers.append(peer)
         }
-        self.membersManagerDelegate.memberConnectStateChanged(with: peerUId, state: .connected)
-
         if kind == "video" {
             let videoTrack = consumer.getTrack() as! RTCVideoTrack
             self.mediaStateManagerDelegate.addVideoTrack(with: peerUId, videoTrack: videoTrack)
             self.membersManagerDelegate.setMemberVideo(.started, mid: peerUId)
         }
+        self.membersManagerDelegate.memberConnectStateChanged(with: peerUId, state: .connected)
     }
     
     func handleConsumerState(with action: MediasoupSignalAction.Notification, consumerInfo: JSON) {

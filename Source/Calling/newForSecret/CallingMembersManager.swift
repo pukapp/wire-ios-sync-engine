@@ -125,7 +125,7 @@ class CallingMembersManager: CallingMembersManagerProtocol {
     func setMemberAudio(_ isMute: Bool, mid: UUID) {
         zmLog.info("CallingMembersManager--setMemberAudio:\(mid)-\(isMute)")
         guard var member = self.members.first(where: { return $0.remoteId == mid }), member.isMute != isMute else {
-            zmLog.info("CallingMembersManager--no peer to setMemberVideo")
+            zmLog.info("CallingMembersManager--no peer to setMemberAudio")
             return
         }
         member.isMute = isMute
