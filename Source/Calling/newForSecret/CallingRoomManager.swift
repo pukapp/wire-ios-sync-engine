@@ -127,17 +127,15 @@ class CallingRoomManager: NSObject, CallWrapperType {
             zmLog.info("CallingRoomManager-connectToRoom err: vaildGateway:\(self.callingConfigure?.vaildGateway), roomId:\(roomId)")
             return false
         }
-        roomWorkQueue.async {
-            if let oldRoomId = self.roomId {
-                self.leaveRoom(with: oldRoomId)
-            }
-            self.internalConnectToRoom(with: roomId, userId: userId, roomMode: roomMode, mediaState: mediaState, isStarter: isStarter, members: members, token: token, delegate: delegate)
+        if let oldRoomId = self.roomId {
+            self.leaveRoom(with: oldRoomId)
         }
+        self.internalConnectToRoom(with: roomId, userId: userId, roomMode: roomMode, mediaState: mediaState, isStarter: isStarter, members: members, token: token, delegate: delegate)
         return true
     }
     
     private func internalConnectToRoom(with roomId: UUID, userId: UUID, roomMode: CallRoomType, mediaState: CallMediaType, isStarter: Bool, members: [CallMemberProtocol], token: String?, delegate: CallingRoomManagerDelegate) {
-        zmLog.info("CallingRoomManager-connectToRoom roomId:\(roomId) userId:\(userId), members:\(members.count)")
+        zmLog.info("CallingRoomManager-connectToRoom roomId:\(roomId) userId:\(userId), members:\(members.count), mediaState:\(mediaState.description)")
         
         self.roomId = roomId
         self.userId = userId
@@ -324,7 +322,7 @@ extension CallingRoomManager: CallingMembersObserver {
     
     func roomEstablished() {
         zmLog.info("CallingRoomManager-roomEstablished")
-        guard let roomId = self.roomId else {
+        guard let roomId = self.roomId, self.roomState != .connected else {
             return
         }
         self.roomState = .connected

@@ -168,8 +168,8 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
         }
         guard self.localVideoTrack == nil else { return }
         self.localVideoTrack = self.mediaManager.produceVideoTrack(with: .high)
-        self.localVideoTrack?.isEnabled = isEnabled
         self.peerConnection?.add(self.localVideoTrack!, streamIds: [WebRTCClientManager.MEDIA_STREAM_ID])
+        self.localVideoTrack?.isEnabled = isEnabled
     }
     
     func setLocalAudio(mute: Bool) {
@@ -283,11 +283,14 @@ extension WebRTCClientManager: ZMTimerClient {
             self.produceVideo(isEnabled: self.mediaState.needSendVideo)
         case .startICE:
             //打洞仅给30s时间，不成功则直接走mediasoup
+            self.invalidTimer()
             self.timer = ZMTimer(target: self)
             self.timer!.fire(afterTimeInterval: 30)
         case .connectd:
             self.invalidTimer()
             self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId, state: .connected)
+            //建立连接成功了之后才发消息通知对方自己的视频状态，来让对方更新界面
+            self.forwardP2PMessage(.videoState(self.mediaState.needSendVideo ? .started : .stopped))
         case .disconnected:
             self.membersManagerDelegate.memberConnectStateChanged(with: self.peerId, state: .connecting)
         case .faild:
@@ -336,6 +339,7 @@ extension WebRTCClientManager: ZMTimerClient {
     
     private func invalidTimer() {
         guard self.timer != nil else { return }
+        zmLog.info("WebRTCClientManager invalidTimer")
         self.timer?.cancel()
         self.timer = nil
     }
@@ -411,7 +415,7 @@ extension WebRTCClientManager {
     }
     
     func handleSDPMessage(_ message: WebRTCP2PMessage) {
-        zmLog.info("WebRTCClientManager-handleSDPMessage message:\(message)")
+        zmLog.info("WebRTCClientManager-handleSDPMessage message:\(message.json.count < 100 ? message.json : "sdp")")
         switch message {
         case .sdp(let sdp):
             switch sdp.type {

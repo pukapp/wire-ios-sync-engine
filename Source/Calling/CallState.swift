@@ -79,6 +79,21 @@ private let zmLog = ZMSLog(tag: "calling")
         default:break
         }
     }
+    
+    var description: String {
+        switch self {
+        case .none:
+            return "none"
+        case .audioOnly:
+            return "audioOnly"
+        case .bothAudioAndVideo:
+            return "bothAudioAndVideo"
+        case .forceAudio:
+            return "forceAudio"
+        case .videoOnly:
+            return "videoOnly"
+        }
+    }
 }
 
 /**

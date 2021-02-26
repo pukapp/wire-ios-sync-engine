@@ -328,7 +328,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         guard self.sendTransport != nil,
             self.device!.canProduce("video"),
             !self.producingVideo else {
-                zmLog.info("MediasoupClientManager-can not produceVideo")
+                zmLog.info("MediasoupClientManager-can not produceVideo, because deviceCan`t produce \(!self.device!.canProduce("video")), isProducing: \(self.producingVideo)")
                 return
         }
         if TARGET_OS_SIMULATOR == 1 { return }

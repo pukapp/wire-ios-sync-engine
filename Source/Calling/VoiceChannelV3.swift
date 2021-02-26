@@ -229,9 +229,9 @@ extension VoiceChannelV3: CallActionsInternal {
         var joined = false
         
         switch state {
-        case .incoming(video: _, shouldRing: _, degraded: let degraded):
+        case .incoming(video: let video, shouldRing: _, degraded: let degraded):
             if !degraded {
-                joined = callCenter?.answerCall(relyModel: relyModel, mediaState: mediaState) ?? false
+                joined = callCenter?.answerCall(relyModel: relyModel, mediaState: video ? .bothAudioAndVideo : .audioOnly) ?? false
             }
         default:
             joined = self.callCenter?.startCall(relyModel: relyModel, mediaState: mediaState) ?? false

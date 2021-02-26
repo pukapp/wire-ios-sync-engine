@@ -162,7 +162,7 @@ extension CallingSignalManager{
         
         self.send(string: request.jsonString())
         
-        let result = sendAckRequestDispatch.wait(timeout: .now() + 10)
+        let result = sendAckRequestDispatch.wait(timeout: .now() + 5)
         if result == .success {
             return self.syncResponse
         } else {

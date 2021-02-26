@@ -349,10 +349,6 @@ extension WireCallCenterV3 {
         
         endAllCalls(exluding: remoteIdentifier)
         
-        if !mediaState.needSendVideo {
-            setVideoState(conversationId: remoteIdentifier, videoState: VideoState.stopped)
-        }
-        
         let answered = callWrapper.connectToRoom(with: remoteIdentifier, userId: self.selfUserId, roomMode: relyModel.callType, mediaState: mediaState, isStarter: false, members: relyModel.initialMember, token: relyModel.token, delegate: self)
         if answered {
             let callState : CallState = .answered(degraded: isDegraded(conversationId: remoteIdentifier))
@@ -566,7 +562,6 @@ extension WireCallCenterV3 {
             }
 
             if videoState(conversationId: remoteIdentifier) == .started {
-                callWrapper.setLocalVideo(state: .started)
                 //当连接成功之后，需要判断下视频状态是否是开启状态，如开启，则改为扩音模式
                 AVSMediaManager.sharedInstance.isSpeakerEnabled = true
             }
@@ -596,10 +591,15 @@ extension WireCallCenterV3 {
     }
 
     func meetingPropertyChange(in mid: UUID, with property: MeetingProperty) {
-        if let context = uiMOC?.zm_sync {
+        guard let uiContext = self.uiMOC else {
+            zmLog.error("Cannot handle meetingPropertyChange '\(description)' because the UI context is not available.")
+            return
+        }
+        uiContext.performGroupedBlock {
+            guard let syncContext = uiContext.zm_sync else { return }
             //修改coredata属性需要在syncContext中修改，才能触发通知,并且需要阻塞住线程
-            context.perform {
-                guard let meeting = ZMMeeting.fetchExistingMeeting(with: mid.transportString(), in: context) else {
+            syncContext.performGroupedBlock {
+                guard let meeting = ZMMeeting.fetchExistingMeeting(with: mid.transportString(), in: syncContext) else {
                     return
                 }
                 switch property {
@@ -625,11 +625,11 @@ extension WireCallCenterV3 {
                     meeting.state = .off
                 default:break
                 }
-                context.saveOrRollback()
+                syncContext.saveOrRollback()
                 
                 //需要回到主线程去刷新页面
                 DispatchQueue.main.async {
-                    WireCallCenterMeetingPropertyChangedNotification(meetingId: mid, property: property).post(in: self.uiMOC!.notificationContext)
+                    WireCallCenterMeetingPropertyChangedNotification(meetingId: mid, property: property).post(in: uiContext.notificationContext)
                 }
             }
             

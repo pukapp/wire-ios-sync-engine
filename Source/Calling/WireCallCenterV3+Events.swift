@@ -138,6 +138,7 @@ extension WireCallCenterV3 {
 
     func handleCallEnd(reason: CallClosedReason, conversationId: UUID, messageTime: Date?) {
         handleEvent("closed-call") {
+            self.callWrapper.leaveRoom(with: conversationId)
             self.handleCallState(callState: .terminating(reason: reason), remoteIdentifier: conversationId, messageTime: messageTime)
         }
     }

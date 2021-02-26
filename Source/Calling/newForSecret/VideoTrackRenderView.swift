@@ -101,6 +101,7 @@ public class VideoRenderView : RTCRenderView {
     private func renderView(_ newMode: VideoRenderMode) {
         self.isHidden = (newMode == .none)
         guard TARGET_OS_SIMULATOR != 1 else { return }
+        zmLog.info("VideoRenderView--renderView newMode:\(newMode)")
         switch newMode {
         case .none:
             self.removeAddedTrack()
@@ -125,6 +126,7 @@ public class VideoRenderView : RTCRenderView {
     private var videoTrack: RTCVideoTrack? {
         didSet {
             guard videoTrack != oldValue else { return }
+            zmLog.info("VideoRenderView--assign newTrack:\(videoTrack), oldTrack:\(oldValue)")
             oldValue?.remove(self)
             videoTrack?.add(self)
         }
