@@ -79,8 +79,9 @@ extension WireCallCenterV3 {
     func handleIncomingCall(conversationId: UUID, callType: CallRoomType, messageTime: Date, callStater: CallStarterInfo, isVideoCall: Bool, shouldRing: Bool) {
         handleEvent("incoming-call") {
             let callState : CallState = .incoming(video: isVideoCall, shouldRing: shouldRing, degraded: self.isDegraded(conversationId: conversationId))
+            let members = [ConversationCallMember(userId: callStater.id, callParticipantState: .connecting, isMute: false, videoState: .stopped)]
             self.createSnapshot(callState: callState,
-                           members: [ConversationCallMember(userId: callStater.id, callParticipantState: .connecting, isMute: false, videoState: isVideoCall ? .started : .stopped)],
+                           members: members,
                            callStarter: callStater,
                            mediaState: isVideoCall ? .bothAudioAndVideo : .audioOnly,
                            for: conversationId,

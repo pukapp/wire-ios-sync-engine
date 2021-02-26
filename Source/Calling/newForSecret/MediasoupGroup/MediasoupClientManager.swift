@@ -422,8 +422,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     func receiveNewPeer(peerInfo: JSON) {
         zmLog.info("MediasoupClientManager--receiveNewPeer \(peerInfo)")
         guard let peerId = peerInfo["id"].string,
-            let audioState = peerInfo["audioStatus"].int,
-            let videoStatus = peerInfo["videoStatus"].int else {
+            let audioState = peerInfo["audioStatus"].int else {
             return
         }
         var uid: UUID! = UUID(uuidString: peerId)
@@ -438,7 +437,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             self.membersManagerDelegate.setMemberAudio(audioState != 1, mid: uid)
             self.membersManagerDelegate.memberConnectStateChanged(with: uid, state: .connecting)
         case .group, .oneToOne:
-            member = ConversationCallMember(userId: uid, callParticipantState: .connecting, isMute: audioState != 1, videoState: (videoStatus != 1) ? .stopped : .started)
+            member = ConversationCallMember(userId: uid, callParticipantState: .connecting, isMute: audioState != 1, videoState: .stopped)
             self.membersManagerDelegate.addNewMember(member)
         }
     }
