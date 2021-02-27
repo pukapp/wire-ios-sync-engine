@@ -98,10 +98,24 @@ extension ZMUserTranscoder {
                let appointState = appoint["state"] as? String,
                appointState == "normal",
                currentInviteState == "pending" {
+                
+                guard let startTime = appoint["start_time"] as? String,
+                      let startDate = NSDate(transport: startTime) as Date?,
+                      startDate.compare(Date()) != .orderedAscending else {
+                    //当前该会议已经开始了，则不再弹框
+                    return
+                }
                 //别人预约了一个会议，并邀请了自己
                 ReceivedMeetingNotification(type: .receiveAppointInvited, dataString: JSON(meetingDate).description).postNotification()
             }
         case .appointRemind:
+            guard let appoint = payload["appoint"] as? [String: Any],
+                  let startTime = appoint["start_time"] as? String,
+                  let startDate = NSDate(transport: startTime) as Date?,
+                  startDate.compare(Date()) != .orderedAscending else {
+                //当前该会议已经开始了，则不再弹框
+                return
+            }
             //会议即将开始，发通知提醒自己
             ReceivedMeetingNotification(type: .receiveAppointRemind, dataString: JSON(payload).description).postNotification()
         }
