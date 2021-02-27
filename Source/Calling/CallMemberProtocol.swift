@@ -27,6 +27,8 @@ public protocol CallMemberProtocol {
     var videoState: VideoState { set get }
     var audioEstablished: Bool { get }
     var isSelf: Bool { get }
+    //当用户连接失败之后，是否需要从数据源中被移除，目前会议中需要保留该用户
+    var needRemoveWhenUnconnected: Bool { get }
     //用作会议的排序
     var isTop: Bool { get }
     var sortLevel: Int { get }
@@ -55,6 +57,8 @@ public struct ConversationCallMember: CallMemberProtocol {
     public var callParticipantState: CallParticipantState
     
     public var isSelf: Bool = false //由于普通聊天中，成员列表不存储自己的信息，所以这里统一为false，此属性在会议成员列表中需要用到
+    
+    public var needRemoveWhenUnconnected: Bool = true
     
     public var isTop: Bool = false
     public var sortLevel: Int = 0

@@ -17,7 +17,7 @@ protocol CallingMembersManagerProtocol {
 
     func addNewMember(_ member: CallMemberProtocol)
     func removeMember(with id: UUID)
-    func replaceMember(_ member: CallMemberProtocol)
+    func replaceMember(with member: CallMemberProtocol)
     ///连接状态
     func memberConnectStateChanged(with id: UUID, state: CallParticipantState)
     ///媒体状态
@@ -25,10 +25,11 @@ protocol CallingMembersManagerProtocol {
     func setMemberVideo(_ state: VideoState, mid: UUID)
     
     func clear()
-    
-    func containUser(with id: String) -> Bool
+}
+
+//会议相关的特有逻辑
+protocol CallingMembersManagerForMeetingProtocol: CallingMembersManagerProtocol {
     func containUser(with id: UUID) -> Bool
-    func user(with id: String) -> CallMemberProtocol?
     func user(with uid: UUID) -> CallMemberProtocol?
     
     //会议
@@ -62,9 +63,9 @@ private extension Array where Element == CallMemberProtocol {
 
 class CallingMembersManager: CallingMembersManagerProtocol {
     
-    let observer: CallingMembersObserver
+    private let observer: CallingMembersObserver
     
-    var members : [CallMemberProtocol] = []
+    private var members : [CallMemberProtocol] = []
     private var connectStateObserve: [UUID: ZMTimer] = [:]
     
     private var audioTracks: [(UUID, RTCAudioTrack)] = []
@@ -77,44 +78,46 @@ class CallingMembersManager: CallingMembersManagerProtocol {
     }
     
     func addNewMember(_ newMember: CallMemberProtocol) {
-        if self.containUser(with: newMember.remoteId) {
-            self.members.replaceMember(with: newMember)
-        } else {
-            self.members.append(newMember)
-        }
-        self.membersChanged()
+        self.internalAddNewMember(newMember)
+        self.addConnectStateObserve(for: newMember)
     }
     
     func removeMember(with id: UUID) {
-        guard var member = self.members.first(where: { return $0.remoteId == id }) else {
+        guard let member = self.members.first(where: { return $0.remoteId == id }) else {
             zmLog.info("CallingMembersManager--no peer to remove")
             return
         }
-        member.callParticipantState = .unconnected
-        self.members = self.members.filter({ return $0.remoteId != id })
-        if self.members.count == 0 {
-            self.observer.roomEmpty()
-        }
-        zmLog.info("CallingMembersManager--removeMember:\(id)--lastMember:\(self.members.map({return $0.remoteId}))")
-        self.membersChanged()
+        self.internalRemoveMember(with: member)
+        self.removeConnectStateObserve(for: member)
     }
     
-    func replaceMember(_ updateMember: CallMemberProtocol) {
-        if self.containUser(with: updateMember.remoteId) {
-            self.members.replaceMember(with: updateMember)
-            self.membersChanged()
+    func replaceMember(with updateMember: CallMemberProtocol) {
+        guard self.containUser(with: updateMember.remoteId) else {
+            return
+        }
+        self.internalReplaceMember(updateMember)
+        if updateMember.callParticipantState == .connecting {
+            self.addConnectStateObserve(for: updateMember)
+        } else {
+            self.removeConnectStateObserve(for: updateMember)
         }
     }
     
     func memberConnectStateChanged(with id: UUID, state: CallParticipantState) {
-        if var member = self.members.first(where: { return $0.remoteId == id }) {
-            member.callParticipantState = state
-            self.members.replaceMember(with: member)
-            if state == .connected {
-                ///只要有一个用户连接，就认为此次会话已经连接
-                self.observer.roomEstablished()
-            }
-            self.membersChanged()
+        guard var member = self.members.first(where: { return $0.remoteId == id }) else {
+            return
+        }
+        member.callParticipantState = state
+        switch state {
+        case .unconnected:
+            member.needRemoveWhenUnconnected ? self.internalRemoveMember(with: member) : self.internalReplaceMember(member)
+        case .connecting, .connected:
+            self.internalReplaceMember(member)
+        }
+        
+        if state == .connected {
+            ///只要有一个用户连接，就认为此次会话已经连接
+            self.observer.roomEstablished()
         }
     }
     
@@ -143,6 +146,58 @@ class CallingMembersManager: CallingMembersManagerProtocol {
         self.members.replaceMember(with: member)
         self.membersChanged()
     }
+
+    ///总共接收到的视频个数
+    var totalVideoTracksCount: Int {
+        return self.members.filter({ return $0.videoState == .started }).count
+    }
+    
+    func clear() {
+        self.connectStateObserve.removeAll()
+        self.members.removeAll()
+    }
+    
+    deinit {
+        zmLog.info("CallingMembersManager-deinit")
+    }
+    
+}
+
+// MARK: Private
+extension CallingMembersManager {
+    
+    private func internalAddNewMember(_ newMember: CallMemberProtocol) {
+        guard !self.containUser(with: newMember.remoteId) else {
+            self.internalReplaceMember(newMember)
+            return
+        }
+        self.members.append(newMember)
+        self.membersChanged()
+    }
+    
+    private func internalRemoveMember(with member: CallMemberProtocol) {
+        self.members = self.members.filter({ return $0.remoteId != member.remoteId })
+        if self.members.count == 0 {
+            self.observer.roomEmpty()
+        }
+        self.membersChanged()
+    }
+    
+    private func internalReplaceMember(_ updateMember: CallMemberProtocol) {
+        self.members.replaceMember(with: updateMember)
+        self.membersChanged()
+    }
+    
+    private func membersChanged() {
+        //对成员进行一次排序
+        self.members.sort(by: { return $0.sortLevel > $1.sortLevel })
+        self.observer.roomMembersConnectStateChange()
+    }
+    
+}
+
+
+extension CallingMembersManager: CallingMembersManagerForMeetingProtocol {
     
     func topUser(_ userId: String) {
         guard var member = self.members.first(where: { return $0.remoteId == UUID(uuidString: userId) }) as? MeetingParticipant,
@@ -163,36 +218,46 @@ class CallingMembersManager: CallingMembersManagerProtocol {
     func containUser(with uid: UUID) -> Bool {
         return self.user(with: uid) != nil
     }
-    func containUser(with id: String) -> Bool {
-        guard let uid = UUID(uuidString: id) else { return false }
-        return self.containUser(with: uid)
-    }
-    
     func user(with uid: UUID) -> CallMemberProtocol? {
         return self.members.first(where: { return $0.remoteId == uid })
     }
-    func user(with id: String) -> CallMemberProtocol? {
-        guard let uid = UUID(uuidString: id) else { return nil }
-        return self.user(with: uid)
+    
+}
+
+//限制成员连接的时间为30s
+private let MemberReConnectingTimeLimit: TimeInterval = 30
+
+//给状态为连接中的成员添加一个定时器，超过一定时间还没有连接成功，则需要切换成员的状态
+extension CallingMembersManager: ZMTimerClient {
+    
+    //判断是否有成员被设置为了connecting的状态，有则开启一个计时器
+    private func addConnectStateObserve(for member: CallMemberProtocol) {
+        guard member.callParticipantState == .connecting,
+              !self.connectStateObserve.contains(where: { return $0.key == member.remoteId }) else {
+            return
+        }
+        let timer = ZMTimer(target: self)
+        timer?.fire(afterTimeInterval: MemberReConnectingTimeLimit)
+        self.connectStateObserve[member.remoteId] = timer
     }
     
-    ///总共接收到的视频个数
-    var totalVideoTracksCount: Int {
-        return self.members.filter({ return $0.videoState == .started }).count
+    //将连接上的和连接失败的成员从观察列表中移除
+    private func removeConnectStateObserve(for member: CallMemberProtocol) {
+        guard member.callParticipantState != .connecting,
+              let timer = self.connectStateObserve.first(where: { return $0.key == member.remoteId })?.value else {
+            return
+        }
+        timer.cancel()
+        self.connectStateObserve.removeValue(forKey: member.remoteId)
     }
     
-    func clear() {
-        self.members.removeAll()
-    }
-    
-    deinit {
-        zmLog.info("CallingMembersManager-deinit")
-    }
-    
-    func membersChanged() {
-        //对成员进行一次排序
-        self.members.sort(by: { return $0.sortLevel > $1.sortLevel })
-        self.observer.roomMembersConnectStateChange()
+    //超时了则将该成员的状态改成未连接状态，且从观察列表中移除
+    func timerDidFire(_ timer: ZMTimer!) {
+        guard let mid = self.connectStateObserve.first(where: { return $0.value == timer })?.key else {
+            return
+        }
+        self.memberConnectStateChanged(with: mid, state: .unconnected)
+        self.connectStateObserve.removeValue(forKey: mid)
     }
     
 }

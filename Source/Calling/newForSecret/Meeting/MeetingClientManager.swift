@@ -71,11 +71,20 @@ extension MediasoupClientManager {
         var property: MeetingProperty? = nil
         switch action {
         case .peerOpened:
-            guard let userId = info["peerId"].string, let uid = UUID(uuidString: userId),
-                    self.membersManagerDelegate.containUser(with: uid) else {
+            guard let userId = info["peerId"].string,
+                  let uid = UUID(uuidString: userId),
+                  self.membersManagerDelegate.containUser(with: uid) else {
                 return
             }
             property = .userOnline(userId)
+        case .peerClosed:
+            guard let userId = info["peerId"].string,
+                  let uid = UUID(uuidString: userId),
+                  var member = self.membersManagerDelegate.user(with: uid) else {
+                return
+            }
+            member.callParticipantState = .connecting
+            self.membersManagerDelegate.replaceMember(with: member)
         case .openMute:
             property = .mute(.soft)
         case .openForceMute:
@@ -83,7 +92,9 @@ extension MediasoupClientManager {
         case .closeMute:
             property = .mute(.no)
         case .peerOpenMute:
-            guard let userId = info["peerId"].string, let peer = self.membersManagerDelegate.user(with: userId) else { return }
+            guard let userId = info["peerId"].string,
+                  let uid = UUID(uuidString: userId),
+                  let peer = self.membersManagerDelegate.user(with: uid) else { return }
             if peer.isSelf {
                 //别人被静音的状态是根据consumer的paused推送来设置，收到自己被静音的话，需要手动的设置自己的状态
                 AVSMediaManager.sharedInstance.isMicrophoneMuted = true
@@ -91,7 +102,9 @@ extension MediasoupClientManager {
                 property = .mutedByHoster(true)
             }
         case .peerCloseMute:
-            guard let userId = info["peerId"].string, let peer = self.membersManagerDelegate.user(with: userId) else { return }
+            guard let userId = info["peerId"].string,
+                  let uid = UUID(uuidString: userId),
+                  let peer = self.membersManagerDelegate.user(with: uid) else { return }
             if peer.isSelf {
                 property = .mutedByHoster(false)
             }
@@ -112,7 +125,8 @@ extension MediasoupClientManager {
                 property = .onlyHosterCanShareScreen(canShare == 1)
             case .newHolder:
                 guard let userId = info["roomProperties"]["holder"]["user_id"].string,
-                    self.membersManagerDelegate.containUser(with: userId) else {
+                      let uid = UUID(uuidString: userId),
+                      let _ = self.membersManagerDelegate.user(with: uid) else {
                     return
                 }
                 property = .holder(userId)
@@ -124,11 +138,12 @@ extension MediasoupClientManager {
         case .changeUserProperty:
             let userProperty = info["property"]
             guard let userId = userProperty["user_id"].string,
-                var member = self.membersManagerDelegate.user(with: userId) as? MeetingParticipant else {
+                  let uid = UUID(uuidString: userId),
+                  var member = self.membersManagerDelegate.user(with: uid) as? MeetingParticipant else {
                 return
             }
             member.update(with: userProperty)
-            self.membersManagerDelegate.replaceMember(member)
+            self.membersManagerDelegate.replaceMember(with: member)
         case .kickoutMeet:
             guard let userId = info["peerId"].string, let uid = UUID(uuidString: userId),
                 self.membersManagerDelegate.containUser(with: uid) else {

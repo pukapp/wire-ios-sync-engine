@@ -20,6 +20,7 @@ enum MeetingSignalAction {
     
     enum Notification: String {
         case peerOpened         = "peerOpened"          //用户websocket连接成功
+        case peerClosed         = "peerClosed"          //用户websocket断开连接
         case openMute           = "openMute"            //开启全员静音(不强制)
         case openForceMute      = "openForceMute"       //开启全员静音(强制)
         case closeMute          = "closeMute"           //关闭全员静音

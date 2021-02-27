@@ -102,7 +102,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     
     private let signalManager: CallingSignalManager
     private let mediaManager: MediaOutputManager
-    let membersManagerDelegate: CallingMembersManagerProtocol
+    let membersManagerDelegate: CallingMembersManagerForMeetingProtocol
     private let mediaStateManagerDelegate: CallingMediaStateManagerProtocol
     let connectStateObserver: CallingClientConnectStateObserve
     
@@ -139,7 +139,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         
         self.signalManager = signalManager
         self.mediaManager = mediaManager
-        self.membersManagerDelegate = membersManagerDelegate
+        self.membersManagerDelegate = membersManagerDelegate as! CallingMembersManagerForMeetingProtocol
         self.mediaStateManagerDelegate = mediaStateManagerDelegate
         self.connectStateObserver = observe
         self.mediaState = mediaState

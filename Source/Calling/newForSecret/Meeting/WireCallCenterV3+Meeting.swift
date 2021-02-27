@@ -51,12 +51,16 @@ public enum MeetingParticipantInviteState: String {
     case callLimit     = "call_limit"
     case left          = "left"
     case kickOut       = "kick_out" //被踢出
+    //服务端无此状态，当websocket连接成功，则该用户状态置为此状态
+    case connected     = "connected"
 }
 
 //获取排序状态
 extension MeetingParticipantInviteState {
     var sortValue: Int {
         switch self {
+        case .connected:
+            return 9
         case .accepted:
             return 8
         case .calling:
@@ -84,7 +88,19 @@ public struct MeetingParticipant: CallMemberProtocol {
         return UUID(uuidString: self.userId)!
     }
     public var networkQuality: NetworkQuality
-    public var callParticipantState: CallParticipantState
+    public var callParticipantState: CallParticipantState {
+        didSet {
+            //如果该成员连接超时了，则直接变成left的状态，在页面上显示
+            switch callParticipantState {
+            case .connected:
+                self.inviteState = .connected
+            case .unconnected:
+                self.inviteState = .left
+            case .connecting:
+                self.inviteState = .accepted
+            }
+        }
+    }
     public var videoState: VideoState = .stopped
     public var audioEstablished: Bool {
         switch self.callParticipantState {
@@ -95,6 +111,8 @@ public struct MeetingParticipant: CallMemberProtocol {
         }
     }
     public var isSelf: Bool
+    public var needRemoveWhenUnconnected: Bool = false
+    
     public var isTop: Bool = false
     //排序状态，排序由多种属性决定
     public var sortLevel: Int {
