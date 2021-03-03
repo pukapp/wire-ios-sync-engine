@@ -78,8 +78,8 @@ class CallingMembersManager: CallingMembersManagerProtocol {
     }
     
     func addNewMember(_ newMember: CallMemberProtocol) {
-        self.internalAddNewMember(newMember)
         self.addConnectStateObserve(for: newMember)
+        self.internalAddNewMember(newMember)
     }
     
     func removeMember(with id: UUID) {
@@ -87,20 +87,20 @@ class CallingMembersManager: CallingMembersManagerProtocol {
             zmLog.info("CallingMembersManager--no peer to remove")
             return
         }
-        self.internalRemoveMember(with: member)
         self.removeConnectStateObserve(for: member)
+        self.internalRemoveMember(with: member)
     }
     
     func replaceMember(with updateMember: CallMemberProtocol) {
         guard self.containUser(with: updateMember.remoteId) else {
             return
         }
-        self.internalReplaceMember(updateMember)
         if updateMember.callParticipantState == .connecting {
             self.addConnectStateObserve(for: updateMember)
         } else {
             self.removeConnectStateObserve(for: updateMember)
         }
+        self.internalReplaceMember(updateMember)
     }
     
     func memberConnectStateChanged(with id: UUID, state: CallParticipantState) {
@@ -110,9 +110,9 @@ class CallingMembersManager: CallingMembersManagerProtocol {
         member.callParticipantState = state
         switch state {
         case .unconnected:
-            member.needRemoveWhenUnconnected ? self.internalRemoveMember(with: member) : self.internalReplaceMember(member)
+            member.needRemoveWhenUnconnected ? self.removeMember(with: member.remoteId) : self.replaceMember(with: member)
         case .connecting, .connected:
-            self.internalReplaceMember(member)
+            self.replaceMember(with: member)
         }
         
         if state == .connected {
@@ -236,6 +236,7 @@ extension CallingMembersManager: ZMTimerClient {
               !self.connectStateObserve.contains(where: { return $0.key == member.remoteId }) else {
             return
         }
+        zmLog.info("addConnectStateObserve for member:\(member.remoteId)")
         let timer = ZMTimer(target: self)
         timer?.fire(afterTimeInterval: MemberReConnectingTimeLimit)
         self.connectStateObserve[member.remoteId] = timer
@@ -247,6 +248,7 @@ extension CallingMembersManager: ZMTimerClient {
               let timer = self.connectStateObserve.first(where: { return $0.key == member.remoteId })?.value else {
             return
         }
+        zmLog.info("removeConnectStateObserve for member:\(member.remoteId)")
         timer.cancel()
         self.connectStateObserve.removeValue(forKey: member.remoteId)
     }
@@ -256,6 +258,7 @@ extension CallingMembersManager: ZMTimerClient {
         guard let mid = self.connectStateObserve.first(where: { return $0.value == timer })?.key else {
             return
         }
+        zmLog.info("membersConnectStateObserve timerDidFire for member:\(mid)")
         self.memberConnectStateChanged(with: mid, state: .unconnected)
         self.connectStateObserve.removeValue(forKey: mid)
     }
