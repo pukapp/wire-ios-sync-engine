@@ -70,13 +70,19 @@ extension MediasoupClientManager {
         }
         var property: MeetingProperty? = nil
         switch action {
-        case .peerOpened:
-            guard let userId = info["peerId"].string,
+        case .newPeer:
+            guard let userId = info["id"].string,
                   let uid = UUID(uuidString: userId),
-                  self.membersManagerDelegate.containUser(with: uid) else {
+                  var member = self.membersManagerDelegate.user(with: uid),
+                  let audioState = info["audioStatus"].int else {
                 return
             }
             property = .userOnline(userId)
+            //会议中，由于成员已经在列表之中，所以只需要设置一下音频的状态即可
+            member.isMute = audioState != 1
+            //在会议中，只要用户调用了join接口就算连接成功
+            member.callParticipantState = .connected
+            self.membersManagerDelegate.replaceMember(with: member)
         case .peerClosed:
             guard let userId = info["peerId"].string,
                   let uid = UUID(uuidString: userId),
@@ -86,8 +92,10 @@ extension MediasoupClientManager {
             member.callParticipantState = .connecting
             self.membersManagerDelegate.replaceMember(with: member)
         case .openMute:
+            self.membersManagerDelegate.setSelfMute(true)
             property = .mute(.soft)
         case .openForceMute:
+            self.membersManagerDelegate.setSelfMute(true)
             property = .mute(.hard)
         case .closeMute:
             property = .mute(.no)
@@ -145,7 +153,8 @@ extension MediasoupClientManager {
             member.update(with: userProperty)
             self.membersManagerDelegate.replaceMember(with: member)
         case .kickoutMeet:
-            guard let userId = info["peerId"].string, let uid = UUID(uuidString: userId),
+            guard let userId = info["peerId"].string,
+                  let uid = UUID(uuidString: userId),
                 self.membersManagerDelegate.containUser(with: uid) else {
                 return
             }

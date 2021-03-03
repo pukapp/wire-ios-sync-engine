@@ -217,7 +217,6 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         if let action = MeetingSignalAction.Notification(rawValue: noti), mode == .conference {
             self.onReceiveMeetingNotification(with: action, info: info)
         } else if let action = MediasoupSignalAction.Notification(rawValue: noti) {
-            zmLog.info("MediasoupClientManager-onNewNotification:action:\(noti)，info:\(info)")
             self.onReceiveMediasoupNotification(with: action, info: info)
         }
     }
@@ -433,13 +432,10 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         }
         var member: CallMemberProtocol
         switch self.mode {
-        case .conference:
-            //会议中，由于成员已经在列表之中，所以只需要设置一下音频的状态即可
-            self.membersManagerDelegate.setMemberAudio(audioState != 1, mid: uid)
-            self.membersManagerDelegate.memberConnectStateChanged(with: uid, state: .connecting)
         case .group, .oneToOne:
             member = ConversationCallMember(userId: uid, callParticipantState: .connecting, isMute: audioState != 1, videoState: .stopped)
             self.membersManagerDelegate.addNewMember(member)
+        default:break
         }
     }
     
@@ -509,10 +505,11 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         case ("audio", .consumerPaused):
             consumer.pause()
             self.membersManagerDelegate.setMemberAudio(true, mid: peer.peerId)
-        case ("audio", .consumerClosed):break
-            //peer.removeConsumer(consumerId)
+        case ("audio", .consumerClosed):
+            peer.removeConsumer(consumerId)
+            self.membersManagerDelegate.setMemberAudio(true, mid: peer.peerId)
         case ("video", .consumerClosed):
-            //peer.removeConsumer(consumerId)
+            peer.removeConsumer(consumerId)
             if consumer.getKind() == "video" {
                 self.mediaStateManagerDelegate.removeVideoTrack(with: peer.peerId)
                 self.membersManagerDelegate.setMemberVideo(.stopped, mid: peer.peerId)

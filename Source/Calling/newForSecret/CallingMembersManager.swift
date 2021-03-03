@@ -32,6 +32,8 @@ protocol CallingMembersManagerForMeetingProtocol: CallingMembersManagerProtocol 
     func containUser(with id: UUID) -> Bool
     func user(with uid: UUID) -> CallMemberProtocol?
     
+    func setSelfMute(_ isMute: Bool)
+    
     //会议
     func topUser(_ userId: String)
     func setActiveSpeaker(_ uid: UUID, volume: Int)
@@ -199,6 +201,14 @@ extension CallingMembersManager {
 
 extension CallingMembersManager: CallingMembersManagerForMeetingProtocol {
     
+    func setSelfMute(_ isMute: Bool) {
+        guard var member = self.members.first(where: { return ($0 as! MeetingParticipant).isSelf }),
+             member.isMute != isMute else { return }
+        member.isMute = isMute
+        self.members.replaceMember(with: member)
+        self.membersChanged()
+    }
+    
     func topUser(_ userId: String) {
         guard var member = self.members.first(where: { return $0.remoteId == UUID(uuidString: userId) }) as? MeetingParticipant,
              !member.isTop else { return }
@@ -303,7 +313,7 @@ extension CallingMembersManager {
 }
 
 private let resignActiveSpeakingTimeInterval: TimeInterval = 10 //从活跃状态变成不活跃状态的间隔默认为10s
-private let activeSpeakingVolume: Int = -40 //当前音量大于这个值即认为是活跃状态
+private let activeSpeakingVolume: Int = -30 //当前音量大于这个值即认为是活跃状态
 
 extension CallingMembersManager: ActiveSpeakerManagerProtocol {
 
