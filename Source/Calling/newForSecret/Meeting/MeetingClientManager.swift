@@ -121,16 +121,16 @@ extension MediasoupClientManager {
             let changedProperty = MeetingSignalAction.Notification.ChangeRoomProperty(rawValue: info["field"].stringValue)!
             switch changedProperty {
             case .lockMeet:
-                guard let isLocked = info["roomProperties"]["lock_meeting"].int else { return }
-                property = .lockmMeeting(isLocked == 1)
+                guard let isLocked = info["roomProperties"]["lock_meeting"].string else { return }
+                property = .lockmMeeting(isLocked == "on")
             case .setInternal:
-                guard let isInternal = info["roomProperties"]["internal"].int else { return }
-                property = .setInternal(isInternal == 1)
+                guard let isInternal = info["roomProperties"]["internal"].string else { return }
+                property = .setInternal(isInternal == "on")
             case .newSpeaker, .cancelSpeaker:
                 break
             case .onlyHosterCanShareScreen:
-                guard let canShare = info["roomProperties"]["screen_share"].int else { return }
-                property = .onlyHosterCanShareScreen(canShare == 1)
+                guard let canShare = info["roomProperties"]["screen_share"].string else { return }
+                property = .onlyHosterCanShareScreen(canShare == "on")
             case .newHolder:
                 guard let userId = info["roomProperties"]["holder"]["user_id"].string,
                       let uid = UUID(uuidString: userId),
