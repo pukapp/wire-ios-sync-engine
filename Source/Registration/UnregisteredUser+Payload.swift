@@ -41,6 +41,7 @@ extension UnregisteredUser {
         case .email(let address):
             payload["email"] = address
             payload["email_code"] = verificationCode!
+            payload["captch_token"] = captchToken
         }
 
         payload["accent_id"] = accentColorValue!.rawValue

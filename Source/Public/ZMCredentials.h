@@ -24,6 +24,7 @@
 
 @property (nonatomic, copy, readonly, nullable) NSString *email;
 @property (nonatomic, copy, readonly, nullable) NSString *password;
+@property (nonatomic, copy, nullable) NSString *token;
 @property (nonatomic, copy, readonly, nullable) NSString *phoneNumber;
 @property (nonatomic, copy, readonly, nullable) NSString *phoneNumberVerificationCode;
 
@@ -41,6 +42,8 @@
 
 
 @interface ZMEmailCredentials : ZMCredentials
+
+
 
 + (nonnull ZMEmailCredentials *)credentialsWithEmail:(nonnull NSString *)email password:(nonnull NSString *)password;
 
