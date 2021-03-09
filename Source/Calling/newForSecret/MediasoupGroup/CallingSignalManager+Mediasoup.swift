@@ -121,17 +121,19 @@ extension CallingSignalManager {
         return res.data!["id"].string
      }
 
-     func setProduceState(with id: String, pause: Bool) {
+    func setProduceState(with id: String, type: MediasoupProduceKind, pause: Bool) {
          let data: JSON = [
-             "producerId": id,
+            "producerId": id,
+            "producerType": type.rawValue
          ]
         let res = sendMediasoupAction(with: pause ? .pauseProducer : .resumeProducer, data: data)
         zmLog.info("CallingSignalManager+Mediasoup -- setProduceState \(String(describing: res?.ok))")
      }
      
-     func closeProduce(with id: String) {
+     func closeProduce(with id: String, type: String) {
          let data: JSON = [
-             "producerId": id,
+            "producerId": id,
+            "producerType": type
          ]
         let res = sendMediasoupAction(with: .closeProducer, data: data)
         zmLog.info("CallingSignalManager+Mediasoup -- closeProduce \(String(describing: res?.ok))")

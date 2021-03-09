@@ -63,6 +63,69 @@ enum VideoOutputFormat: Int {
     
 }
 
+class WRRTCAudioTrack: Equatable {
+    
+    public let track: RTCAudioTrack
+    
+    public var isEnabled: Bool {
+        get {
+            return self.track.isEnabled
+        }
+        set {
+            self.track.isEnabled = newValue
+        }
+    }
+    
+    init(_ audioTrack: RTCAudioTrack) {
+        zmLog.info("Track: WRRTCAudioTrack -- init - \(audioTrack)")
+        self.track = audioTrack
+    }
+    
+    deinit {
+        zmLog.info("Track: WRRTCAudioTrack -- deinit")
+    }
+    
+    static func == (lhs: WRRTCAudioTrack, rhs: WRRTCAudioTrack) -> Bool {
+        return lhs.track == rhs.track
+    }
+    
+}
+
+class WRRTCVideoTrack: Equatable {
+    
+    public let track: RTCVideoTrack
+    
+    public var isEnabled: Bool {
+        get {
+            return self.track.isEnabled
+        }
+        set {
+            self.track.isEnabled = newValue
+        }
+    }
+    
+    init(_ videoTrack: RTCVideoTrack) {
+        zmLog.info("Track: WRRTCVideoTrack -- init - \(videoTrack)")
+        self.track = videoTrack
+    }
+    
+    func add(_ render: RTCVideoRenderer) {
+        self.track.add(render)
+    }
+    
+    func remove(_ render: RTCVideoRenderer) {
+        self.track.remove(render)
+    }
+    
+    deinit {
+        zmLog.info("Track: WRRTCVideoTrack -- deinit")
+    }
+    
+    static func == (lhs: WRRTCVideoTrack, rhs: WRRTCVideoTrack) -> Bool {
+        return lhs.track == rhs.track
+    }
+}
+
 
 ///应当注意，此类每次使用时初始化，断开后就需要销毁,否则会占用系统类型
 final class MediaOutputManager: NSObject {
@@ -95,8 +158,8 @@ final class MediaOutputManager: NSObject {
     
     /// 由于主界面和room管理类可能会同时异步获取videoTrack，从而会造成获取两个track，这里需要加一个锁。
     let getVideoTracklock = NSLock()
-    private var mediaSoupVideoTrack: RTCVideoTrack?
-    private var mediaSoupAudioTrack: RTCAudioTrack?
+    private var mediaSoupVideoTrack: WRRTCVideoTrack?
+    private var mediaSoupAudioTrack: WRRTCAudioTrack?
     
     private var isScreenShare: Bool = false
     
@@ -133,7 +196,7 @@ final class MediaOutputManager: NSObject {
         }
     }
     
-    func produceVideoTrack(with format: VideoOutputFormat) -> RTCVideoTrack {
+    func produceVideoTrack(with format: VideoOutputFormat) -> WRRTCVideoTrack {
         getVideoTracklock.lock()
         
         if let track = self.mediaSoupVideoTrack {
@@ -145,13 +208,13 @@ final class MediaOutputManager: NSObject {
 
         self.videoCapturer.startCapture(with: self.currentCapture!, format: self.currentCapture!.activeFormat, fps: MEDIA_VIDEO_FPS)
         self.videoSource.adaptOutputFormat(toWidth: VideoOutputFormat.high.height, height: VideoOutputFormat.high.width, fps: Int32(MEDIA_VIDEO_FPS))
-        let videoTrack: RTCVideoTrack = self.peerConnectionFactory.videoTrack(with: self.videoSource, trackId: MediaOutputManager.VIDEO_TRACK_ID)
+        let videoTrack: WRRTCVideoTrack = WRRTCVideoTrack(self.peerConnectionFactory.videoTrack(with: self.videoSource, trackId: MediaOutputManager.VIDEO_TRACK_ID))
         self.mediaSoupVideoTrack = videoTrack
         getVideoTracklock.unlock()
         return videoTrack
     }
     
-    func produceAudioTrack() -> RTCAudioTrack {
+    func produceAudioTrack() -> WRRTCAudioTrack {
         if let track = self.mediaSoupAudioTrack {
             return track
         }
@@ -159,8 +222,9 @@ final class MediaOutputManager: NSObject {
         let audioTrack: RTCAudioTrack = self.peerConnectionFactory.audioTrack(withTrackId: MediaOutputManager.AUDIO_TRACK_ID)
         audioTrack.isEnabled = true
         
-        self.mediaSoupAudioTrack = audioTrack
-        return audioTrack
+        
+        self.mediaSoupAudioTrack = WRRTCAudioTrack(audioTrack)
+        return self.mediaSoupAudioTrack!
     }
     
     func clear() {

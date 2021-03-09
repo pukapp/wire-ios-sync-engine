@@ -123,7 +123,7 @@ public class VideoRenderView : RTCRenderView {
         self.transform = CGAffineTransform(scaleX: needFixMirror ? -1 : 1, y: 1)
     }
     
-    private var videoTrack: RTCVideoTrack? {
+    private var videoTrack: WRRTCVideoTrack? {
         didSet {
             guard videoTrack != oldValue else { return }
             zmLog.info("VideoRenderView--assign newTrack:\(videoTrack), oldTrack:\(oldValue)")

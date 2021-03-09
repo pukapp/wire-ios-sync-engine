@@ -9,6 +9,8 @@
 import Foundation
 import Mediasoupclient
 
+private let zmLog = ZMSLog(tag: "calling")
+
 class MediasoupPeerConsumer {
     
     let peerId: UUID
@@ -20,19 +22,20 @@ class MediasoupPeerConsumer {
     }
     
     func addConsumer(_ consumer: Consumer, listener: MediasoupConsumerListener) {
+        zmLog.info("MediasoupPeerConsumer addConsumer \(consumer), \(listener)")
         self.consumers.append(consumer)
         self.consumerListeners.append(listener)
     }
     
     func removeConsumer(_ id: String) {
         self.consumers = self.consumers.filter({ return $0.getId() != id })
-        self.consumerListeners = self.consumerListeners.filter({ return $0.consumerId != id })
+        //self.consumerListeners = self.consumerListeners.filter({ return $0.consumerId != id })
     }
     
     func clear() {
         self.consumers.forEach({ $0.close() })
         self.consumers.removeAll()
-        self.consumerListeners.removeAll()
+        //self.consumerListeners.removeAll()
     }
     
     func consumer(with id: String) -> Consumer? {

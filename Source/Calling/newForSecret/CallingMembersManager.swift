@@ -70,8 +70,8 @@ class CallingMembersManager: CallingMembersManagerProtocol {
     private var members : [CallMemberProtocol] = []
     private var connectStateObserve: [UUID: ZMTimer] = [:]
     
-    private var audioTracks: [(UUID, RTCAudioTrack)] = []
-    private var videoTracks: [(UUID, RTCVideoTrack)] = []
+    private var audioTracks: [(UUID, WRRTCAudioTrack)] = []
+    private var videoTracks: [(UUID, WRRTCVideoTrack)] = []
     
     fileprivate var activeSpeakers: [UUID : Date] = [:]
     
@@ -278,16 +278,16 @@ extension CallingMembersManager: ZMTimerClient {
 ///videoTrack相关
 protocol CallingMediaStateManagerProtocol {
     
-    func addVideoTrack(with mid: UUID, videoTrack: RTCVideoTrack)
+    func addVideoTrack(with mid: UUID, videoTrack: WRRTCVideoTrack)
     func removeVideoTrack(with mid: UUID)
-    func getVideoTrack(with mid: UUID) -> RTCVideoTrack?
+    func getVideoTrack(with mid: UUID) -> WRRTCVideoTrack?
 
     var totalVideoTracksCount: Int { get }
 }
 
 extension CallingMembersManager: CallingMediaStateManagerProtocol {
     
-    func addVideoTrack(with mid: UUID, videoTrack: RTCVideoTrack) {
+    func addVideoTrack(with mid: UUID, videoTrack: WRRTCVideoTrack) {
         if let index = self.videoTracks.firstIndex(where: { return $0.0 == mid }) {
             self.videoTracks[index] = (mid, videoTrack)
         } else {
@@ -299,7 +299,7 @@ extension CallingMembersManager: CallingMediaStateManagerProtocol {
         self.videoTracks = self.videoTracks.filter({ return $0.0 != mid })
     }
     
-    func getVideoTrack(with mid: UUID) -> RTCVideoTrack? {
+    func getVideoTrack(with mid: UUID) -> WRRTCVideoTrack? {
         return self.videoTracks.first(where: { return $0.0 == mid })?.1
     }
     

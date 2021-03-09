@@ -9,7 +9,7 @@
 import Foundation
 import SwiftyJSON
 
-let MediasoupServiceURL = "https://118.107.13.196:4000/api/getConfigInfo"
+let MediasoupServiceURL = "https://143.92.53.170:4000/api/getConfigInfo"
 
 public struct CallingConfigure {
     struct Gateway {

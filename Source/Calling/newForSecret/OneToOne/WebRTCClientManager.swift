@@ -158,7 +158,7 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
     
     func produceAudio() {
         guard self.localAudioTrack == nil else { return }
-        self.localAudioTrack = self.mediaManager.produceAudioTrack()
+        self.localAudioTrack = self.mediaManager.produceAudioTrack().track
         self.peerConnection?.add(self.localAudioTrack!, streamIds: [WebRTCClientManager.MEDIA_STREAM_ID])
     }
     
@@ -167,7 +167,7 @@ class WebRTCClientManager: NSObject, CallingClientConnectProtocol {
             return
         }
         guard self.localVideoTrack == nil else { return }
-        self.localVideoTrack = self.mediaManager.produceVideoTrack(with: .high)
+        self.localVideoTrack = self.mediaManager.produceVideoTrack(with: .high).track
         self.peerConnection?.add(self.localVideoTrack!, streamIds: [WebRTCClientManager.MEDIA_STREAM_ID])
         self.localVideoTrack?.isEnabled = isEnabled
     }
@@ -356,7 +356,7 @@ extension WebRTCClientManager: RTCPeerConnectionDelegate {
         zmLog.info("RTCPeerConnectionDelegate did add stream--\(stream)")
         if let remoteTrack = stream.videoTracks.first {
             zmLog.info("RTCPeerConnectionDelegate didReceiveVideoTrack--\(remoteTrack.isEnabled)")
-            self.mediaStateManagerDelegate.addVideoTrack(with: self.peerId, videoTrack: remoteTrack)
+            self.mediaStateManagerDelegate.addVideoTrack(with: self.peerId, videoTrack: WRRTCVideoTrack(remoteTrack))
         }
     }
     

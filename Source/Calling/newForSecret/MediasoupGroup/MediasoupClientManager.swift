@@ -44,7 +44,7 @@ extension MediasoupClientManager {
     
 }
 
-enum MediasoupProduceKind {
+enum MediasoupProduceKind: String {
     case audio
     case video
 }
@@ -181,23 +181,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     }
     
     func webSocketDisConnected() {
-        self.producers.forEach({ $0.close() })
-        self.producers.removeAll()
-        
-        if self.sendTransport != nil {
-            self.sendTransport?.close()
-            self.sendTransport = nil
-            self.sendTransportListen = nil
-        }
-        
-        if self.recvTransport != nil {
-            self.recvTransport?.close()
-            self.recvTransport = nil
-            self.recvTransportListen = nil
-        }
-
-        zmLog.info("Mediasoup::webSocketDisConnected")
-        self.device = nil
+        self.dispose()
     }
     
     func webSocketReceiveRequest(with method: String, info: JSON, completion: (Bool) -> Void) {
@@ -222,30 +206,38 @@ class MediasoupClientManager: CallingClientConnectProtocol {
     }
     
     func dispose() {
-        zmLog.info("MediasoupClientManager-dispose")
+        zmLog.info("MediasoupClientManager-dispose \(Thread.current)")
         
-        self.consumersJSONInfo.removeAll()
-        self.peerConsumers.forEach({ $0.clear() })
-        self.peerConsumers.removeAll()
-        
-        self.producers.forEach({ $0.close() })
-        self.producers.removeAll()
-        
-        if self.sendTransport != nil {
-            self.sendTransport?.close()
-            self.sendTransport = nil
-            self.sendTransportListen = nil
-        }
-        
-        if self.recvTransport != nil {
-            self.recvTransport?.close()
-            self.recvTransport = nil
-            self.recvTransportListen = nil
-        }
-        //Consumers必须在transport之后释放，因为transport释放了之后会去通知consumerListener，去释放consumers
-        self.peerConsumers.removeAll()
-        zmLog.info("Mediasoup::dispose")
+        self.closeTransport(isProduce: true)
+        self.closeTransport(isProduce: false)
         self.device = nil
+    }
+    
+    func closeTransport(isProduce: Bool) {
+        roomWorkQueue.async {
+            if isProduce {
+                guard self.sendTransport != nil else {
+                    return
+                }
+                zmLog.info("MediasoupClientManager closeSendTransport")
+                self.producers.forEach({ $0.close() })
+                self.producers.removeAll()
+                self.sendTransport?.close()
+                self.sendTransport = nil
+                self.sendTransportListen = nil
+            } else {
+                guard self.recvTransport != nil else {
+                    return
+                }
+                zmLog.info("MediasoupClientManager closeRecvTransport")
+                self.recvTransport?.close()
+                self.recvTransport = nil
+                self.recvTransportListen = nil
+                self.consumersJSONInfo.removeAll()
+                self.peerConsumers.forEach({ $0.clear() })
+                self.peerConsumers.removeAll()
+            }
+        }
     }
     
     func configureDevice() {
@@ -319,8 +311,8 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             return
         }
 
-        let audioTrack: RTCAudioTrack = self.mediaManager.produceAudioTrack()
-        self.createProducer(kind: .audio, track: audioTrack, codecOptions: nil, encodings: nil)
+        let audioTrack = self.mediaManager.produceAudioTrack()
+        self.createProducer(kind: .audio, track: audioTrack.track, codecOptions: nil, encodings: nil)
     }
         
     func produceVideo() {
@@ -333,7 +325,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         if TARGET_OS_SIMULATOR == 1 { return }
         let videoTrack = self.mediaManager.produceVideoTrack(with: VideoOutputFormat(count: self.mediaStateManagerDelegate.totalVideoTracksCount))
         videoTrack.isEnabled = true
-        self.createProducer(kind: .video, track: videoTrack, codecOptions: nil, encodings: nil)
+        self.createProducer(kind: .video, track: videoTrack.track, codecOptions: nil, encodings: nil)
     }
     
     private func createProducer(kind: MediasoupProduceKind, track: RTCMediaStreamTrack, codecOptions: String?, encodings: Array<RTCRtpEncodingParameters>?) {
@@ -349,7 +341,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         listener.producerId =  producer.getId()
         self.producers.append(MediasoupProducer(kind: kind, producer: producer, listener: listener))
         
-        zmLog.info("MediasoupClientManager-createProducer id =" + producer.getId() + " kind =\(kind)")
+        zmLog.info("MediasoupClientManager-createProducer:\(listener) listener:\(listener)"  + " kind =\(kind)")
     }
       
     func muteOther(_ userId: String, isMute: Bool) {
@@ -364,7 +356,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             } else {
                 audioProduce.resume()
             }
-            self.signalManager.setProduceState(with: audioProduce.id, pause: mute)
+            self.signalManager.setProduceState(with: audioProduce.id, type: .audio, pause: mute)
         } else {
             if !mute {
                 self.produceAudio()
@@ -379,21 +371,21 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         case .started:
             if let videoProduce = self.producers.first(where: { return $0.kind == .video }), videoProduce.isPaused() {
                 videoProduce.resume()
-                self.signalManager.setProduceState(with: videoProduce.id, pause: false)
+                self.signalManager.setProduceState(with: videoProduce.id, type: .video, pause: false)
             } else {
                 self.produceVideo()
             }
         case .stopped:
             if let videoProduce = self.producers.first(where: { return $0.kind == .video }) {
                 videoProduce.close()
-                self.signalManager.closeProduce(with: videoProduce.id)
+                self.signalManager.closeProduce(with: videoProduce.id, type: "video")
                 self.producers.first(where: { return $0.kind == .video })?.close()
                 self.producers = self.producers.filter({ return $0.kind != .video })
             }
         case .paused:
             if let videoProduce = self.producers.first(where: {return $0.kind == .video }), !videoProduce.isPaused() {
                 videoProduce.pause()
-                self.signalManager.setProduceState(with: videoProduce.id, pause: true)
+                self.signalManager.setProduceState(with: videoProduce.id, type: .video, pause: true)
             }
         default:
             break;
@@ -452,8 +444,6 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         }
     }
     
-    private var firstAudioConsumerDate: Date?
-
     func handleNewConsumer(with consumerInfo: JSON) {
         guard self.recvTransport != nil else {
             self.consumersJSONInfo.append(consumerInfo)
@@ -485,7 +475,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         }
         if kind == "video" {
             let videoTrack = consumer.getTrack() as! RTCVideoTrack
-            self.mediaStateManagerDelegate.addVideoTrack(with: peerUId, videoTrack: videoTrack)
+            self.mediaStateManagerDelegate.addVideoTrack(with: peerUId, videoTrack: WRRTCVideoTrack(videoTrack))
             self.membersManagerDelegate.setMemberVideo(.started, mid: peerUId)
         }
         self.membersManagerDelegate.memberConnectStateChanged(with: peerUId, state: .connected)
@@ -573,7 +563,12 @@ extension MediasoupClientManager: MediasoupTransportListenerDelegate {
     }
     
     func onTransportConnectionStateChange(isProduce: Bool, connectionState: String) {
-        
+        switch connectionState {
+        case "closed":
+            self.closeTransport(isProduce: isProduce)
+        default:
+            return
+        }
     }
 }
 
@@ -609,17 +604,24 @@ class MediasoupTransportListener: NSObject, SendTransportListener, RecvTransport
     }
     
     func onConnectionStateChange(_ transport: Transport!, connectionState: String!) {
-        zmLog.info("MediasoupClientManager-onConnectionStateChange--PThread:\(Thread.current)")
         if self.isProduce {
             zmLog.info("MediasoupClientManager-ProduceTransport-connectionState:\(String(describing: connectionState)) thread:\(Thread.current)")
         } else {
             zmLog.info("MediasoupClientManager-RecvTransport-connectionState:\(String(describing: connectionState)) thread:\(Thread.current)")
+        }
+        
+        switch connectionState {
+        case "closed":
+            transport.close()
+        default:
+            return
         }
         if connectionState == "failed" {
             ///重启ICE
             zmLog.info("MediasoupClientManager-Transport-onConnectionStateChange--restartIce isProduce:\(isProduce)  thread:\(Thread.current)")
             //transport.restartIce(<#T##iceParameters: String!##String!#>)
         }
+        self.delegate.onTransportConnectionStateChange(isProduce: self.isProduce, connectionState: connectionState)
     }
     
     deinit {
