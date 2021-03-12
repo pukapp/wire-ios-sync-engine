@@ -29,7 +29,7 @@ class MeetingNotificationBuilder :NotificationBuilder {
         switch noticeType {
         case .meetingNotice(let meetingNotice):
             switch meetingNotice {
-            case .appoint(let appointState, let appointInfo, _):
+            case .appoint(let appointState, let appointInfo, _, _):
                 switch appointState {
                 case .appointRemind:
                     self.notificationType = .event(.inversedMeetingWillStart)

@@ -51,18 +51,22 @@ enum MeetingNoticeType {
         case meetingRoomCallingMember = "40102" //会议室中呼叫成员通知
     }
     
-    case appoint(AppointNoti, MeetingReserved.Info, MeetingReserved.InviteState?)
+    case appoint(AppointNoti, MeetingReserved.Info, MeetingReserved.InviteState?, MeetingReserved.User?)
     case meetingRoom(MeetingRoomNoti, MeetingReserved.Meeting)
     
     init?(stringValue: String, data: [String: Any]) {
         if let appointNoti = AppointNoti(rawValue: stringValue) {
             let appointInfo = MeetingReserved.Info(data: data["appoint"] as! [String: Any])
-            var inviteState: MeetingReserved.InviteState? = nil
+            var inviteState: MeetingReserved.InviteState? = nil //仅在appointUserInviteStateChange下存在
             if let inviteStateValue = data["invite_state"] as? String,
                let state = MeetingReserved.InviteState(rawValue: inviteStateValue) {
                 inviteState = state
             }
-            self = .appoint(appointNoti, appointInfo, inviteState)
+            var fromUser: MeetingReserved.User? = nil//仅在appointMeetStateChange下存在
+            if let fromUserData = data["from_user"] as? [String: Any] {
+                fromUser = MeetingReserved.User(data: fromUserData)
+            }
+            self = .appoint(appointNoti, appointInfo, inviteState, fromUser)
         } else if let meetingRoomNoti = MeetingRoomNoti(rawValue: stringValue)  {
             self =  .meetingRoom(meetingRoomNoti, MeetingReserved.Meeting(data: data))
         } else {
@@ -89,12 +93,12 @@ extension ZMUserTranscoder {
                     meeting.callingDate = eventTime
                 }
             }
-        case .appoint(let appointType, let appointInfo, let inviteState):
+        case .appoint(let appointType, let appointInfo, let inviteState, let appointFromUser):
             switch appointType {
             case .appointMeetStateChange, .appointMeetContentChange, .appointUserInviteStateChange, .appointMeetRoomStateChange:
-                guard let fromUserId = UUID(uuidString: from),
-                    let fromUser = ZMUser(remoteID: fromUserId, createIfNeeded: true, in: managedObjectContext),
-                    let conversation = createOrUpdateMeetingNoticeConversation(with: convId, from: fromUser, serverTimestamp: eventTime),
+                guard let senderId = UUID(uuidString: from),
+                    let sender = ZMUser(remoteID: senderId, createIfNeeded: true, in: managedObjectContext),
+                    let conversation = createOrUpdateMeetingNoticeConversation(with: convId, from: sender, serverTimestamp: eventTime),
                     let uAppointId = UUID(uuidString: appointInfo.appointId) else {
                     return
                 }
@@ -112,7 +116,7 @@ extension ZMUserTranscoder {
                     sysMessage.systemMessageType = ZMSystemMessageType.meetingReservationMessage
                     sysMessage.serverTimestamp = eventTime
                 }
-                sysMessage.sender = fromUser
+                sysMessage.sender = sender
                 sysMessage.visibleInConversation = conversation
                 
                 let selfIsOwner: Bool = appointInfo.owner.userID == ZMUser.selfUser(in: managedObjectContext).remoteIdentifier.transportString()
@@ -124,7 +128,10 @@ extension ZMUserTranscoder {
                 } else if currentInviteState == nil {
                     currentInviteState = .pending
                 }
-                let json: JSON = ["appoint": JSON(appointInfo.dictionaryData), "invite_state": JSON(currentInviteState?.rawValue ?? "")]
+                var json: JSON = ["appoint": JSON(appointInfo.dictionaryData), "invite_state": JSON(currentInviteState?.rawValue ?? "")]
+                if let user = appointFromUser {
+                    json["from_user"] = JSON(user.dictionaryData)
+                }
                 print("test--json：\(json)")
                 sysMessage.text = json.description
                 
