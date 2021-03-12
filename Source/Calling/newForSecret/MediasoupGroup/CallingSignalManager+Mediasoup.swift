@@ -11,7 +11,7 @@ import SwiftyJSON
 
 private let zmLog = ZMSLog(tag: "calling")
 
-//Mediasoup连接信令(通用)
+//Mediasoup信令(通用)
 enum MediasoupSignalAction {
     
     enum SendRequest: Hashable {

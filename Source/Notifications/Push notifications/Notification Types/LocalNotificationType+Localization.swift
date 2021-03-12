@@ -137,6 +137,8 @@ extension LocalNotificationType {
                 return ZMPushStringConnectionAccepted
             case .newConnection:
                 return ZMPushStringNewConnection
+            case .inversedMeetingWillStart, .meetingRoomClosed, .meetingRoomInvite, .meetingRoomCalling:
+                return ZMPushStringDefault
             }
         case .failedMessage:
             return ZMPushStringFailedToSend

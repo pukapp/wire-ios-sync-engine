@@ -35,94 +35,124 @@ public struct ReceivedMeetingNotification {
     }
 }
 
+enum MeetingNoticeType {
+    //预约会议相关
+    enum AppointNoti: String {
+        case appointMeetStateChange = "40201" //预约会议状态改变
+        case appointMeetContentChange = "40202" //预约会议内容改变通知
+        case appointRemind = "40203" //预约会议提醒通知
+        case appointUserInviteStateChange = "40204" //用户邀请状态改变通知
+        case appointMeetRoomStateChange = "40205" //预约会议的会议室的状态改变通知
+    }
+    
+    //会议室相关
+    enum MeetingRoomNoti: String {
+        case meetingRoomStateChange = "40101" //会议室状态改变通知（当用户直接进入会议室而不经过预约会议时，会有这个通知）
+        case meetingRoomCallingMember = "40102" //会议室中呼叫成员通知
+    }
+    
+    case appoint(AppointNoti, MeetingReserved.Info, MeetingReserved.InviteState?)
+    case meetingRoom(MeetingRoomNoti, MeetingReserved.Meeting)
+    
+    init?(stringValue: String, data: [String: Any]) {
+        if let appointNoti = AppointNoti(rawValue: stringValue) {
+            let appointInfo = MeetingReserved.Info(data: data["appoint"] as! [String: Any])
+            var inviteState: MeetingReserved.InviteState? = nil
+            if let inviteStateValue = data["invite_state"] as? String,
+               let state = MeetingReserved.InviteState(rawValue: inviteStateValue) {
+                inviteState = state
+            }
+            self = .appoint(appointNoti, appointInfo, inviteState)
+        } else if let meetingRoomNoti = MeetingRoomNoti(rawValue: stringValue)  {
+            self =  .meetingRoom(meetingRoomNoti, MeetingReserved.Meeting(data: data))
+        } else {
+            return nil
+        }
+    }
+}
+
+
 extension ZMUserTranscoder {
     
-    func processMeetingNotification(with noticeType: UserNoticeMessageType.MeetingNotice, eventDate: [String: Any], eventTime: Date) {
-        guard let payload = eventDate["msgData"] as? [String: Any] else { return }
+    func processMeetingNotification(with noticeType: MeetingNoticeType, eventTime: Date, convId: String, from: String) {
         switch noticeType {
-        case .meetingRoomStateChange:
-            self.meetingStateChanged(with: payload)
-        case .meetingRoomCallingMember:
-            guard eventTime.compare(Date(timeIntervalSinceNow: -90)) != .orderedAscending else {
-                //超过90s之后才接收到信令，就不弹框
-                return
+        case .meetingRoom(let meetingRoomType, let meetingInfo):
+            switch meetingRoomType {
+            case .meetingRoomStateChange:
+                self.createOrUpdateMeeting(notiInfo: meetingInfo)
+            case .meetingRoomCallingMember:
+                guard eventTime.compare(Date(timeIntervalSinceNow: -90)) != .orderedAscending else {
+                    //超过90s之后才接收到信令，就不弹框
+                    return
+                }
+                if let meeting = self.createOrUpdateMeeting(notiInfo: meetingInfo) {
+                    meeting.callingDate = eventTime
+                }
             }
-            if let meeting = ZMMeeting.createOrUpdateMeeting(with: payload, context: managedObjectContext) {
-                meeting.callingDate = eventTime
-            }
-        case .appointMeetStateChange, .appointMeetContentChange, .appointUserInviteStateChange, .appointMeetRoomStateChange:
-            guard let convId = eventDate["conversation"] as? String,
-                  let from = eventDate["from"] as? String,
-                  let uId = UUID(uuidString: from),
-                  let user = ZMUser(remoteID: uId, createIfNeeded: true, in: managedObjectContext),
-                  let conversation = createOrUpdateMeetingNoticeConversation(with: convId, from: user, serverTimestamp: eventTime) else { return }
-            
-            guard let appoint = payload["appoint"] as? [String: Any],
-                let appointId = appoint["appoint_id"] as? String,
-                let uAppointId = UUID(uuidString: appointId) else {
-                return
-            }
-            ///创建系统消息并配置基本信息
-            var sysMessage: ZMSystemMessage
-            var previousInviteState: String?
-            if let exitMessage = ZMSystemMessage.fetch(withNonce: uAppointId, for: conversation, in: managedObjectContext),
-               let text = exitMessage.text {
-                sysMessage = exitMessage
-                previousInviteState = JSON(parseJSON: text)["inviteState"].string
-            } else {
-                sysMessage = ZMSystemMessage(nonce: uAppointId, managedObjectContext: managedObjectContext)
-                sysMessage.systemMessageType = ZMSystemMessageType.meetingReservationMessage
-                sysMessage.serverTimestamp = eventTime
-            }
-            sysMessage.sender = user
-            sysMessage.visibleInConversation = conversation
-            
-            let owner = appoint["owner"] as? [String: Any]
-            let ownerId = owner?["user_id"] as? String
-            let selfIsOwner: Bool = ownerId == ZMUser.selfUser(in: managedObjectContext).remoteIdentifier.transportString()
-            
-            //用户的邀请状态，由于服务端只在appointUserInviteStateChange的时候才推送，所以这里相当于对于inviteState进行一次保存
-            var currentInviteState: String? = payload["invite_state"] as? String ?? previousInviteState
-            if selfIsOwner {
-                //默认创建者为自己的邀请状态都是accepted
-                currentInviteState = "accepted"
-            } else if currentInviteState == nil || currentInviteState!.isEmpty {
-                currentInviteState = "pending"
-            }
-            var meetingDate = payload
-            meetingDate["invite_state"] = currentInviteState
-            sysMessage.text = JSON(meetingDate).description
-            
-            if case .appointMeetStateChange = noticeType,
-               !selfIsOwner,
-               let appointState = appoint["state"] as? String,
-               appointState == "normal",
-               currentInviteState == "pending" {
+        case .appoint(let appointType, let appointInfo, let inviteState):
+            switch appointType {
+            case .appointMeetStateChange, .appointMeetContentChange, .appointUserInviteStateChange, .appointMeetRoomStateChange:
+                guard let fromUserId = UUID(uuidString: from),
+                    let fromUser = ZMUser(remoteID: fromUserId, createIfNeeded: true, in: managedObjectContext),
+                    let conversation = createOrUpdateMeetingNoticeConversation(with: convId, from: fromUser, serverTimestamp: eventTime),
+                    let uAppointId = UUID(uuidString: appointInfo.appointId) else {
+                    return
+                }
+                ///创建系统消息并配置基本信息
+                var sysMessage: ZMSystemMessage
+                var previousInviteState: MeetingReserved.InviteState?
+                if let existMessage = ZMSystemMessage.fetch(withNonce: uAppointId, for: conversation, in: managedObjectContext),
+                   let text = existMessage.text {
+                    sysMessage = existMessage
+                    if let previousInviteStateValue = JSON(parseJSON: text)["invite_state"].string {
+                        previousInviteState = MeetingReserved.InviteState(rawValue: previousInviteStateValue)
+                    }
+                } else {
+                    sysMessage = ZMSystemMessage(nonce: uAppointId, managedObjectContext: managedObjectContext)
+                    sysMessage.systemMessageType = ZMSystemMessageType.meetingReservationMessage
+                    sysMessage.serverTimestamp = eventTime
+                }
+                sysMessage.sender = fromUser
+                sysMessage.visibleInConversation = conversation
                 
-                guard let startTime = appoint["start_time"] as? String,
-                      let startDate = NSDate(transport: startTime) as Date?,
-                      startDate.compare(Date()) != .orderedAscending else {
+                let selfIsOwner: Bool = appointInfo.owner.userID == ZMUser.selfUser(in: managedObjectContext).remoteIdentifier.transportString()
+                //用户的邀请状态，由于服务端只在appointUserInviteStateChange的时候才推送，所以这里相当于对于inviteState进行一次保存
+                var currentInviteState: MeetingReserved.InviteState? = inviteState ?? previousInviteState
+                if selfIsOwner {
+                    //默认创建者为自己的邀请状态都是accepted
+                    currentInviteState = .accepted
+                } else if currentInviteState == nil {
+                    currentInviteState = .pending
+                }
+                let json: JSON = ["appoint": JSON(appointInfo.dictionaryData), "invite_state": JSON(currentInviteState?.rawValue ?? "")]
+                print("test--json：\(json)")
+                sysMessage.text = json.description
+                
+                if case .appointMeetStateChange = appointType,
+                   !selfIsOwner,
+                   appointInfo.state == .normal,
+                   currentInviteState == .pending {
+                    guard appointInfo.startTime.compare(Date()) != .orderedAscending else {
+                        //当前该会议已经开始了，则不再弹框
+                        return
+                    }
+                    //别人预约了一个会议，并邀请了自己
+                    ReceivedMeetingNotification(type: .receiveAppointInvited, dataString: json.description).postNotification()
+                }
+            case .appointRemind:
+                guard appointInfo.startTime.compare(Date()) != .orderedAscending else {
                     //当前该会议已经开始了，则不再弹框
                     return
                 }
-                //别人预约了一个会议，并邀请了自己
-                ReceivedMeetingNotification(type: .receiveAppointInvited, dataString: JSON(meetingDate).description).postNotification()
+                //会议即将开始，发通知提醒自己
+                let json: JSON = ["appoint": JSON(appointInfo.dictionaryData)]
+                ReceivedMeetingNotification(type: .receiveAppointRemind, dataString: json.description).postNotification()
             }
-        case .appointRemind:
-            guard let appoint = payload["appoint"] as? [String: Any],
-                  let startTime = appoint["start_time"] as? String,
-                  let startDate = NSDate(transport: startTime) as Date?,
-                  startDate.compare(Date()) != .orderedAscending else {
-                //当前该会议已经开始了，则不再弹框
-                return
-            }
-            //会议即将开始，发通知提醒自己
-            ReceivedMeetingNotification(type: .receiveAppointRemind, dataString: JSON(payload).description).postNotification()
+            //更改数据库，保存
+            managedObjectContext.saveOrRollback()
         }
-        //更改数据库，保存
-        managedObjectContext.saveOrRollback()
+        
     }
-    
     
     //整个会议通知类似 服务通知一样，作为一个固定的conversation存在
     func createOrUpdateMeetingNoticeConversation(with convId: String, from: ZMUser, serverTimestamp: Date) -> ZMConversation? {
@@ -140,12 +170,9 @@ extension ZMUserTranscoder {
         return conversation
     }
     
-    func meetingStateChanged(with payload: [String: Any]) {
-        ZMMeeting.createOrUpdateMeeting(with: payload, context: managedObjectContext)
-    }
-    
-    func remind() {
-        
+    @discardableResult
+    func createOrUpdateMeeting(notiInfo: MeetingReserved.Meeting) -> ZMMeeting? {
+        return ZMMeeting.createOrUpdateMeeting(with: notiInfo.dictionaryData, context: managedObjectContext)
     }
     
 }

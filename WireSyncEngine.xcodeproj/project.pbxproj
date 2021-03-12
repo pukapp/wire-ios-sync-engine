@@ -352,6 +352,7 @@
 		73D0FD3C25E4ADE900917A61 /* WireCallCenterV3+ReceiveMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D0FD3B25E4ADE900917A61 /* WireCallCenterV3+ReceiveMessage.swift */; };
 		73D0FD5425E4FCF100917A61 /* WireCallCenterV3+CallingRoomDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D0FD5325E4FCF100917A61 /* WireCallCenterV3+CallingRoomDelegate.swift */; };
 		73D0FD6325E6656E00917A61 /* CallRoomType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D0FD6225E6656E00917A61 /* CallRoomType.swift */; };
+		73E9864A25F9FBDF000DEE54 /* ZMLocalNotification+Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73E9864925F9FBDF000DEE54 /* ZMLocalNotification+Meeting.swift */; };
 		73EA4D10243ED97B00E63429 /* CallingRoomManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D0F243ED97B00E63429 /* CallingRoomManager.swift */; };
 		73EA4D12243EE1AD00E63429 /* MediaOutputManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D11243EE1AD00E63429 /* MediaOutputManager.swift */; };
 		73EA4D142440192000E63429 /* CallingSignalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EA4D132440192000E63429 /* CallingSignalManager.swift */; };
@@ -1009,6 +1010,7 @@
 		73D0FD3B25E4ADE900917A61 /* WireCallCenterV3+ReceiveMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireCallCenterV3+ReceiveMessage.swift"; sourceTree = "<group>"; };
 		73D0FD5325E4FCF100917A61 /* WireCallCenterV3+CallingRoomDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireCallCenterV3+CallingRoomDelegate.swift"; sourceTree = "<group>"; };
 		73D0FD6225E6656E00917A61 /* CallRoomType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallRoomType.swift; sourceTree = "<group>"; };
+		73E9864925F9FBDF000DEE54 /* ZMLocalNotification+Meeting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZMLocalNotification+Meeting.swift"; sourceTree = "<group>"; };
 		73EA4CE9243DB55A00E63429 /* mediasoup_client_ios.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = mediasoup_client_ios.framework; path = ../../Build/iOS/mediasoup_client_ios.framework; sourceTree = "<group>"; };
 		73EA4D0F243ED97B00E63429 /* CallingRoomManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallingRoomManager.swift; sourceTree = "<group>"; };
 		73EA4D11243EE1AD00E63429 /* MediaOutputManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaOutputManager.swift; sourceTree = "<group>"; };
@@ -2096,6 +2098,7 @@
 				EEEA75F61F8A6140006D1070 /* ZMLocalNotification+Events.swift */,
 				1639A8262260CE5000868AB9 /* ZMLocalNotification+AvailabilityAlert.swift */,
 				EEEA75F51F8A613F006D1070 /* ZMLocalNotification+Messages.swift */,
+				73E9864925F9FBDF000DEE54 /* ZMLocalNotification+Meeting.swift */,
 			);
 			path = Content;
 			sourceTree = "<group>";
@@ -3204,6 +3207,7 @@
 				547E5B581DDB4B800038D936 /* UserProfileUpdateStatus.swift in Sources */,
 				73EA4D142440192000E63429 /* CallingSignalManager.swift in Sources */,
 				EEEA75FC1F8A6142006D1070 /* ZMLocalNotification+Calling.swift in Sources */,
+				73E9864A25F9FBDF000DEE54 /* ZMLocalNotification+Meeting.swift in Sources */,
 				09B7308D1B301F0200A5CCC9 /* ZMUserSession+Proxy.m in Sources */,
 				09E393BE1BAB0C2A00F3EA1B /* ZMUserSession+OTR.m in Sources */,
 				5435C5551E13D9A0002D9766 /* NSManagedObjectContext+KeyValueStore.swift in Sources */,

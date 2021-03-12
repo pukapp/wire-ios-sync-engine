@@ -44,6 +44,8 @@ extension ZMLocalNotification {
                 }
             }
             builder = NSEMessageNotificationBuilder(message: systemMessage)
+        case .userNoticeMessage:
+            builder = MeetingNotificationBuilder(event: event, managedObjectContext: moc)
             
         case .conversationCreate:
             builder = ConversationCreateEventNotificationBuilder(event: event, conversation: conversation, managedObjectContext: moc)
