@@ -57,7 +57,7 @@ class MeetingNotificationBuilder :NotificationBuilder {
                     let selfIsOwner: Bool = notifyConfiguration.appoint.owner.userID == ZMUser.selfUser(in: moc).remoteIdentifier.transportString()
                     // 别人预约了一个会议，并邀请了自己
                     if !selfIsOwner, notifyConfiguration.appoint.state == .normal {
-                        self.notificationType = .event(.inversedMeetingWillStart)
+                        self.notificationType = .event(.inversedMeetingInvite)
                         self._titleText = "预约会议邀请"
                         self._bodyText = "\(notifyConfiguration.fromUser!.nickname)邀请你加入预约会议:\(notifyConfiguration.appoint.title)"
                     } else {
