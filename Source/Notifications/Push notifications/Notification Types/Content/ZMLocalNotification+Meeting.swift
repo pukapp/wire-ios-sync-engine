@@ -8,6 +8,28 @@
 
 import Foundation
 
+extension MeetingReserved.RemindTimeType {
+    
+    var notificationDescription: String {
+        switch self {
+        case .none:
+            return ""
+        case .start:
+            return "马上"
+        case .t5mAgo:
+            return "5分钟后"
+        case .t15mAgo:
+            return "15分钟后"
+        case .t30mAgo:
+            return "半小时后"
+        case .t1hAgo:
+            return "1小时后"
+        case .t1dAgo:
+            return "一天后"
+        }
+    }
+}
+
 class MeetingNotificationBuilder :NotificationBuilder {
         
     let notificationType: LocalNotificationType
@@ -29,18 +51,23 @@ class MeetingNotificationBuilder :NotificationBuilder {
         switch noticeType {
         case .meetingNotice(let meetingNotice):
             switch meetingNotice {
-            case .appoint(let appointState, let appointInfo, _, _):
+            case .appoint(let appointState, let notifyConfiguration):
                 switch appointState {
+                case .appointMeetStateChange:
+                    let selfIsOwner: Bool = notifyConfiguration.appoint.owner.userID == ZMUser.selfUser(in: moc).remoteIdentifier.transportString()
+                    // 别人预约了一个会议，并邀请了自己
+                    if !selfIsOwner, notifyConfiguration.appoint.state == .normal {
+                        self.notificationType = .event(.inversedMeetingWillStart)
+                        self._titleText = "预约会议邀请"
+                        self._bodyText = "\(notifyConfiguration.fromUser!.nickname)邀请你加入预约会议:\(notifyConfiguration.appoint.title)"
+                    } else {
+                        return nil
+                    }
                 case .appointRemind:
                     self.notificationType = .event(.inversedMeetingWillStart)
                     self._titleText = "预约会议即将开始"
-                    let timeInterval = appointInfo.startTime.timeIntervalSince(Date())
-                    let minutes = Int(timeInterval/60)
-                    if minutes == 0 {
-                        self._bodyText = "您的会议:\(appointInfo.title)马上开始"
-                    } else {
-                        self._bodyText = "您的会议:\(appointInfo.title)将在\(minutes)分钟后开始"
-                    }
+                    let remindType = notifyConfiguration.remindType!
+                    self._bodyText = "您的会议:\(notifyConfiguration.appoint.title)\(remindType.notificationDescription)开始"
                 default:
                     return nil
                 }
