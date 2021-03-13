@@ -40,6 +40,7 @@ static NSString *ZMLogTag = @"Push";
             NOT_USED(result);
         }];
     }
+    [self.storedDidSaveNotifications clear];
 }
 
 - (void)application:(id<ZMApplication>)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult result))completionHandler;
