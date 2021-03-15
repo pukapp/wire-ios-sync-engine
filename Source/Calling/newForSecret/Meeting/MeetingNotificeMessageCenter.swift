@@ -104,6 +104,7 @@ public struct ReceivedMeetingNotification {
     public let notifyConfiguration: ITaskMeetingNotifyConfiguration
     
     init(type: Type, notifyConfiguration: ITaskMeetingNotifyConfiguration) {
+        guard notifyConfiguration.inviteState != nil else { fatal("you bug") }
         self.type = type
         self.notifyConfiguration = notifyConfiguration
     }
@@ -179,6 +180,8 @@ extension ZMUserTranscoder {
                     // 当前该会议已经开始了，则不再弹框
                     return
                 }
+                // 收到了提示，则说明用户状态肯定是已接受
+                configuration.inviteState = .accepted
                 ReceivedMeetingNotification(type: .receiveAppointRemind, notifyConfiguration: configuration).postNotification()
                 return
             }

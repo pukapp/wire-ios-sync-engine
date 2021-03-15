@@ -33,7 +33,8 @@ enum PushNotificationCategory: String, CaseIterable {
     case conversationWithLikeAndMute = "conversationCategoryWithLikeAndMute"
     case connect = "connectCategory"
     case alert = "alertCategory"
-
+    case meeting = "meetingCategory"
+    
     /// All the supported categories.
     static var allCategories: Set<UNNotificationCategory> {
         let categories = PushNotificationCategory.allCases.map(\.userNotificationCategory)
@@ -59,6 +60,8 @@ enum PushNotificationCategory: String, CaseIterable {
         case .connect:
             return [ConversationNotificationAction.connect]
         case .alert:
+            return []
+        case .meeting:
             return []
         }
     }

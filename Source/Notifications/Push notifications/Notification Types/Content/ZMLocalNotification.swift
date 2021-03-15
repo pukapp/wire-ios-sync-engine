@@ -33,6 +33,7 @@ public enum LocalNotificationType {
     case message(LocalNotificationContentType)
     case failedMessage
     case availabilityBehaviourChangeAlert(Availability)
+    case meeting(LocalNotificationMeetingType)
 }
 
 /// A notification builder provides the main components used to configure

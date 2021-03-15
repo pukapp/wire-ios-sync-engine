@@ -137,13 +137,18 @@ extension LocalNotificationType {
                 return ZMPushStringConnectionAccepted
             case .newConnection:
                 return ZMPushStringNewConnection
-            case .inversedMeetingInvite, .inversedMeetingWillStart, .meetingRoomClosed, .meetingRoomInvite, .meetingRoomCalling:
-                return ZMPushStringDefault
             }
         case .failedMessage:
             return ZMPushStringFailedToSend
         case .availabilityBehaviourChangeAlert:
             return ZMPushStringAlertAvailability
+        case .meeting(let notiType):
+            switch notiType {
+            case .inversedMeetingInvite, .inversedMeetingWillStart, .inversedMeetingHasBeenCancelled, .inversedMeetingContentChanged:
+                 return ZMPushStringDefault
+            case .meetingRoomInvite, .meetingRoomCalling:
+                return ZMPushStringDefault
+            }
         }
     }
     

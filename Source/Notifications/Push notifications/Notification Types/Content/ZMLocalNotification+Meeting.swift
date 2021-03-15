@@ -8,24 +8,30 @@
 
 import Foundation
 
+public enum LocalNotificationMeetingType {
+    case meetingRoomInvite, meetingRoomCalling
+    case inversedMeetingInvite, inversedMeetingWillStart, inversedMeetingContentChanged, inversedMeetingHasBeenCancelled
+}
+
 extension MeetingReserved.RemindTimeType {
     
     var notificationDescription: String {
+        let prefix: String = "距离会议开始还有"
         switch self {
         case .none:
             return ""
         case .start:
-            return "马上"
+            return "会议马上开始"
         case .t5mAgo:
-            return "5分钟后"
+            return "\(prefix)5分钟"
         case .t15mAgo:
-            return "15分钟后"
+            return "\(prefix)15分钟"
         case .t30mAgo:
-            return "半小时后"
+            return "\(prefix)半小时"
         case .t1hAgo:
-            return "1小时后"
+            return "\(prefix)1小时"
         case .t1dAgo:
-            return "一天后"
+            return "\(prefix)一天"
         }
     }
 }
@@ -55,41 +61,39 @@ class MeetingNotificationBuilder :NotificationBuilder {
                 switch appointState {
                 case .appointMeetStateChange:
                     let selfIsOwner: Bool = notifyConfiguration.appoint.owner.userID == ZMUser.selfUser(in: moc).remoteIdentifier.transportString()
-                    // 别人预约了一个会议，并邀请了自己
-                    if !selfIsOwner, notifyConfiguration.appoint.state == .normal {
-                        self.notificationType = .event(.inversedMeetingInvite)
-                        self._titleText = "预约会议邀请"
-                        self._bodyText = "\(notifyConfiguration.fromUser!.nickname)邀请你加入预约会议:\(notifyConfiguration.appoint.title)"
-                    } else {
+                    guard !selfIsOwner else {
                         return nil
                     }
+                    switch notifyConfiguration.appoint.state {
+                    case .normal:
+                        // 别人预约了一个会议，并邀请了自己
+                        self.notificationType = .meeting(.inversedMeetingInvite)
+                        self._titleText = "[会议邀请]\(notifyConfiguration.appoint.owner.nickname)创建了会议：\(notifyConfiguration.appoint.title)"
+                        self._bodyText = "时间：\(notifyConfiguration.appoint.startTime.formattedDate)"
+                    case .cancel:
+                        // 预约会议被取消
+                        self.notificationType = .meeting(.inversedMeetingHasBeenCancelled)
+                        self._titleText = "[会议取消]\(notifyConfiguration.appoint.owner.nickname)取消了会议：\(notifyConfiguration.appoint.title)"
+                        self._bodyText = "时间：\(notifyConfiguration.appoint.startTime.formattedDate)"
+                    }
                 case .appointRemind:
-                    self.notificationType = .event(.inversedMeetingWillStart)
-                    self._titleText = "预约会议即将开始"
-                    let remindType = notifyConfiguration.remindType!
-                    self._bodyText = "您的会议:\(notifyConfiguration.appoint.title)\(remindType.notificationDescription)开始"
-                default:
-                    return nil
+                    self.notificationType = .meeting(.inversedMeetingWillStart)
+                    self._titleText = "[会议提醒]\(notifyConfiguration.appoint.title)"
+                    self._bodyText = "时间：\(notifyConfiguration.appoint.startTime.formattedDate)\n\(notifyConfiguration.remindType!.notificationDescription)"
+                case .appointMeetContentChange:
+                    self.notificationType = .meeting(.inversedMeetingWillStart)
+                    self._titleText = "[会议修改]\(notifyConfiguration.appoint.owner.nickname)修改了会议：\(notifyConfiguration.appoint.title)"
+                    self._bodyText = "时间：\(notifyConfiguration.appoint.startTime.formattedDate)"
+                default: return nil
                 }
             case .meetingRoom(let roomState, let roomInfo):
                 switch roomState {
                 case .meetingRoomStateChange:
-                    switch roomInfo.state {
-                    case .on:
-                        self.notificationType = .event(.meetingRoomInvite)
-                        self._titleText = "会议已开始"
-                        self._bodyText = "\(roomInfo.holder.nickname)发起了会议:\(roomInfo.title)"
-                    case .off:
-                        self.notificationType = .event(.meetingRoomClosed)
-                        self._titleText = "会议已结束"
-                        self._bodyText = "会议:\(roomInfo.title)已结束"
-                    case .wait:
-                        return nil
-                    }
+                    return nil
                 case .meetingRoomCallingMember:
-                    self.notificationType = .event(.meetingRoomCalling)
-                    self._titleText = "会议邀请"
-                    self._bodyText = "\(roomInfo.holder.nickname)邀请你参加会议"
+                    self.notificationType = .meeting(.meetingRoomCalling)
+                    self._titleText = "[会议邀请]\(roomInfo.holder.nickname)创建了会议：\(roomInfo.title)"
+                    self._bodyText = "时间：\(roomInfo.startTime.formattedDate)"
                 }
             }
         }

@@ -20,7 +20,6 @@ import Foundation
 
 public enum LocalNotificationEventType {
     case connectionRequestAccepted, connectionRequestPending, newConnection, conversationCreated, conversationDeleted
-    case meetingRoomInvite, meetingRoomClosed, meetingRoomCalling, inversedMeetingInvite, inversedMeetingWillStart
 }
 
 public enum LocalNotificationContentType : Equatable {

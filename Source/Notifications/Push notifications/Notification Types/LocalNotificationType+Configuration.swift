@@ -70,6 +70,8 @@ extension LocalNotificationType {
             category = PushNotificationCategory.conversation.addMuteIfNeeded(hasTeam: hasTeam)
         case .availabilityBehaviourChangeAlert:
             category = PushNotificationCategory.alert
+        case .meeting:
+            category = PushNotificationCategory.meeting
         }
         
         return category.rawValue
@@ -94,6 +96,8 @@ extension LocalNotificationType {
                 return .newMessage
             }
         case .failedMessage, .availabilityBehaviourChangeAlert:
+            return .newMessage
+        case .meeting:
             return .newMessage
         }
     }
