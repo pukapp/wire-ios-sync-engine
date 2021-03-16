@@ -408,24 +408,18 @@ class MediasoupClientManager: CallingClientConnectProtocol {
             
         }
     }
-    
-    private var temp: [String: UUID] = [:]
-    
+        
     func receiveNewPeer(peerInfo: JSON) {
         zmLog.info("MediasoupClientManager--receiveNewPeer \(peerInfo)")
         guard let peerId = peerInfo["id"].string,
+              let uPid = UUID(uuidString: peerId),
             let audioState = peerInfo["audioStatus"].int else {
             return
-        }
-        var uid: UUID! = UUID(uuidString: peerId)
-        if uid == nil {
-            uid = UUID()
-            temp[peerId] = uid
         }
         var member: CallMemberProtocol
         switch self.mode {
         case .group, .oneToOne:
-            member = ConversationCallMember(userId: uid, callParticipantState: .connecting, isMute: audioState != 1, videoState: .stopped)
+            member = ConversationCallMember(userId: uPid, callParticipantState: .connecting, isMute: audioState != 1, videoState: .stopped)
             self.membersManagerDelegate.addNewMember(member)
         default:break
         }
@@ -452,7 +446,7 @@ class MediasoupClientManager: CallingClientConnectProtocol {
         
         guard let recvTransport = self.recvTransport,
             let peerId = consumerInfo["appData"]["peerId"].string,
-            let peerUId = UUID(uuidString: peerId) ?? temp[peerId] else {
+            let peerUId = UUID(uuidString: peerId) else {
             return
         }
         
@@ -595,7 +589,9 @@ class MediasoupTransportListener: NSObject, SendTransportListener, RecvTransport
 
     func onProduce(_ transport: Transport!, kind: String!, rtpParameters: String!, appData: String!, callback: ((String?) -> Void)!) {
         zmLog.info("MediasoupClientManager-transportListener-onProduce====isProduce:\(isProduce) thread:\(Thread.current)")
-        callback(self.delegate.onProduce(transport.getId(), kind: kind, rtpParameters: rtpParameters, appData: appData))
+        if let responseId = self.delegate.onProduce(transport.getId(), kind: kind, rtpParameters: rtpParameters, appData: appData) {
+            callback(responseId)
+        }
     }
     
     func onConnect(_ transport: Transport!, dtlsParameters: String!) {

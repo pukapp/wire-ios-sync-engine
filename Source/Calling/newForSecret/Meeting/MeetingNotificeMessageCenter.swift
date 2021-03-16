@@ -146,6 +146,7 @@ enum MeetingNoticeType {
     }
 }
 
+private let NotShowNotifiViewTimeIntervalSinceNow: TimeInterval = 90
 
 extension ZMUserTranscoder {
     
@@ -156,7 +157,7 @@ extension ZMUserTranscoder {
             case .meetingRoomStateChange:
                 self.createOrUpdateMeeting(notiInfo: meetingInfo)
             case .meetingRoomCallingMember:
-                guard eventTime.compare(Date(timeIntervalSinceNow: -90)) != .orderedAscending else {
+                guard eventTime.compare(Date(timeIntervalSinceNow: -NotShowNotifiViewTimeIntervalSinceNow)) != .orderedAscending else {
                     //超过90s之后才接收到信令，就不弹框
                     return
                 }
@@ -176,6 +177,7 @@ extension ZMUserTranscoder {
             // 会议即将开始，显示提示弹窗
             if case .appointRemind = appointType {
                 guard configuration.remindType != nil,
+                      eventTime.compare(Date(timeIntervalSinceNow: -NotShowNotifiViewTimeIntervalSinceNow)) != .orderedAscending,
                       configuration.appoint.startTime.compare(Date()) != .orderedAscending else {
                     // 当前该会议已经开始了，则不再弹框
                     return

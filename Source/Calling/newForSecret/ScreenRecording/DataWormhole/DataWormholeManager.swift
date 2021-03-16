@@ -77,8 +77,10 @@ extension DataWormholeClientManager: GCDAsyncSocketDelegate {
     
     public func socketDidDisconnect(_ sock: GCDAsyncSocket, withError err: Error?) {
         self.connected = false
-        self.socket.disconnect()
-        self.socket = nil
+        if self.socket != nil {
+            self.socket.disconnect()
+            self.socket = nil
+        }
     }
 }
 
